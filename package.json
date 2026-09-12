@@ -1,0 +1,42 @@
+{
+  "name": "centerify",
+  "version": "1.0.0",
+  "description": "A project to manage all your server's with one bot",
+  "keywords": [
+    "centerify"
+  ],
+  "homepage": "https://github.com/iamaloneforever/centerify-bot-discord#readme",
+  "bugs": {
+    "url": "https://github.com/iamaloneforever/centerify-bot-discord/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamaloneforever/centerify-bot-discord.git"
+  },
+  "license": "ISC",
+  "author": "iamaloneforever",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "dev": "tsc-watch --onSuccess \"node dist/src/index.js\"",
+    "typecheck": "tsc --noEmit",
+    "contract:emit": "prisma contract emit"
+  },
+  "dependencies": {
+    "@prisma/orm-postgres": "^8.0.0-rc.9",
+    "@sapphire/framework": "^5.5.1",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@prisma/cli-engine": "^0.2.3",
+    "@types/node": "^22.20.2",
+    "prisma": "^8.0.0-rc.10",
+    "tsc-watch": "^7.2.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2"
+  }
+}
