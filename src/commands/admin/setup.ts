@@ -45,7 +45,8 @@ export class SetupCommand extends Command {
 
     if (!canManageServer(interaction.member)) {
       await interaction.reply({
-        content: "You need Manage Server or Administrator permission to run setup.",
+        content:
+          "You need Manage Server or Administrator permission to run setup.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -58,7 +59,8 @@ export class SetupCommand extends Command {
       config = await this.loadConfig(interaction.guildId);
     } catch {
       await interaction.reply({
-        content: "I could not load this server's setup right now. Please try again shortly.",
+        content:
+          "I could not load this server's setup right now. Please try again shortly.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -89,7 +91,8 @@ export class SetupCommand extends Command {
 
       if (componentInteraction.user.id !== interaction.user.id) {
         await componentInteraction.reply({
-          content: "Only the administrator who started this setup session can use these controls.",
+          content:
+            "Only the administrator who started this setup session can use these controls.",
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -120,16 +123,18 @@ export class SetupCommand extends Command {
           "Setup interaction failed",
         );
 
-        await this.interactionHandler.respondWithError(componentInteraction).catch((responseError) => {
-          logger.warn(
-            {
-              err: responseError,
-              guildId: interaction.guildId,
-              userId: interaction.user.id,
-            },
-            "Failed to send setup error response",
-          );
-        });
+        await this.interactionHandler
+          .respondWithError(componentInteraction)
+          .catch((responseError) => {
+            logger.warn(
+              {
+                err: responseError,
+                guildId: interaction.guildId,
+                userId: interaction.user.id,
+              },
+              "Failed to send setup error response",
+            );
+          });
       }
     });
 
