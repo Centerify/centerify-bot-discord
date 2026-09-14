@@ -1,11 +1,9 @@
 import "dotenv/config";
-import pino from "pino";
+import { logger } from "./logger.js";
 
 const [{ LogLevel, SapphireClient }, { GatewayIntentBits }] = await Promise.all(
   [import("@sapphire/framework"), import("discord.js")],
 );
-
-const logger = pino({ name: "centerify-bot" });
 
 const token = process.env["DISCORD_TOKEN"];
 
@@ -14,7 +12,11 @@ if (!token) {
 }
 
 const client = new SapphireClient({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+  ],
   loadMessageCommandListeners: true,
   logger: { level: LogLevel.Info },
 });
@@ -31,6 +33,6 @@ process.once("SIGTERM", shutdown);
 try {
   await client.login(token);
 } catch (error) {
-  logger.error({ error }, "Failed to login to Discord");
+  logger.error({ err: error }, "Failed to login to Discord");
   process.exit(1);
 }
