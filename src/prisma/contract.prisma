@@ -25,3 +25,21 @@ model TestRecord {
   name      String
   createdAt TimestamptzString @default(now())
 }
+
+model GuildConfig {
+  id               Int      @id @default(autoincrement())
+  guildId          String   @unique
+  setupCompleted   Boolean  @default(false)
+  welcomeEnabled   Boolean  @default(false)
+  welcomeChannelId String?
+  welcomeMessage   String   @default("Welcome {user} to **{server}**! You are member #{memberCount}.")
+  goodbyeEnabled   Boolean  @default(false)
+  goodbyeChannelId String?
+  goodbyeMessage   String   @default("{displayName} left **{server}**. We now have {memberCount} members.")
+  autoRoleEnabled  Boolean  @default(false)
+  autoRoleId       String?
+  loggingEnabled   Boolean  @default(false)
+  loggingChannelId String?
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+}

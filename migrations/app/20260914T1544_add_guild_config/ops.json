@@ -1,0 +1,83 @@
+[
+  {
+    "id": "table.guildConfig",
+    "label": "Create table \"guildConfig\"",
+    "summary": "Creates table \"guildConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "guildConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"guildConfig\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"guildConfig\"",
+        "sql": "CREATE TABLE \"public\".\"guildConfig\" (\n  \"autoRoleEnabled\" bool DEFAULT false NOT NULL,\n  \"autoRoleId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"goodbyeChannelId\" text,\n  \"goodbyeEnabled\" bool DEFAULT false NOT NULL,\n  \"goodbyeMessage\" text DEFAULT '{displayName} left **{server}**. We now have {memberCount} members.' NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"loggingChannelId\" text,\n  \"loggingEnabled\" bool DEFAULT false NOT NULL,\n  \"setupCompleted\" bool DEFAULT false NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"welcomeChannelId\" text,\n  \"welcomeEnabled\" bool DEFAULT false NOT NULL,\n  \"welcomeMessage\" text DEFAULT 'Welcome {user} to **{server}**! You are member #{memberCount}.' NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"guildConfig\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.guildConfig.guildConfig_guildId_key",
+    "label": "Add unique constraint on \"guildConfig\" (guildId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "guildConfig_guildId_key",
+        "table": "guildConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"guildConfig_guildId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildConfig_guildId_key",
+          "public",
+          "\"public\".\"guildConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"guildConfig_guildId_key\"",
+        "sql": "ALTER TABLE \"public\".\"guildConfig\" ADD CONSTRAINT \"guildConfig_guildId_key\" UNIQUE (\"guildId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"guildConfig_guildId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildConfig_guildId_key",
+          "public",
+          "\"public\".\"guildConfig\""
+        ]
+      }
+    ]
+  }
+]
