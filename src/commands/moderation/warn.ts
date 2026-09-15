@@ -22,6 +22,7 @@ import {
   validateMemberAction,
 } from "../../services/moderation/permissionGuards.js";
 import { dmUser } from "../../services/moderation/commandUtils.js";
+import { getWarnRoleName } from "../../services/moderation/warningRoles.js";
 
 export class WarnCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -165,10 +166,6 @@ async function getOrCreateWarnRole(guild: Guild, warnCount: number) {
     name: roleName,
     reason: `Created role for warning count ${warnCount}`,
   });
-}
-
-export function getWarnRoleName(warnCount: number) {
-  return `warn${warnCount}`;
 }
 
 function validateWarningRole(

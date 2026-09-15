@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getWarnRoleName } from "../../../src/commands/moderation/warn.js";
+import { getWarnRoleName } from "../../../src/services/moderation/warningRoles.js";
 import {
   assertChatInputCommand,
   assertGuildCommand,
