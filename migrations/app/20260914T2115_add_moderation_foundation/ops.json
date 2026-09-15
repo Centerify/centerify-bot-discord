@@ -1,0 +1,638 @@
+[
+  {
+    "id": "table.memberReport",
+    "label": "Create table \"memberReport\"",
+    "summary": "Creates table \"memberReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"memberReport\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"memberReport\"",
+        "sql": "CREATE TABLE \"public\".\"memberReport\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"reason\" text NOT NULL,\n  \"reportNumber\" int4 NOT NULL,\n  \"reportedUserId\" text NOT NULL,\n  \"reporterUserId\" text NOT NULL,\n  \"reviewedAt\" timestamptz,\n  \"reviewedBy\" text,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"memberReport_status_check_904c6455\" CHECK (\"status\" IN ('PENDING', 'ACCEPTED', 'REJECTED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"memberReport\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.moderationCase",
+    "label": "Create table \"moderationCase\"",
+    "summary": "Creates table \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"moderationCase\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"moderationCase\"",
+        "sql": "CREATE TABLE \"public\".\"moderationCase\" (\n  \"action\" text NOT NULL,\n  \"caseNumber\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"durationMs\" int4,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"metadata\" jsonb,\n  \"moderatorUserId\" text NOT NULL,\n  \"reason\" text NOT NULL,\n  \"targetUserId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"moderationCase_action_check_49883d64\" CHECK (\"action\" IN ('WARNING', 'TIMEOUT', 'KICK', 'BAN', 'UNBAN', 'NOTE'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"moderationCase\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.moderationCaseCounter",
+    "label": "Create table \"moderationCaseCounter\"",
+    "summary": "Creates table \"moderationCaseCounter\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "moderationCaseCounter"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"moderationCaseCounter\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCaseCounter\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"moderationCaseCounter\"",
+        "sql": "CREATE TABLE \"public\".\"moderationCaseCounter\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"nextCaseNumber\" int4 DEFAULT 1 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"moderationCaseCounter\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCaseCounter\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.reportCounter",
+    "label": "Create table \"reportCounter\"",
+    "summary": "Creates table \"reportCounter\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "reportCounter"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"reportCounter\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reportCounter\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"reportCounter\"",
+        "sql": "CREATE TABLE \"public\".\"reportCounter\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"nextReportNumber\" int4 DEFAULT 1 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"reportCounter\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"reportCounter\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.memberReport.memberReport_guildId_reportNumber_key",
+    "label": "Add unique constraint on \"memberReport\" (guildId, reportNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "memberReport_guildId_reportNumber_key",
+        "table": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"memberReport_guildId_reportNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "memberReport_guildId_reportNumber_key",
+          "public",
+          "\"public\".\"memberReport\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"memberReport_guildId_reportNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"memberReport\" ADD CONSTRAINT \"memberReport_guildId_reportNumber_key\" UNIQUE (\"guildId\", \"reportNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"memberReport_guildId_reportNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "memberReport_guildId_reportNumber_key",
+          "public",
+          "\"public\".\"memberReport\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.moderationCase.moderationCase_guildId_caseNumber_key",
+    "label": "Add unique constraint on \"moderationCase\" (guildId, caseNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "moderationCase_guildId_caseNumber_key",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"moderationCase_guildId_caseNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "moderationCase_guildId_caseNumber_key",
+          "public",
+          "\"public\".\"moderationCase\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"moderationCase_guildId_caseNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"moderationCase\" ADD CONSTRAINT \"moderationCase_guildId_caseNumber_key\" UNIQUE (\"guildId\", \"caseNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"moderationCase_guildId_caseNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "moderationCase_guildId_caseNumber_key",
+          "public",
+          "\"public\".\"moderationCase\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.moderationCaseCounter.moderationCaseCounter_guildId_key",
+    "label": "Add unique constraint on \"moderationCaseCounter\" (guildId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "moderationCaseCounter_guildId_key",
+        "table": "moderationCaseCounter"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"moderationCaseCounter_guildId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "moderationCaseCounter_guildId_key",
+          "public",
+          "\"public\".\"moderationCaseCounter\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"moderationCaseCounter_guildId_key\"",
+        "sql": "ALTER TABLE \"public\".\"moderationCaseCounter\" ADD CONSTRAINT \"moderationCaseCounter_guildId_key\" UNIQUE (\"guildId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"moderationCaseCounter_guildId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "moderationCaseCounter_guildId_key",
+          "public",
+          "\"public\".\"moderationCaseCounter\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.reportCounter.reportCounter_guildId_key",
+    "label": "Add unique constraint on \"reportCounter\" (guildId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "reportCounter_guildId_key",
+        "table": "reportCounter"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"reportCounter_guildId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reportCounter_guildId_key",
+          "public",
+          "\"public\".\"reportCounter\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"reportCounter_guildId_key\"",
+        "sql": "ALTER TABLE \"public\".\"reportCounter\" ADD CONSTRAINT \"reportCounter_guildId_key\" UNIQUE (\"guildId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"reportCounter_guildId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "reportCounter_guildId_key",
+          "public",
+          "\"public\".\"reportCounter\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.memberReport.memberReport_guildId_createdAt_idx_058cef23",
+    "label": "Create index \"memberReport_guildId_createdAt_idx_058cef23\" on \"memberReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "memberReport_guildId_createdAt_idx_058cef23",
+        "table": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"memberReport_guildId_createdAt_idx_058cef23\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"memberReport_guildId_createdAt_idx_058cef23\"",
+        "sql": "CREATE INDEX \"memberReport_guildId_createdAt_idx_058cef23\" ON \"public\".\"memberReport\" (\"guildId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"memberReport_guildId_createdAt_idx_058cef23\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.memberReport.memberReport_guildId_reportedUserId_idx_c12523fc",
+    "label": "Create index \"memberReport_guildId_reportedUserId_idx_c12523fc\" on \"memberReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "memberReport_guildId_reportedUserId_idx_c12523fc",
+        "table": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"memberReport_guildId_reportedUserId_idx_c12523fc\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_reportedUserId_idx_c12523fc\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"memberReport_guildId_reportedUserId_idx_c12523fc\"",
+        "sql": "CREATE INDEX \"memberReport_guildId_reportedUserId_idx_c12523fc\" ON \"public\".\"memberReport\" (\"guildId\", \"reportedUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"memberReport_guildId_reportedUserId_idx_c12523fc\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_reportedUserId_idx_c12523fc\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.memberReport.memberReport_guildId_reporterUserId_idx_f83dc8fa",
+    "label": "Create index \"memberReport_guildId_reporterUserId_idx_f83dc8fa\" on \"memberReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "memberReport_guildId_reporterUserId_idx_f83dc8fa",
+        "table": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"memberReport_guildId_reporterUserId_idx_f83dc8fa\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_reporterUserId_idx_f83dc8fa\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"memberReport_guildId_reporterUserId_idx_f83dc8fa\"",
+        "sql": "CREATE INDEX \"memberReport_guildId_reporterUserId_idx_f83dc8fa\" ON \"public\".\"memberReport\" (\"guildId\", \"reporterUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"memberReport_guildId_reporterUserId_idx_f83dc8fa\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_reporterUserId_idx_f83dc8fa\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.memberReport.memberReport_guildId_status_idx_1c75905a",
+    "label": "Create index \"memberReport_guildId_status_idx_1c75905a\" on \"memberReport\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "memberReport_guildId_status_idx_1c75905a",
+        "table": "memberReport"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"memberReport_guildId_status_idx_1c75905a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_status_idx_1c75905a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"memberReport_guildId_status_idx_1c75905a\"",
+        "sql": "CREATE INDEX \"memberReport_guildId_status_idx_1c75905a\" ON \"public\".\"memberReport\" (\"guildId\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"memberReport_guildId_status_idx_1c75905a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"memberReport_guildId_status_idx_1c75905a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationCase.moderationCase_guildId_action_idx_473346f7",
+    "label": "Create index \"moderationCase_guildId_action_idx_473346f7\" on \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationCase_guildId_action_idx_473346f7",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationCase_guildId_action_idx_473346f7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_action_idx_473346f7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationCase_guildId_action_idx_473346f7\"",
+        "sql": "CREATE INDEX \"moderationCase_guildId_action_idx_473346f7\" ON \"public\".\"moderationCase\" (\"guildId\", \"action\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationCase_guildId_action_idx_473346f7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_action_idx_473346f7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationCase.moderationCase_guildId_createdAt_idx_058cef23",
+    "label": "Create index \"moderationCase_guildId_createdAt_idx_058cef23\" on \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationCase_guildId_createdAt_idx_058cef23",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationCase_guildId_createdAt_idx_058cef23\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationCase_guildId_createdAt_idx_058cef23\"",
+        "sql": "CREATE INDEX \"moderationCase_guildId_createdAt_idx_058cef23\" ON \"public\".\"moderationCase\" (\"guildId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationCase_guildId_createdAt_idx_058cef23\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationCase.moderationCase_guildId_moderatorUserId_idx_5a51b46e",
+    "label": "Create index \"moderationCase_guildId_moderatorUserId_idx_5a51b46e\" on \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationCase_guildId_moderatorUserId_idx_5a51b46e",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationCase_guildId_moderatorUserId_idx_5a51b46e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_moderatorUserId_idx_5a51b46e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationCase_guildId_moderatorUserId_idx_5a51b46e\"",
+        "sql": "CREATE INDEX \"moderationCase_guildId_moderatorUserId_idx_5a51b46e\" ON \"public\".\"moderationCase\" (\"guildId\", \"moderatorUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationCase_guildId_moderatorUserId_idx_5a51b46e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_moderatorUserId_idx_5a51b46e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationCase.moderationCase_guildId_targetUserId_idx_03f6a49f",
+    "label": "Create index \"moderationCase_guildId_targetUserId_idx_03f6a49f\" on \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationCase_guildId_targetUserId_idx_03f6a49f",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationCase_guildId_targetUserId_idx_03f6a49f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_targetUserId_idx_03f6a49f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationCase_guildId_targetUserId_idx_03f6a49f\"",
+        "sql": "CREATE INDEX \"moderationCase_guildId_targetUserId_idx_03f6a49f\" ON \"public\".\"moderationCase\" (\"guildId\", \"targetUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationCase_guildId_targetUserId_idx_03f6a49f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_guildId_targetUserId_idx_03f6a49f\""
+        ]
+      }
+    ]
+  }
+]

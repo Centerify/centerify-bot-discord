@@ -8,8 +8,24 @@
       "model": "GuildConfig",
       "namespace": "public"
     },
+    "memberReport": {
+      "model": "MemberReport",
+      "namespace": "public"
+    },
+    "moderationCase": {
+      "model": "ModerationCase",
+      "namespace": "public"
+    },
+    "moderationCaseCounter": {
+      "model": "ModerationCaseCounter",
+      "namespace": "public"
+    },
     "post": {
       "model": "Post",
+      "namespace": "public"
+    },
+    "reportCounter": {
+      "model": "ReportCounter",
       "namespace": "public"
     },
     "testRecord": {
@@ -24,6 +40,54 @@
   "domain": {
     "namespaces": {
       "public": {
+        "enum": {
+          "ModerationAction": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "WARNING",
+                "value": "WARNING"
+              },
+              {
+                "name": "TIMEOUT",
+                "value": "TIMEOUT"
+              },
+              {
+                "name": "KICK",
+                "value": "KICK"
+              },
+              {
+                "name": "BAN",
+                "value": "BAN"
+              },
+              {
+                "name": "UNBAN",
+                "value": "UNBAN"
+              },
+              {
+                "name": "NOTE",
+                "value": "NOTE"
+              }
+            ]
+          },
+          "ReportStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PENDING",
+                "value": "PENDING"
+              },
+              {
+                "name": "ACCEPTED",
+                "value": "ACCEPTED"
+              },
+              {
+                "name": "REJECTED",
+                "value": "REJECTED"
+              }
+            ]
+          }
+        },
         "models": {
           "GuildConfig": {
             "fields": {
@@ -186,6 +250,321 @@
               "table": "guildConfig"
             }
           },
+          "MemberReport": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reportNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "reportedUserId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reporterUserId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reviewedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "reviewedBy": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ReportStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "reportNumber": {
+                  "column": "reportNumber"
+                },
+                "reportedUserId": {
+                  "column": "reportedUserId"
+                },
+                "reporterUserId": {
+                  "column": "reporterUserId"
+                },
+                "reviewedAt": {
+                  "column": "reviewedAt"
+                },
+                "reviewedBy": {
+                  "column": "reviewedBy"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "memberReport"
+            }
+          },
+          "ModerationCase": {
+            "fields": {
+              "action": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ModerationAction",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "caseNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "durationMs": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "metadata": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
+              "moderatorUserId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "targetUserId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "action": {
+                  "column": "action"
+                },
+                "caseNumber": {
+                  "column": "caseNumber"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "durationMs": {
+                  "column": "durationMs"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "metadata": {
+                  "column": "metadata"
+                },
+                "moderatorUserId": {
+                  "column": "moderatorUserId"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "targetUserId": {
+                  "column": "targetUserId"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "moderationCase"
+            }
+          },
+          "ModerationCaseCounter": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "nextCaseNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "nextCaseNumber": {
+                  "column": "nextCaseNumber"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "moderationCaseCounter"
+            }
+          },
           "Post": {
             "fields": {
               "authorId": {
@@ -271,6 +650,67 @@
               },
               "namespaceId": "public",
               "table": "post"
+            }
+          },
+          "ReportCounter": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "nextReportNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "nextReportNumber": {
+                  "column": "nextReportNumber"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "reportCounter"
             }
           },
           "TestRecord": {
@@ -539,6 +979,329 @@
                 }
               ]
             },
+            "memberReport": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('PENDING', 'ACCEPTED', 'REJECTED')",
+                  "name": "memberReport_status_check_904c6455",
+                  "prefix": "memberReport_status_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reportNumber": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "reportedUserId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reporterUserId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reviewedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "reviewedBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PENDING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ReportStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "createdAt"
+                  ],
+                  "name": "memberReport_guildId_createdAt_idx_058cef23",
+                  "prefix": "memberReport_guildId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "reportedUserId"
+                  ],
+                  "name": "memberReport_guildId_reportedUserId_idx_c12523fc",
+                  "prefix": "memberReport_guildId_reportedUserId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "reporterUserId"
+                  ],
+                  "name": "memberReport_guildId_reporterUserId_idx_f83dc8fa",
+                  "prefix": "memberReport_guildId_reporterUserId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "status"
+                  ],
+                  "name": "memberReport_guildId_status_idx_1c75905a",
+                  "prefix": "memberReport_guildId_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "reportNumber"
+                  ]
+                }
+              ]
+            },
+            "moderationCase": {
+              "checks": [
+                {
+                  "expression": "\"action\" IN ('WARNING', 'TIMEOUT', 'KICK', 'BAN', 'UNBAN', 'NOTE')",
+                  "name": "moderationCase_action_check_49883d64",
+                  "prefix": "moderationCase_action_check"
+                }
+              ],
+              "columns": {
+                "action": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ModerationAction",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "caseNumber": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "durationMs": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "metadata": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": true
+                },
+                "moderatorUserId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "targetUserId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "action"
+                  ],
+                  "name": "moderationCase_guildId_action_idx_473346f7",
+                  "prefix": "moderationCase_guildId_action_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "createdAt"
+                  ],
+                  "name": "moderationCase_guildId_createdAt_idx_058cef23",
+                  "prefix": "moderationCase_guildId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "moderatorUserId"
+                  ],
+                  "name": "moderationCase_guildId_moderatorUserId_idx_5a51b46e",
+                  "prefix": "moderationCase_guildId_moderatorUserId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "targetUserId"
+                  ],
+                  "name": "moderationCase_guildId_targetUserId_idx_03f6a49f",
+                  "prefix": "moderationCase_guildId_targetUserId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "caseNumber"
+                  ]
+                }
+              ]
+            },
+            "moderationCaseCounter": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "nextCaseNumber": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId"
+                  ]
+                }
+              ]
+            },
             "post": {
               "columns": {
                 "authorId": {
@@ -614,6 +1377,61 @@
                 ]
               },
               "uniques": []
+            },
+            "reportCounter": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "nextReportNumber": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId"
+                  ]
+                }
+              ]
             },
             "testRecord": {
               "columns": {
@@ -706,16 +1524,37 @@
                 }
               ]
             }
+          },
+          "valueSet": {
+            "ModerationAction": {
+              "kind": "valueSet",
+              "values": [
+                "WARNING",
+                "TIMEOUT",
+                "KICK",
+                "BAN",
+                "UNBAN",
+                "NOTE"
+              ]
+            },
+            "ReportStatus": {
+              "kind": "valueSet",
+              "values": [
+                "PENDING",
+                "ACCEPTED",
+                "REJECTED"
+              ]
+            }
           }
         },
         "id": "public",
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "c81989c89a34cd55e3bf3b3cfd7fa7914e33bc5cbda56eb5322d48056fa19a21"
+    "storageHash": "040a150843f63d92c046004c8b09ba1beb5f1fef07f13e9586c8b2cf18d635ef"
   },
   "execution": {
-    "executionHash": "5051d004db083a39a8b211aecb932f5c79a28168bdd58d706882b9cfd13f2d25",
+    "executionHash": "9cc3b1c171c4f91bbb6e37dbdd2bc738e8a5755a7e2b1b3bf725cec64ca00be3",
     "mutations": {
       "defaults": [
         {
@@ -745,7 +1584,67 @@
           "ref": {
             "column": "updatedAt",
             "namespace": "public",
+            "table": "memberReport"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "moderationCase"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "moderationCaseCounter"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
             "table": "post"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "reportCounter"
           }
         },
         {

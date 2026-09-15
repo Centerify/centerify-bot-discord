@@ -21,6 +21,7 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "dev": "tsc-watch --onSuccess \"node dist/src/index.js\"",
+    "test": "node --import tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "contract:emit": "prisma contract emit"
   },

@@ -43,3 +43,76 @@ model GuildConfig {
   createdAt        TimestamptzString @default(now())
   updatedAt        temporal.updatedAtString()
 }
+
+enum ModerationAction {
+  @@type("pg/text@1")
+  WARNING = "WARNING"
+  TIMEOUT = "TIMEOUT"
+  KICK    = "KICK"
+  BAN     = "BAN"
+  UNBAN   = "UNBAN"
+  NOTE    = "NOTE"
+}
+
+enum ReportStatus {
+  @@type("pg/text@1")
+  PENDING  = "PENDING"
+  ACCEPTED = "ACCEPTED"
+  REJECTED = "REJECTED"
+}
+
+model ModerationCaseCounter {
+  id             Int      @id @default(autoincrement())
+  guildId        String   @unique
+  nextCaseNumber Int      @default(1)
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+}
+
+model ModerationCase {
+  id              Int      @id @default(autoincrement())
+  guildId         String
+  caseNumber      Int
+  targetUserId    String
+  moderatorUserId String
+  action          ModerationAction
+  reason          String
+  durationMs      Int?
+  metadata        Jsonb?
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@unique([guildId, caseNumber])
+  @@index([guildId, targetUserId])
+  @@index([guildId, moderatorUserId])
+  @@index([guildId, action])
+  @@index([guildId, createdAt])
+}
+
+model ReportCounter {
+  id               Int      @id @default(autoincrement())
+  guildId          String   @unique
+  nextReportNumber Int      @default(1)
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+}
+
+model MemberReport {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  reportNumber   Int
+  reportedUserId String
+  reporterUserId String
+  reason         String
+  status         ReportStatus @default(PENDING)
+  reviewedBy     String?
+  reviewedAt     TimestamptzString?
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  @@unique([guildId, reportNumber])
+  @@index([guildId, reportedUserId])
+  @@index([guildId, reporterUserId])
+  @@index([guildId, status])
+  @@index([guildId, createdAt])
+}
