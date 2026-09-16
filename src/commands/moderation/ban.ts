@@ -4,7 +4,7 @@ import { logger } from "../../logger.js";
 import { moderationCaseService } from "../../services/moderation/caseService.js";
 import { buildCaseEmbed } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions, validateMemberAction } from "../../services/moderation/permissionGuards.js";
-import { dmUser } from "../../services/moderation/commandUtils.js";
+import { dmUser, toAuditLogReason } from "../../services/moderation/commandUtils.js";
 
 export class BanCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -52,7 +52,10 @@ export class BanCommand extends Command {
     const deleteMessageSeconds = (interaction.options.getInteger("delete-days") ?? 0) * 24 * 60 * 60;
     try {
       await dmUser(user, `You were banned from ${interaction.guild.name}: ${reason}`, { guildId: interaction.guildId, userId: user.id });
-      await interaction.guild.members.ban(user.id, { reason, deleteMessageSeconds });
+      await interaction.guild.members.ban(user.id, {
+        reason: toAuditLogReason(reason),
+        deleteMessageSeconds,
+      });
       const moderationCase = await moderationCaseService.createCase({ guildId: interaction.guildId, targetUserId: user.id, moderatorUserId: interaction.user.id, action: "BAN", reason, metadata: { deleteMessageSeconds } });
       await interaction.editReply({ content: `Ban created - Case #${moderationCase.caseNumber}`, embeds: [buildCaseEmbed(moderationCase)] });
     } catch (error) {

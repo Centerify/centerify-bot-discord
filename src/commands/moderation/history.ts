@@ -2,7 +2,7 @@ import { Command } from "@sapphire/framework";
 import { Colors, EmbedBuilder, InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../logger.js";
 import { moderationCaseService } from "../../services/moderation/caseService.js";
-import { formatCaseLine } from "../../services/moderation/renderer.js";
+import { formatDetailedCaseField } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage } from "../../services/moderation/permissionGuards.js";
 
 export class HistoryCommand extends Command {
@@ -29,15 +29,35 @@ export class HistoryCommand extends Command {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const user = interaction.options.getUser("user", true);
     try {
-      const cases = await moderationCaseService.recentForUser(interaction.guildId, user.id, 10);
+      const [cases, totalCases, activeWarnings] = await Promise.all([
+        moderationCaseService.recentForUser(interaction.guildId, user.id, 10),
+        moderationCaseService.countForUser(interaction.guildId, user.id),
+        moderationCaseService.countWarningsForUser(interaction.guildId, user.id),
+      ]);
+      const embed = new EmbedBuilder()
+        .setColor(Colors.Blurple)
+        .setTitle(`Moderation History - ${user.tag}`)
+        .setThumbnail(user.displayAvatarURL())
+        .setDescription(
+          `Complete moderation overview for <@${user.id}>\n` +
+            `**Total cases:** ${totalCases} • **Active warnings:** ${activeWarnings}`,
+        )
+        .setFooter({
+          text: `Showing ${cases.length} of ${totalCases} cases • Timed warnings stop counting after expiry`,
+        })
+        .setTimestamp();
+
+      if (cases.length > 0) {
+        embed.addFields(cases.map((moderationCase) => formatDetailedCaseField(moderationCase)));
+      } else {
+        embed.addFields({
+          name: "No history",
+          value: "No moderation cases have been recorded for this user.",
+        });
+      }
+
       await interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(Colors.Blurple)
-            .setTitle(`Moderation History - ${user.tag}`)
-            .setDescription(cases.length > 0 ? cases.map(formatCaseLine).join("\n") : "No moderation history found.")
-            .setTimestamp(),
-        ],
+        embeds: [embed],
       });
     } catch (error) {
       logger.error({ err: error, guildId: interaction.guildId, userId: user.id }, "History command failed");
