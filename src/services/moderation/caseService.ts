@@ -1,5 +1,6 @@
 import { db } from "../../prisma/db.js";
-import type { CreateModerationCaseInput } from "./types.js";
+import type { CreateModerationCaseInput, JsonValue } from "./types.js";
+import { isActiveWarning } from "./warningLifecycle.js";
 
 const defaultLimit = 10;
 const maxCreateAttempts = 3;
@@ -33,15 +34,30 @@ export class ModerationCaseService {
       .all();
   }
 
-  public recentWarningsForUser(
+  public async recentWarningsForUser(
     guildId: string,
     targetUserId: string,
     limit = defaultLimit,
   ) {
+    const warnings = await this.warningsForUser(guildId, targetUserId);
+    return warnings.filter((warning) => isActiveWarning(warning)).slice(0, limit);
+  }
+
+  public async activeWarningsForUser(guildId: string, targetUserId: string) {
+    const warnings = await this.warningsForUser(guildId, targetUserId);
+    return warnings.filter((warning) => isActiveWarning(warning));
+  }
+
+  public warningsForRoleRestoration() {
+    return db.orm.public.ModerationCase
+      .where({ action: "WARNING" })
+      .all();
+  }
+
+  private warningsForUser(guildId: string, targetUserId: string) {
     return db.orm.public.ModerationCase
       .where({ guildId, targetUserId, action: "WARNING" })
       .orderBy((moderationCase) => moderationCase.createdAt.desc())
-      .limit(limit)
       .all();
   }
 
@@ -66,11 +82,42 @@ export class ModerationCaseService {
   }
 
   public async countWarningsForUser(guildId: string, targetUserId: string) {
-    const result = await db.orm.public.ModerationCase
-      .where({ guildId, targetUserId, action: "WARNING" })
-      .aggregate((aggregate) => ({ count: aggregate.count() }));
+    const warnings = await this.activeWarningsForUser(guildId, targetUserId);
+    return warnings.length;
+  }
 
-    return result.count;
+  public async revokeActiveWarning({
+    guildId,
+    targetUserId,
+    moderatorUserId,
+    reason,
+    caseNumber,
+  }: {
+    guildId: string;
+    targetUserId: string;
+    moderatorUserId: string;
+    reason: string;
+    caseNumber?: number | null;
+  }) {
+    const activeWarnings = await this.activeWarningsForUser(guildId, targetUserId);
+    const warning = caseNumber
+      ? activeWarnings.find((activeWarning) => activeWarning.caseNumber === caseNumber)
+      : activeWarnings[0];
+    if (!warning) {
+      return null;
+    }
+
+    const metadata = jsonObject(warning.metadata);
+    await db.orm.public.ModerationCase.where({ id: warning.id }).update({
+      metadata: {
+        ...metadata,
+        warningRevokedAt: new Date().toISOString(),
+        warningRevokedBy: moderatorUserId,
+        warningRevocationReason: reason,
+      },
+    });
+
+    return this.findByCaseNumber(guildId, warning.caseNumber);
   }
 
   public async updateReason(guildId: string, caseNumber: number, reason: string) {
@@ -136,3 +183,11 @@ export class ModerationCaseService {
 }
 
 export const moderationCaseService = new ModerationCaseService();
+
+function jsonObject(metadata: unknown): Record<string, JsonValue> {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return {};
+  }
+
+  return metadata as Record<string, JsonValue>;
+}

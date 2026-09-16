@@ -45,8 +45,13 @@ export class WarningsCommand extends Command {
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.Yellow)
-            .setTitle(`Recent Warnings - ${user.tag}`)
-            .setDescription(warnings.length > 0 ? warnings.map(formatCaseLine).join("\n") : "No warnings found.")
+            .setTitle(`Active Warnings - ${user.tag}`)
+            .setDescription(
+              warnings.length > 0
+                ? warnings.map(formatCaseLine).join("\n")
+                : "No active warnings found. Expired timed warnings remain visible in `/history`.",
+            )
+            .setFooter({ text: `${warnings.length} active warning${warnings.length === 1 ? "" : "s"}` })
             .setTimestamp(),
         ],
       });

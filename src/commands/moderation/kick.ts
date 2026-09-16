@@ -4,7 +4,7 @@ import { logger } from "../../logger.js";
 import { moderationCaseService } from "../../services/moderation/caseService.js";
 import { buildCaseEmbed } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions, validateMemberAction } from "../../services/moderation/permissionGuards.js";
-import { dmUser } from "../../services/moderation/commandUtils.js";
+import { dmUser, toAuditLogReason } from "../../services/moderation/commandUtils.js";
 
 export class KickCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -48,7 +48,7 @@ export class KickCommand extends Command {
     const reason = interaction.options.getString("reason", true).trim();
     try {
       await dmUser(user, `You were kicked from ${interaction.guild.name}: ${reason}`, { guildId: interaction.guildId, userId: user.id });
-      await member.kick(reason);
+      await member.kick(toAuditLogReason(reason));
       const moderationCase = await moderationCaseService.createCase({ guildId: interaction.guildId, targetUserId: user.id, moderatorUserId: interaction.user.id, action: "KICK", reason });
       await interaction.editReply({ content: `Kick created - Case #${moderationCase.caseNumber}`, embeds: [buildCaseEmbed(moderationCase)] });
     } catch (error) {

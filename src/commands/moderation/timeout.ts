@@ -9,6 +9,7 @@ import { moderationCaseService } from "../../services/moderation/caseService.js"
 import { formatDuration, maxDiscordTimeoutMs, parseDuration } from "../../services/moderation/durationParser.js";
 import { buildCaseEmbed } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions, validateMemberAction } from "../../services/moderation/permissionGuards.js";
+import { toAuditLogReason } from "../../services/moderation/commandUtils.js";
 
 export class TimeoutCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -66,7 +67,7 @@ export class TimeoutCommand extends Command {
     const reason = interaction.options.getString("reason", true).trim();
 
     try {
-      await member.timeout(durationMs, reason);
+      await member.timeout(durationMs, toAuditLogReason(reason));
       const moderationCase = await moderationCaseService.createCase({
         guildId: interaction.guildId,
         targetUserId: user.id,

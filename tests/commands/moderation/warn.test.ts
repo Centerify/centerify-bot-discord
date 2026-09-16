@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getWarnRoleName } from "../../../src/services/moderation/warningRoles.js";
+import { getWarnRoleName } from "../../../src/services/moderation/warningRoleNames.js";
 import {
   assertChatInputCommand,
   assertGuildCommand,
@@ -24,6 +24,8 @@ test("warn command registers warnings with optional durations and automatic role
   assert.doesNotMatch(command.source, /\.setName\("role"\)/);
   assert.match(command.source, /countWarningsForUser/);
   assert.match(command.source, /getOrCreateWarnRole/);
+  assert.match(command.source, /scheduleWarningRoleRemoval/);
+  assertUsesService(command, "dmUser");
   assertUsesService(command, "moderationCaseService");
   assert.equal(getWarnRoleName(1), "warn1");
   assert.equal(getWarnRoleName(12), "warn12");

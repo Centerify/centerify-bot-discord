@@ -26,6 +26,7 @@ const expectedCommands = [
   "moderation/report.ts",
   "moderation/timeout.ts",
   "moderation/unban.ts",
+  "moderation/unwarn.ts",
   "moderation/warn.ts",
   "moderation/warnings.ts",
 ] as const;

@@ -4,6 +4,7 @@ import { logger } from "../../logger.js";
 import { moderationCaseService } from "../../services/moderation/caseService.js";
 import { buildCaseEmbed } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions } from "../../services/moderation/permissionGuards.js";
+import { toAuditLogReason } from "../../services/moderation/commandUtils.js";
 
 const discordIdPattern = /^\d{17,20}$/;
 
@@ -47,7 +48,7 @@ export class UnbanCommand extends Command {
         await interaction.editReply({ content: "That user is not banned here." });
         return;
       }
-      await interaction.guild.members.unban(userId, reason);
+      await interaction.guild.members.unban(userId, toAuditLogReason(reason));
       const moderationCase = await moderationCaseService.createCase({ guildId: interaction.guildId, targetUserId: userId, moderatorUserId: interaction.user.id, action: "UNBAN", reason });
       await interaction.editReply({ content: `Unban created - Case #${moderationCase.caseNumber}`, embeds: [buildCaseEmbed(moderationCase)] });
     } catch (error) {

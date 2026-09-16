@@ -18,4 +18,7 @@ test("history command registers recent moderation history lookup", async () => {
   assertGuildCommand(command, "ModerateMembers");
   assertOption(command, "User", "user", true);
   assertUsesService(command, "recentForUser");
+  assertUsesService(command, "countForUser");
+  assertUsesService(command, "countWarningsForUser");
+  assertUsesService(command, "formatDetailedCaseField");
 });

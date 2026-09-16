@@ -5,6 +5,8 @@ import {
 } from "discord.js";
 import { logger } from "../../logger.js";
 
+const maxAuditLogReasonLength = 512;
+
 export async function dmUser(
   user: User,
   content: string,
@@ -26,4 +28,13 @@ export function isModerationLogChannel(
     channel.type === ChannelType.GuildText ||
     channel.type === ChannelType.GuildAnnouncement
   );
+}
+
+export function toAuditLogReason(reason: string) {
+  const trimmed = reason.trim();
+  if (trimmed.length <= maxAuditLogReasonLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxAuditLogReasonLength - 3)}...`;
 }

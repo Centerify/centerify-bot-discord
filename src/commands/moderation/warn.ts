@@ -3,7 +3,8 @@ import {
   InteractionContextType,
   MessageFlags,
   PermissionFlagsBits,
-  type Client,
+  TimestampStyles,
+  time,
   type Guild,
   type Role,
 } from "discord.js";
@@ -21,8 +22,15 @@ import {
   validateBotPermissions,
   validateMemberAction,
 } from "../../services/moderation/permissionGuards.js";
-import { dmUser } from "../../services/moderation/commandUtils.js";
-import { getWarnRoleName } from "../../services/moderation/warningRoles.js";
+import {
+  dmUser,
+  toAuditLogReason,
+} from "../../services/moderation/commandUtils.js";
+import { getWarningExpiresAt } from "../../services/moderation/warningLifecycle.js";
+import {
+  getWarnRoleName,
+  scheduleWarningRoleRemoval,
+} from "../../services/moderation/warningRoles.js";
 
 export class WarnCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -124,24 +132,34 @@ export class WarnCommand extends Command {
         metadata: { warningRoleId: role.id, warningCount: warnCount },
       });
 
-      await member.roles.add(role.id, reason);
+      await member.roles.add(role.id, toAuditLogReason(reason));
 
-      const durationText = durationMs ? ` for ${formatDuration(durationMs)}` : "";
-      await dmUser(user, `You were warned in ${interaction.guild.name}${durationText} and received ${role.name}: ${reason}`, {
-        guildId: interaction.guildId,
-        userId: user.id,
-        caseNumber: moderationCase.caseNumber,
-      });
+      const expiresAt = getWarningExpiresAt(moderationCase);
+      await dmUser(
+        user,
+        [
+          `You received a warning in ${interaction.guild.name}.`,
+          `Case: #${moderationCase.caseNumber}`,
+          `Issued by: ${interaction.user.tag}`,
+          `Role: ${role.name}`,
+          `Duration: ${durationMs ? formatDuration(durationMs) : "Permanent"}`,
+          expiresAt
+            ? `Role removal: ${time(expiresAt, TimestampStyles.LongDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)})`
+            : null,
+          `Reason: ${reason}`,
+        ]
+          .filter((line): line is string => line !== null)
+          .join("\n"),
+        {
+          guildId: interaction.guildId,
+          userId: user.id,
+          caseNumber: moderationCase.caseNumber,
+          action: "warn",
+        },
+      );
 
       if (durationMs) {
-        scheduleWarningRoleRemoval(
-          interaction.client,
-          interaction.guildId,
-          user.id,
-          role.id,
-          durationMs,
-          reason,
-        );
+        scheduleWarningRoleRemoval(interaction.client, moderationCase);
       }
 
       await interaction.editReply({
@@ -192,23 +210,4 @@ function validateWarningRole(
   }
 
   return null;
-}
-
-function scheduleWarningRoleRemoval(
-  client: Client,
-  guildId: string,
-  userId: string,
-  roleId: string,
-  durationMs: number,
-  reason: string,
-) {
-  setTimeout(async () => {
-    try {
-      const guild = await client.guilds.fetch(guildId);
-      const member = await guild.members.fetch(userId);
-      await member.roles.remove(roleId, `Warning duration expired: ${reason}`);
-    } catch (error) {
-      logger.warn({ err: error, guildId, userId, roleId }, "Failed to remove warning role");
-    }
-  }, durationMs);
 }

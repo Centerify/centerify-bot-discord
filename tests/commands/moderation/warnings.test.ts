@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   assertChatInputCommand,
@@ -18,4 +19,5 @@ test("warnings command registers recent warning lookup", async () => {
   assertGuildCommand(command, "ModerateMembers");
   assertOption(command, "User", "user", true);
   assertUsesService(command, "recentWarningsForUser");
+  assert.match(command.source, /No active warnings found/);
 });
