@@ -9,6 +9,8 @@ import {
   warningRoleId,
 } from "./warningLifecycle.js";
 
+export { getWarnRoleName } from "./warningRoleNames.js";
+
 const maxTimerDelayMs = 2_147_483_647;
 const scheduledExpirations = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -21,10 +23,6 @@ export type WarningRoleView = {
   metadata?: unknown;
   createdAt: string;
 };
-
-export function getWarnRoleName(warnCount: number) {
-  return `warn${warnCount}`;
-}
 
 export function scheduleWarningRoleRemoval(
   client: Client,
