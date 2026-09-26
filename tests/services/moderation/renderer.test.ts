@@ -50,3 +50,12 @@ test("history details include warning revocation attribution and reason", () => 
   assert.match(field.value, /Appeal accepted/);
   assert.match(field.value, /no longer counts/);
 });
+
+test("history details label global moderation cases", () => {
+  const field = formatDetailedCaseField(
+    { ...warning, isGlobal: true },
+    new Date("2026-09-15T12:00:30.000Z"),
+  );
+
+  assert.match(field.name, /Warning • Global • Active/);
+});

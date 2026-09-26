@@ -19,7 +19,10 @@ test("note command registers private note subcommands", async () => {
   assertGuildCommand(command, "ModerateMembers");
   assertOption(command, "User", "user", true);
   assertOption(command, "String", "note", true);
+  assertOption(command, "Boolean", "global", false);
   assert.match(command.source, /\.setName\("add"\)/);
   assert.match(command.source, /\.setName\("list"\)/);
   assertUsesService(command, "recentNotesForUser");
+  assertUsesService(command, "recentGlobalNotesForUser");
+  assertUsesService(command, "getGlobalModerationTargets");
 });

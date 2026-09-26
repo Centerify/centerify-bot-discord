@@ -31,6 +31,10 @@ import {
   getWarnRoleName,
   scheduleWarningRoleRemoval,
 } from "../../services/moderation/warningRoles.js";
+import {
+  getGlobalModerationTargets,
+  globalModerationDisabledMessage,
+} from "../../services/moderation/globalModeration.js";
 
 export class WarnCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -54,6 +58,12 @@ export class WarnCommand extends Command {
           option
             .setName("duration")
             .setDescription("Optional duration like 10m, 1h, 1d, 7d")
+            .setRequired(false),
+        )
+        .addBooleanOption((option) =>
+          option
+            .setName("global")
+            .setDescription("Warn the member in every participating server they share")
             .setRequired(false),
         ),
     );
@@ -106,8 +116,105 @@ export class WarnCommand extends Command {
     }
 
     const reason = interaction.options.getString("reason", true).trim();
+    const isGlobal = interaction.options.getBoolean("global") ?? false;
 
     try {
+      if (isGlobal) {
+        const targets = await getGlobalModerationTargets(
+          interaction.client,
+          interaction.guildId,
+          "warn",
+        );
+        if (!targets.enabled) {
+          await interaction.editReply({ content: globalModerationDisabledMessage() });
+          return;
+        }
+
+        const successfulCases = [];
+        let skippedGuilds = 0;
+        for (const guild of targets.guilds) {
+          try {
+            if (validateBotPermissions(guild, [PermissionFlagsBits.ManageRoles])) {
+              skippedGuilds += 1;
+              continue;
+            }
+
+            const targetMember = await guild.members.fetch(user.id).catch(() => null);
+            if (!targetMember || !targetMember.manageable) {
+              skippedGuilds += 1;
+              continue;
+            }
+
+            const warnCount =
+              (await moderationCaseService.countWarningsForUser(guild.id, user.id)) + 1;
+            const role = await getOrCreateWarnRole(guild, warnCount);
+            const roleValidation = guild.id === interaction.guildId
+              ? validateWarningRole(interaction, role)
+              : validateGlobalWarningRole(guild, role);
+            if (roleValidation) {
+              skippedGuilds += 1;
+              continue;
+            }
+
+            const moderationCase = await moderationCaseService.createCase({
+              guildId: guild.id,
+              targetUserId: user.id,
+              moderatorUserId: interaction.user.id,
+              action: "WARNING",
+              reason,
+              durationMs,
+              isGlobal: true,
+              metadata: {
+                warningRoleId: role.id,
+                warningCount: warnCount,
+                originGuildId: interaction.guildId,
+              },
+            });
+            await targetMember.roles.add(role.id, toAuditLogReason(`Global warning: ${reason}`));
+            if (durationMs) {
+              scheduleWarningRoleRemoval(interaction.client, moderationCase);
+            }
+            successfulCases.push(moderationCase);
+          } catch (error) {
+            skippedGuilds += 1;
+            logger.warn(
+              { err: error, guildId: guild.id, userId: user.id },
+              "Global warning failed in a participating guild",
+            );
+          }
+        }
+
+        const localCase = successfulCases.find(
+          (moderationCase) => moderationCase.guildId === interaction.guildId,
+        );
+        if (localCase) {
+          await dmUser(
+            user,
+            [
+              `You received a global warning from ${interaction.guild.name}.`,
+              `Case in that server: #${localCase.caseNumber}`,
+              `Issued by: ${interaction.user.tag}`,
+              `Duration: ${durationMs ? formatDuration(durationMs) : "Permanent"}`,
+              `Reason: ${reason}`,
+            ].join("\n"),
+            {
+              guildId: interaction.guildId,
+              userId: user.id,
+              caseNumber: localCase.caseNumber,
+              action: "global-warn",
+            },
+          );
+        }
+
+        await interaction.editReply({
+          content:
+            `Global warning applied in ${successfulCases.length}/${targets.guilds.length} enabled servers.` +
+            (skippedGuilds > 0 ? ` Skipped ${skippedGuilds} unavailable servers.` : ""),
+          embeds: localCase ? [buildCaseEmbed(localCase)] : [],
+        });
+        return;
+      }
+
       const warnCount =
         (await moderationCaseService.countWarningsForUser(
           interaction.guildId,
@@ -203,6 +310,22 @@ function validateWarningRole(
     role.comparePositionTo(interaction.member.roles.highest) >= 0
   ) {
     return "That role is not below your highest role.";
+  }
+
+  if (!role.editable) {
+    return "That role is not below my highest role.";
+  }
+
+  return null;
+}
+
+function validateGlobalWarningRole(guild: Guild, role: Role) {
+  if (role.id === guild.id) {
+    return "I cannot assign the everyone role.";
+  }
+
+  if (role.managed) {
+    return "I cannot assign that managed role.";
   }
 
   if (!role.editable) {

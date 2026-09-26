@@ -16,6 +16,8 @@ test("ban command registers and records bans", async () => {
   assertOption(command, "User", "user", true);
   assertOption(command, "String", "reason", true);
   assertOption(command, "Integer", "delete-days", false);
+  assertOption(command, "Boolean", "global", false);
   assert.match(command.source, /deleteMessageSeconds/);
+  assertUsesService(command, "getGlobalModerationTargets");
   assertUsesService(command, "moderationCaseService");
 });

@@ -13,7 +13,8 @@ export type SetupScreen =
   | "goodbye"
   | "goodbye-variables"
   | "autorole"
-  | "logging";
+  | "logging"
+  | "moderation";
 
 export type SetupComponentInteraction =
   | ButtonInteraction<"cached">

@@ -24,6 +24,8 @@ model TestRecord {
   id        Int      @id @default(autoincrement())
   name      String
   createdAt TimestamptzString @default(now())
+
+  @@map("test_record")
 }
 
 model GuildConfig {
@@ -40,8 +42,41 @@ model GuildConfig {
   autoRoleId       String?
   loggingEnabled   Boolean  @default(false)
   loggingChannelId String?
+  globalBanEnabled  Boolean @default(false)
+  globalWarnEnabled Boolean @default(false)
+  globalNoteEnabled Boolean @default(false)
   createdAt        TimestamptzString @default(now())
   updatedAt        temporal.updatedAtString()
+
+  @@map("guild_config")
+}
+
+model GuildOwnership {
+  id          Int      @id @default(autoincrement())
+  guildId     String   @unique
+  ownerUserId String
+  verifiedAt  TimestamptzString @default(now())
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  @@index([ownerUserId])
+  @@map("guild_ownership")
+}
+
+model GuildOwnershipRequest {
+  id               Int      @id @default(autoincrement())
+  guildId          String   @unique
+  ownerUserId      String
+  tokenDigest      String   @unique
+  expiresAt        TimestamptzString
+  acceptedAt       TimestamptzString?
+  acceptedByUserId String?
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+
+  @@index([expiresAt])
+  @@index([ownerUserId])
+  @@map("guild_ownership_request")
 }
 
 enum ModerationAction {
@@ -67,6 +102,8 @@ model ModerationCaseCounter {
   nextCaseNumber Int      @default(1)
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
+
+  @@map("moderation_case_counter")
 }
 
 model ModerationCase {
@@ -78,6 +115,7 @@ model ModerationCase {
   action          ModerationAction
   reason          String
   durationMs      Int?
+  isGlobal        Boolean  @default(false)
   metadata        Jsonb?
   createdAt       TimestamptzString @default(now())
   updatedAt       temporal.updatedAtString()
@@ -87,6 +125,8 @@ model ModerationCase {
   @@index([guildId, moderatorUserId])
   @@index([guildId, action])
   @@index([guildId, createdAt])
+  @@index([targetUserId, isGlobal, action])
+  @@map("moderation_case")
 }
 
 model ReportCounter {
@@ -95,6 +135,8 @@ model ReportCounter {
   nextReportNumber Int      @default(1)
   createdAt        TimestamptzString @default(now())
   updatedAt        temporal.updatedAtString()
+
+  @@map("report_counter")
 }
 
 model MemberReport {
@@ -115,4 +157,5 @@ model MemberReport {
   @@index([guildId, reporterUserId])
   @@index([guildId, status])
   @@index([guildId, createdAt])
+  @@map("member_report")
 }

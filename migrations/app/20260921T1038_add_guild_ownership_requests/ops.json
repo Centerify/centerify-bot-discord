@@ -1,0 +1,203 @@
+[
+  {
+    "id": "table.guildOwnershipRequest",
+    "label": "Create table \"guildOwnershipRequest\"",
+    "summary": "Creates table \"guildOwnershipRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "guildOwnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"guildOwnershipRequest\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"guildOwnershipRequest\"",
+        "sql": "CREATE TABLE \"public\".\"guildOwnershipRequest\" (\n  \"acceptedAt\" timestamptz,\n  \"acceptedByUserId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"ownerUserId\" text NOT NULL,\n  \"tokenDigest\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"guildOwnershipRequest\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.guildOwnershipRequest.guildOwnershipRequest_guildId_key",
+    "label": "Add unique constraint on \"guildOwnershipRequest\" (guildId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "guildOwnershipRequest_guildId_key",
+        "table": "guildOwnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"guildOwnershipRequest_guildId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildOwnershipRequest_guildId_key",
+          "public",
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"guildOwnershipRequest_guildId_key\"",
+        "sql": "ALTER TABLE \"public\".\"guildOwnershipRequest\" ADD CONSTRAINT \"guildOwnershipRequest_guildId_key\" UNIQUE (\"guildId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"guildOwnershipRequest_guildId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildOwnershipRequest_guildId_key",
+          "public",
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.guildOwnershipRequest.guildOwnershipRequest_tokenDigest_key",
+    "label": "Add unique constraint on \"guildOwnershipRequest\" (tokenDigest)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "guildOwnershipRequest_tokenDigest_key",
+        "table": "guildOwnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"guildOwnershipRequest_tokenDigest_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildOwnershipRequest_tokenDigest_key",
+          "public",
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"guildOwnershipRequest_tokenDigest_key\"",
+        "sql": "ALTER TABLE \"public\".\"guildOwnershipRequest\" ADD CONSTRAINT \"guildOwnershipRequest_tokenDigest_key\" UNIQUE (\"tokenDigest\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"guildOwnershipRequest_tokenDigest_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guildOwnershipRequest_tokenDigest_key",
+          "public",
+          "\"public\".\"guildOwnershipRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.guildOwnershipRequest.guildOwnershipRequest_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"guildOwnershipRequest_expiresAt_idx_6b6b8c10\" on \"guildOwnershipRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "guildOwnershipRequest_expiresAt_idx_6b6b8c10",
+        "table": "guildOwnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"guildOwnershipRequest_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"guildOwnershipRequest_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"guildOwnershipRequest_expiresAt_idx_6b6b8c10\" ON \"public\".\"guildOwnershipRequest\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"guildOwnershipRequest_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.guildOwnershipRequest.guildOwnershipRequest_ownerUserId_idx_f93ae154",
+    "label": "Create index \"guildOwnershipRequest_ownerUserId_idx_f93ae154\" on \"guildOwnershipRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "guildOwnershipRequest_ownerUserId_idx_f93ae154",
+        "table": "guildOwnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"guildOwnershipRequest_ownerUserId_idx_f93ae154\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest_ownerUserId_idx_f93ae154\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"guildOwnershipRequest_ownerUserId_idx_f93ae154\"",
+        "sql": "CREATE INDEX \"guildOwnershipRequest_ownerUserId_idx_f93ae154\" ON \"public\".\"guildOwnershipRequest\" (\"ownerUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"guildOwnershipRequest_ownerUserId_idx_f93ae154\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guildOwnershipRequest_ownerUserId_idx_f93ae154\""
+        ]
+      }
+    ]
+  }
+]

@@ -4,6 +4,10 @@ import { logger } from "../../logger.js";
 import { moderationCaseService } from "../../services/moderation/caseService.js";
 import { buildCaseEmbed, formatCaseLine } from "../../services/moderation/renderer.js";
 import { hasModeratorPermission, missingPermissionMessage } from "../../services/moderation/permissionGuards.js";
+import {
+  getGlobalModerationTargets,
+  globalModerationDisabledMessage,
+} from "../../services/moderation/globalModeration.js";
 
 export class NoteCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -18,13 +22,25 @@ export class NoteCommand extends Command {
             .setName("add")
             .setDescription("Add a private note")
             .addUserOption((option) => option.setName("user").setDescription("User").setRequired(true))
-            .addStringOption((option) => option.setName("note").setDescription("Note").setMaxLength(1_000).setRequired(true)),
+            .addStringOption((option) => option.setName("note").setDescription("Note").setMaxLength(1_000).setRequired(true))
+            .addBooleanOption((option) =>
+              option
+                .setName("global")
+                .setDescription("Share the note with every participating server")
+                .setRequired(false),
+            ),
         )
         .addSubcommand((command) =>
           command
             .setName("list")
             .setDescription("List private notes")
-            .addUserOption((option) => option.setName("user").setDescription("User").setRequired(true)),
+            .addUserOption((option) => option.setName("user").setDescription("User").setRequired(true))
+            .addBooleanOption((option) =>
+              option
+                .setName("global")
+                .setDescription("Show only notes shared through global moderation")
+                .setRequired(false),
+            ),
         ),
     );
   }
@@ -41,8 +57,51 @@ export class NoteCommand extends Command {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const user = interaction.options.getUser("user", true);
     const subcommand = interaction.options.getSubcommand();
+    const isGlobal = interaction.options.getBoolean("global") ?? false;
     try {
       if (subcommand === "add") {
+        if (isGlobal) {
+          const targets = await getGlobalModerationTargets(
+            interaction.client,
+            interaction.guildId,
+            "note",
+          );
+          if (!targets.enabled) {
+            await interaction.editReply({ content: globalModerationDisabledMessage() });
+            return;
+          }
+
+          const reason = interaction.options.getString("note", true).trim();
+          const createdCases = [];
+          for (const guild of targets.guilds) {
+            try {
+              createdCases.push(await moderationCaseService.createCase({
+                guildId: guild.id,
+                targetUserId: user.id,
+                moderatorUserId: interaction.user.id,
+                action: "NOTE",
+                reason,
+                isGlobal: true,
+                metadata: { originGuildId: interaction.guildId },
+              }));
+            } catch (error) {
+              logger.warn(
+                { err: error, guildId: guild.id, userId: user.id },
+                "Global note failed in a participating guild",
+              );
+            }
+          }
+
+          const localCase = createdCases.find(
+            (moderationCase) => moderationCase.guildId === interaction.guildId,
+          );
+          await interaction.editReply({
+            content: `Global note shared with ${createdCases.length}/${targets.guilds.length} enabled servers.`,
+            embeds: localCase ? [buildCaseEmbed(localCase)] : [],
+          });
+          return;
+        }
+
         const moderationCase = await moderationCaseService.createCase({
           guildId: interaction.guildId,
           targetUserId: user.id,
@@ -54,12 +113,26 @@ export class NoteCommand extends Command {
         return;
       }
 
-      const notes = await moderationCaseService.recentNotesForUser(interaction.guildId, user.id, 10);
+      if (isGlobal) {
+        const targets = await getGlobalModerationTargets(
+          interaction.client,
+          interaction.guildId,
+          "note",
+        );
+        if (!targets.enabled) {
+          await interaction.editReply({ content: globalModerationDisabledMessage() });
+          return;
+        }
+      }
+
+      const notes = isGlobal
+        ? await moderationCaseService.recentGlobalNotesForUser(interaction.guildId, user.id, 10)
+        : await moderationCaseService.recentNotesForUser(interaction.guildId, user.id, 10);
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.Yellow)
-            .setTitle(`Moderator Notes - ${user.tag}`)
+            .setTitle(`${isGlobal ? "Global " : ""}Moderator Notes - ${user.tag}`)
             .setDescription(notes.length > 0 ? notes.map(formatCaseLine).join("\n") : "No notes found.")
             .setTimestamp(),
         ],

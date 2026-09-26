@@ -38,6 +38,8 @@ export class SetupRenderer {
         return this.buildAutoRoleScreen(guild, config, sessionId);
       case "logging":
         return this.buildLoggingScreen(guild, config, sessionId);
+      case "moderation":
+        return this.buildModerationScreen(guild, config, sessionId);
       case "main":
         return this.buildMainScreen(guild, config, sessionId);
     }
@@ -91,6 +93,7 @@ export class SetupRenderer {
             "`Goodbye` leave messages",
             "`Auto Role` new member role",
             "`Logging` server log channel",
+            "`Global Moderation` shared bans, warnings, and notes",
           ].join("\n"),
         },
       );
@@ -103,6 +106,7 @@ export class SetupRenderer {
           this.button(sessionId, "goodbye", "Goodbye", ButtonStyle.Primary),
           this.button(sessionId, "autorole", "Auto Role", ButtonStyle.Primary),
           this.button(sessionId, "logging", "Logging", ButtonStyle.Primary),
+          this.button(sessionId, "moderation", "Global Moderation", ButtonStyle.Primary),
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           this.button(sessionId, "finish", "Finish", ButtonStyle.Success),
@@ -294,6 +298,33 @@ export class SetupRenderer {
     };
   }
 
+  private buildModerationScreen(
+    guild: Guild,
+    config: GuildConfig,
+    sessionId: string,
+  ): SetupView {
+    const embed = this.baseEmbed(guild)
+      .setTitle("Global Moderation")
+      .setDescription("Choose which moderation actions this server shares with other participating Centerify servers.")
+      .addFields(
+        { name: "Global Ban", value: this.enabledText(config.globalBanEnabled), inline: true },
+        { name: "Global Warn", value: this.enabledText(config.globalWarnEnabled), inline: true },
+        { name: "Global Note", value: this.enabledText(config.globalNoteEnabled), inline: true },
+      );
+
+    return {
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          this.button(sessionId, "global-ban-toggle", config.globalBanEnabled ? "Ban: On" : "Ban: Off", config.globalBanEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+          this.button(sessionId, "global-warn-toggle", config.globalWarnEnabled ? "Warn: On" : "Warn: Off", config.globalWarnEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+          this.button(sessionId, "global-note-toggle", config.globalNoteEnabled ? "Note: On" : "Note: Off", config.globalNoteEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+          this.button(sessionId, "main", "Back", ButtonStyle.Secondary),
+        ),
+      ],
+    };
+  }
+
   private channelSelect(sessionId: string, action: string, placeholder: string) {
     return new ChannelSelectMenuBuilder()
       .setCustomId(`setup:${sessionId}:${action}`)
@@ -357,6 +388,7 @@ export class SetupRenderer {
       this.summaryRow("Goodbye", config.goodbyeEnabled, this.channelText(config.goodbyeChannelId)),
       this.summaryRow("Auto Role", config.autoRoleEnabled, this.roleText(config.autoRoleId)),
       this.summaryRow("Logging", config.loggingEnabled, this.channelText(config.loggingChannelId)),
+      `**Global Moderation:** Ban ${this.enabledText(config.globalBanEnabled)} · Warn ${this.enabledText(config.globalWarnEnabled)} · Note ${this.enabledText(config.globalNoteEnabled)}`,
     ].join("\n");
   }
 

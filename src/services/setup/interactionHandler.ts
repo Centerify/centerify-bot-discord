@@ -107,6 +107,7 @@ export class SetupInteractionHandler {
       case "goodbye-variables":
       case "autorole":
       case "logging":
+      case "moderation":
         await interaction.update(
           this.renderer.buildScreen(action, interaction.guild, config, sessionId),
         );
@@ -152,6 +153,22 @@ export class SetupInteractionHandler {
         });
         await rootInteraction.editReply(
           this.renderer.buildScreen("logging", interaction.guild, next, sessionId),
+        );
+        return next;
+      }
+
+      case "global-ban-toggle":
+      case "global-warn-toggle":
+      case "global-note-toggle": {
+        await interaction.deferUpdate();
+        const update = action === "global-ban-toggle"
+          ? { globalBanEnabled: !config.globalBanEnabled }
+          : action === "global-warn-toggle"
+            ? { globalWarnEnabled: !config.globalWarnEnabled }
+            : { globalNoteEnabled: !config.globalNoteEnabled };
+        const next = await this.updateConfig(interaction.guildId, update);
+        await rootInteraction.editReply(
+          this.renderer.buildScreen("moderation", interaction.guild, next, sessionId),
         );
         return next;
       }

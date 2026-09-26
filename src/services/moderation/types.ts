@@ -28,6 +28,7 @@ export type CreateModerationCaseInput = {
   action: ModerationAction;
   reason: string;
   durationMs?: number | null;
+  isGlobal?: boolean;
   metadata?: JsonValue | null;
 };
 

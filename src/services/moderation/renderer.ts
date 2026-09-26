@@ -20,6 +20,7 @@ export type ModerationCaseView = {
   action: string;
   reason: string;
   durationMs: number | null;
+  isGlobal?: boolean;
   metadata?: unknown;
   createdAt: string;
 };
@@ -47,6 +48,11 @@ export function buildCaseEmbed(moderationCase: ModerationCaseView) {
       {
         name: "Duration",
         value: formatDuration(moderationCase.durationMs),
+        inline: true,
+      },
+      {
+        name: "Scope",
+        value: moderationCase.isGlobal ? "Global" : "Server",
         inline: true,
       },
       ...(expiresAt
@@ -96,7 +102,7 @@ export function formatCaseLine(moderationCase: ModerationCaseView) {
   const warningTiming = formatWarningTiming(moderationCase);
 
   return [
-    `**#${moderationCase.caseNumber} ${formatAction(moderationCase.action)}**`,
+    `**#${moderationCase.caseNumber} ${formatAction(moderationCase.action)}${moderationCase.isGlobal ? " • Global" : ""}**`,
     time(new Date(moderationCase.createdAt), TimestampStyles.ShortDate),
     `by <@${moderationCase.moderatorUserId}>`,
     `- ${cleanFieldValue(moderationCase.reason, 120)}`,
@@ -113,7 +119,7 @@ export function formatDetailedCaseField(
   const status = caseStatus(moderationCase, now);
 
   return {
-    name: `#${moderationCase.caseNumber} • ${formatAction(moderationCase.action)} • ${status}`,
+    name: `#${moderationCase.caseNumber} • ${formatAction(moderationCase.action)}${moderationCase.isGlobal ? " • Global" : ""} • ${status}`,
     value: [
       `**Reason:** ${cleanFieldValue(moderationCase.reason, 140)}`,
       `**Moderator:** <@${moderationCase.moderatorUserId}>`,
