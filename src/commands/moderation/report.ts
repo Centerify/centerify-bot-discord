@@ -1,3 +1,4 @@
+import { requireVerifiedOwnership } from "../../services/guildOwnershipService.js";
 import { Command } from "@sapphire/framework";
 import {
   ActionRowBuilder,
@@ -69,6 +70,7 @@ export class ReportCommand extends Command {
         if (!buttonInteraction.inCachedGuild() || buttonInteraction.guildId !== interaction.guildId) {
           return;
         }
+        if (!await requireVerifiedOwnership(buttonInteraction)) return;
         if (!hasModeratorPermission(buttonInteraction.member, PermissionFlagsBits.ModerateMembers)) {
           await buttonInteraction.reply({ content: "Only moderators can review reports.", flags: MessageFlags.Ephemeral });
           return;

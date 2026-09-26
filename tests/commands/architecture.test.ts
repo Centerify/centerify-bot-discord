@@ -11,6 +11,7 @@ const expectedCommands = [
   "admin/logging.ts",
   "admin/settings.ts",
   "admin/setup.ts",
+  "admin/verify.ts",
   "admin/welcome.ts",
   "general/help.ts",
   "general/info.ts",

@@ -10,6 +10,7 @@ import {
   type ModalSubmitInteraction,
   type RoleSelectMenuInteraction,
 } from "discord.js";
+import { requireVerifiedOwnership } from "../guildOwnershipService.js";
 import { greetingService } from "../greetingService.js";
 import type { GuildConfig, GuildConfigUpdate } from "../guildConfigService.js";
 import {
@@ -42,6 +43,8 @@ export class SetupInteractionHandler {
     config: GuildConfig;
     sessionId: string;
   }) {
+    if (!await requireVerifiedOwnership(componentInteraction)) return config;
+
     const action = componentInteraction.customId.split(":").at(2);
 
     if (componentInteraction.isButton()) {
@@ -399,6 +402,9 @@ export class SetupInteractionHandler {
     fieldId: string;
     type: "welcome" | "goodbye";
   }) {
+    if (!await requireVerifiedOwnership(modalSubmit)) {
+      throw new Error("Server ownership is no longer verified");
+    }
     const message = modalSubmit.fields.getTextInputValue(fieldId).trim();
     await modalSubmit.deferUpdate();
 

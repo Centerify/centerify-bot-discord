@@ -23,6 +23,11 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 
 ## Getting Started
 
+The current Discord server owner must run `/verify` inside the server before
+Centerify commands or automatic actions can run. Administrator permission alone
+does not authorize the bot. After verification, run `/setup` to configure it.
+If server ownership changes, the new owner must run `/verify` again.
+
 ### Prerequisites
 
 - Node.js 22 or newer
