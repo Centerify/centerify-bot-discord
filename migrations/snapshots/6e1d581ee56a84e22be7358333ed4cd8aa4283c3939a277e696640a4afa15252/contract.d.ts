@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'8a8f7abe3eda27e85d9e776a0ca06c36ef6dabf2b6e4767f0468f9acf10a17af'>;
+  StorageHashBase<'6e1d581ee56a84e22be7358333ed4cd8aa4283c3939a277e696640a4afa15252'>;
 export type ExecutionHash =
   ExecutionHashBase<'f083ec1ec09dee9d98cdf6979278620a810017afa72a4dc8b83676643e6398b6'>;
 export type ProfileHash =
@@ -245,11 +245,6 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly xpEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly xpMethods: CodecTypes['pg/text@1']['output'];
-      readonly xpMessageAmount: CodecTypes['pg/int4@1']['output'];
-      readonly xpReactionAmount: CodecTypes['pg/int4@1']['output'];
-      readonly xpDailyAmount: CodecTypes['pg/int4@1']['output'];
-      readonly xpCooldownSeconds: CodecTypes['pg/int4@1']['output'];
       readonly xpSharing: CodecTypes['pg/text@1']['output'];
       readonly xpSharedGuildIds: CodecTypes['pg/text@1']['output'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['output'];
@@ -306,8 +301,6 @@ export type FieldOutputTypes = {
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly xp: CodecTypes['pg/int4@1']['output'];
-      readonly lastReactionAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly lastDailyAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly lastAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly ModerationCase: {
@@ -367,11 +360,6 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly xpEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly xpMethods: CodecTypes['pg/text@1']['input'];
-      readonly xpMessageAmount: CodecTypes['pg/int4@1']['input'];
-      readonly xpReactionAmount: CodecTypes['pg/int4@1']['input'];
-      readonly xpDailyAmount: CodecTypes['pg/int4@1']['input'];
-      readonly xpCooldownSeconds: CodecTypes['pg/int4@1']['input'];
       readonly xpSharing: CodecTypes['pg/text@1']['input'];
       readonly xpSharedGuildIds: CodecTypes['pg/text@1']['input'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['input'];
@@ -428,8 +416,6 @@ export type FieldInputTypes = {
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly xp: CodecTypes['pg/int4@1']['input'];
-      readonly lastReactionAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly lastDailyAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly lastAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly ModerationCase: {
@@ -504,12 +490,7 @@ export type StorageColumnTypes = {
       readonly welcomeChannelId: CodecTypes['pg/text@1']['output'] | null;
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['output'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['output'];
-      readonly xpCooldownSeconds: CodecTypes['pg/int4@1']['output'];
-      readonly xpDailyAmount: CodecTypes['pg/int4@1']['output'];
       readonly xpEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly xpMessageAmount: CodecTypes['pg/int4@1']['output'];
-      readonly xpMethods: CodecTypes['pg/text@1']['output'];
-      readonly xpReactionAmount: CodecTypes['pg/int4@1']['output'];
       readonly xpSharedGuildIds: CodecTypes['pg/text@1']['output'];
       readonly xpSharing: CodecTypes['pg/text@1']['output'];
     };
@@ -549,8 +530,6 @@ export type StorageColumnTypes = {
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly lastAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly lastDailyAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly lastReactionAwardedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly xp: CodecTypes['pg/int4@1']['output'];
     };
@@ -626,12 +605,7 @@ export type StorageColumnInputTypes = {
       readonly welcomeChannelId: CodecTypes['pg/text@1']['input'] | null;
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['input'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['input'];
-      readonly xpCooldownSeconds: CodecTypes['pg/int4@1']['input'];
-      readonly xpDailyAmount: CodecTypes['pg/int4@1']['input'];
       readonly xpEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly xpMessageAmount: CodecTypes['pg/int4@1']['input'];
-      readonly xpMethods: CodecTypes['pg/text@1']['input'];
-      readonly xpReactionAmount: CodecTypes['pg/int4@1']['input'];
       readonly xpSharedGuildIds: CodecTypes['pg/text@1']['input'];
       readonly xpSharing: CodecTypes['pg/text@1']['input'];
     };
@@ -671,8 +645,6 @@ export type StorageColumnInputTypes = {
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly lastAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly lastDailyAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly lastReactionAwardedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly xp: CodecTypes['pg/int4@1']['input'];
     };
@@ -768,51 +740,6 @@ type ContractBase = Omit<
                   readonly default: {
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                };
-                readonly xpMethods: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/text@1', 'messages'>;
-                  };
-                };
-                readonly xpMessageAmount: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 15>;
-                  };
-                };
-                readonly xpReactionAmount: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 5>;
-                  };
-                };
-                readonly xpDailyAmount: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 100>;
-                  };
-                };
-                readonly xpCooldownSeconds: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/int4@1', 60>;
                   };
                 };
                 readonly xpSharing: {
@@ -1217,16 +1144,6 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
                   };
-                };
-                readonly lastReactionAwardedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: true;
-                };
-                readonly lastDailyAwardedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: true;
                 };
                 readonly lastAwardedAt: {
                   readonly nativeType: 'timestamptz';
@@ -1647,26 +1564,6 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
-              readonly xpMethods: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly xpMessageAmount: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly xpReactionAmount: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly xpDailyAmount: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly xpCooldownSeconds: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
               readonly xpSharing: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -1754,11 +1651,6 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly guildId: { readonly column: 'guildId' };
                 readonly xpEnabled: { readonly column: 'xpEnabled' };
-                readonly xpMethods: { readonly column: 'xpMethods' };
-                readonly xpMessageAmount: { readonly column: 'xpMessageAmount' };
-                readonly xpReactionAmount: { readonly column: 'xpReactionAmount' };
-                readonly xpDailyAmount: { readonly column: 'xpDailyAmount' };
-                readonly xpCooldownSeconds: { readonly column: 'xpCooldownSeconds' };
                 readonly xpSharing: { readonly column: 'xpSharing' };
                 readonly xpSharedGuildIds: { readonly column: 'xpSharedGuildIds' };
                 readonly setupCompleted: { readonly column: 'setupCompleted' };
@@ -1991,20 +1883,6 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
-              readonly lastReactionAwardedAt: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly lastDailyAwardedAt: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
               readonly lastAwardedAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2022,8 +1900,6 @@ type ContractBase = Omit<
                 readonly guildId: { readonly column: 'guildId' };
                 readonly userId: { readonly column: 'userId' };
                 readonly xp: { readonly column: 'xp' };
-                readonly lastReactionAwardedAt: { readonly column: 'lastReactionAwardedAt' };
-                readonly lastDailyAwardedAt: { readonly column: 'lastDailyAwardedAt' };
                 readonly lastAwardedAt: { readonly column: 'lastAwardedAt' };
               };
             };

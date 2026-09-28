@@ -4,9 +4,11 @@ import type {
   InteractionEditReplyOptions,
   InteractionUpdateOptions,
   RoleSelectMenuInteraction,
+  StringSelectMenuInteraction,
 } from "discord.js";
 
 export type SetupScreen =
+  | "xp"
   | "main"
   | "welcome"
   | "welcome-variables"
@@ -19,6 +21,7 @@ export type SetupScreen =
 export type SetupComponentInteraction =
   | ButtonInteraction<"cached">
   | ChannelSelectMenuInteraction<"cached">
-  | RoleSelectMenuInteraction<"cached">;
+  | RoleSelectMenuInteraction<"cached">
+  | StringSelectMenuInteraction<"cached">;
 
 export type SetupView = InteractionUpdateOptions & InteractionEditReplyOptions;

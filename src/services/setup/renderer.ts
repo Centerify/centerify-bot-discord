@@ -7,6 +7,7 @@ import {
   Colors,
   EmbedBuilder,
   RoleSelectMenuBuilder,
+  StringSelectMenuBuilder,
   type Guild,
 } from "discord.js";
 import {
@@ -14,11 +15,14 @@ import {
   DEFAULT_WELCOME_MESSAGE,
   type GuildConfig,
 } from "../guildConfigService.js";
+import { XP_METHOD_CHOICES } from "../xpPolicy.js";
 import { formatGreetingVariableList } from "../templateVariables.js";
 import { validateAssignableRole } from "./guards.js";
 import type { SetupScreen, SetupView } from "./types.js";
 
 export class SetupRenderer {
+  public constructor(private readonly entryCommand: "settings" | "setup" = "settings") {}
+
   public buildScreen(
     screen: SetupScreen,
     guild: Guild,
@@ -26,6 +30,8 @@ export class SetupRenderer {
     sessionId: string,
   ): SetupView {
     switch (screen) {
+      case "xp":
+        return this.buildXpScreen(guild, config, sessionId);
       case "welcome":
         return this.buildWelcomeScreen(guild, config, sessionId);
       case "welcome-variables":
@@ -54,7 +60,7 @@ export class SetupRenderer {
     ].filter((item): item is string => Boolean(item));
 
     const embed = this.baseEmbed(guild)
-      .setTitle("Setup Complete")
+      .setTitle(this.entryCommand === "setup" ? "Setup Complete" : "Settings Saved")
       .setDescription(this.setupSummary(config))
       .addFields(
         {
@@ -70,8 +76,8 @@ export class SetupRenderer {
     return {
       embeds: [
         this.baseEmbed(guild)
-          .setTitle("Setup Session Expired")
-          .setDescription(`${this.setupSummary(config)}\n\nRun \`/setup\` again to make more changes.`),
+          .setTitle(this.entryCommand === "setup" ? "Setup Session Expired" : "Settings Session Expired")
+          .setDescription(`${this.setupSummary(config)}\n\nRun \`/${this.entryCommand}\` again to make more changes.`),
       ],
       components: [],
     };
@@ -83,12 +89,13 @@ export class SetupRenderer {
     sessionId: string,
   ): SetupView {
     const embed = this.baseEmbed(guild)
-      .setTitle("Centerify Server Setup")
+      .setTitle(this.entryCommand === "setup" ? "Centerify Server Setup" : "Centerify Server Settings")
       .setDescription(this.setupSummary(config))
       .addFields(
         {
           name: "Configure",
           value: [
+            "`XP` earning methods, rewards, sharing, and multiple servers",
             "`Welcome` join messages",
             "`Goodbye` leave messages",
             "`Auto Role` new member role",
@@ -109,7 +116,47 @@ export class SetupRenderer {
           this.button(sessionId, "moderation", "Global Moderation", ButtonStyle.Primary),
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          this.button(sessionId, "finish", "Finish", ButtonStyle.Success),
+          this.button(sessionId, "xp", "XP", ButtonStyle.Primary),
+          this.button(sessionId, "finish", "Done", ButtonStyle.Success),
+        ),
+      ],
+    };
+  }
+
+  private buildXpScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
+    const methods = (config.xpMethods || "messages").split(",");
+    return {
+      embeds: [this.baseEmbed(guild).setTitle("XP Settings").setDescription(
+        `**Status:** ${config.xpEnabled ? "On" : "Off"}\n**Methods:** ${methods.join(", ")}\n` +
+        `**Rewards:** Messages ${config.xpMessageAmount} • Reactions ${config.xpReactionAmount} • Daily ${config.xpDailyAmount} XP\n` +
+        `**Cooldown:** ${config.xpCooldownSeconds}s for messages/reactions; daily claims every 24 hours\n` +
+        `**Sharing:** ${config.xpSharing}\n**Selected servers:** ${config.xpSharedGuildIds.split(",").filter(Boolean).map((id) => guild.client?.guilds.cache.get(id)?.name ?? id).join(", ") || "None"}\n\n` +
+        "Choose Servers opens a dropdown of your servers, with no IDs to copy. Sharing requires both servers to enable XP and select each other. Apply XP to Servers copies these settings to servers you manage. Daily claims use `/xp daily`.")],
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          this.button(sessionId, "xp-toggle", config.xpEnabled ? "Disable XP" : "Enable XP", config.xpEnabled ? ButtonStyle.Danger : ButtonStyle.Success),
+          this.button(sessionId, "xp-rewards", "Edit Rewards", ButtonStyle.Primary),
+          this.button(sessionId, "xp-peers", "Choose Servers", ButtonStyle.Secondary),
+          this.button(sessionId, "xp-apply", "Apply XP to Servers", ButtonStyle.Primary),
+          this.button(sessionId, "main", "Back", ButtonStyle.Secondary),
+        ),
+        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId(`setup:${sessionId}:xp-methods`).setPlaceholder("Ways to earn XP")
+            .setMinValues(1).setMaxValues(3).addOptions(XP_METHOD_CHOICES.slice(0, 3).map((choice) => ({
+              label: choice.name, value: choice.value, default: methods.includes(choice.value),
+            }))),
+        ),
+        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder().setCustomId(`setup:${sessionId}:xp-sharing`).setPlaceholder("XP sharing scope")
+            .addOptions([
+              { label: "This server", value: "server", default: config.xpSharing === "server" },
+              { label: "Global (participating servers)", value: "global", default: config.xpSharing === "global" },
+              { label: "Selected servers (mutual)", value: "selected", default: config.xpSharing === "selected" },
+            ]),
+        ),
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          this.button(sessionId, "xp-peers-id", "Enter Sharing Server IDs", ButtonStyle.Secondary),
+          this.button(sessionId, "xp-apply-id", "Apply Using Server IDs", ButtonStyle.Secondary),
         ),
       ],
     };
@@ -213,7 +260,7 @@ export class SetupRenderer {
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           this.button(sessionId, type, "Back", ButtonStyle.Secondary),
-          this.button(sessionId, "main", "Setup Home", ButtonStyle.Secondary),
+          this.button(sessionId, "main", "Settings Home", ButtonStyle.Secondary),
         ),
       ],
     };
@@ -353,7 +400,7 @@ export class SetupRenderer {
         name: guild.name,
         iconURL: guild.iconURL({ size: 128 }) ?? undefined,
       })
-      .setFooter({ text: "Centerify setup" })
+      .setFooter({ text: "Centerify settings" })
       .setTimestamp();
   }
 
@@ -375,7 +422,8 @@ export class SetupRenderer {
 
   private codeBlock(value: string) {
     const normalized = value.replaceAll("```", "`\u200b``");
-    return `\`\`\`\n${normalized}\n\`\`\``;
+    const preview = normalized.length > 1000 ? `${normalized.slice(0, 997)}...` : normalized;
+    return `\`\`\`\n${preview}\n\`\`\``;
   }
 
   private variableList(includeWelcomeOnly: boolean) {
@@ -388,6 +436,7 @@ export class SetupRenderer {
       this.summaryRow("Goodbye", config.goodbyeEnabled, this.channelText(config.goodbyeChannelId)),
       this.summaryRow("Auto Role", config.autoRoleEnabled, this.roleText(config.autoRoleId)),
       this.summaryRow("Logging", config.loggingEnabled, this.channelText(config.loggingChannelId)),
+      `**XP:** ${config.xpEnabled ? `${config.xpMethods} • ${config.xpSharing} sharing` : "Off"}`,
       `**Global Moderation:** Ban ${this.enabledText(config.globalBanEnabled)} · Warn ${this.enabledText(config.globalWarnEnabled)} · Note ${this.enabledText(config.globalNoteEnabled)}`,
     ].join("\n");
   }

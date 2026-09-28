@@ -11,6 +11,14 @@ export type GuildConfig = Awaited<
 >;
 
 export type GuildConfigUpdate = Partial<{
+  xpEnabled: boolean;
+  xpMethods: string;
+  xpMessageAmount: number;
+  xpReactionAmount: number;
+  xpDailyAmount: number;
+  xpCooldownSeconds: number;
+  xpSharing: string;
+  xpSharedGuildIds: string;
   setupCompleted: boolean;
   welcomeEnabled: boolean;
   welcomeChannelId: string | null;
@@ -53,6 +61,7 @@ export class GuildConfigService {
           ...data,
         },
         update: data,
+        conflictOn: { guildId },
       });
     } catch (error) {
       if (this.isGuildIdConflict(error)) {
@@ -115,7 +124,8 @@ export class GuildConfigService {
       "sqlState" in error &&
       "constraint" in error &&
       error.sqlState === "23505" &&
-      error.constraint === "guildConfig_guildId_key"
+      (error.constraint === "guild_config_guildId_key" ||
+        error.constraint === "guildConfig_guildId_key")
     );
   }
 }

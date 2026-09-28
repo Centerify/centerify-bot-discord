@@ -1,0 +1,248 @@
+[
+  {
+    "id": "table.member_xp",
+    "label": "Create table \"member_xp\"",
+    "summary": "Creates table \"member_xp\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "member_xp"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"member_xp\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"member_xp\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"member_xp\"",
+        "sql": "CREATE TABLE \"public\".\"member_xp\" (\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"lastAwardedAt\" timestamptz NOT NULL,\n  \"userId\" text NOT NULL,\n  \"xp\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"member_xp\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"member_xp\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpEnabled",
+    "label": "Add column \"xpEnabled\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpEnabled",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpEnabled\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpEnabled"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpEnabled\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpEnabled\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpEnabled\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpEnabled"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpSharedGuildIds",
+    "label": "Add column \"xpSharedGuildIds\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpSharedGuildIds",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpSharedGuildIds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpSharedGuildIds"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpSharedGuildIds\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpSharedGuildIds\" text DEFAULT '' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpSharedGuildIds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpSharedGuildIds"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpSharing",
+    "label": "Add column \"xpSharing\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpSharing",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpSharing\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpSharing"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpSharing\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpSharing\" text DEFAULT 'server' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpSharing\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpSharing"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.member_xp.member_xp_guildId_userId_key",
+    "label": "Add unique constraint on \"member_xp\" (guildId, userId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "member_xp_guildId_userId_key",
+        "table": "member_xp"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"member_xp_guildId_userId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "member_xp_guildId_userId_key",
+          "public",
+          "\"public\".\"member_xp\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"member_xp_guildId_userId_key\"",
+        "sql": "ALTER TABLE \"public\".\"member_xp\" ADD CONSTRAINT \"member_xp_guildId_userId_key\" UNIQUE (\"guildId\", \"userId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"member_xp_guildId_userId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "member_xp_guildId_userId_key",
+          "public",
+          "\"public\".\"member_xp\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.member_xp.member_xp_userId_idx_a489d58a",
+    "label": "Create index \"member_xp_userId_idx_a489d58a\" on \"member_xp\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "member_xp_userId_idx_a489d58a",
+        "table": "member_xp"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"member_xp_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"member_xp_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"member_xp_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"member_xp_userId_idx_a489d58a\" ON \"public\".\"member_xp\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"member_xp_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"member_xp_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  }
+]

@@ -16,7 +16,7 @@ import { SetupRenderer } from "../../services/setup/renderer.js";
 const SESSION_TTL = 10 * 60_000;
 
 export class SetupCommand extends Command {
-  private readonly renderer = new SetupRenderer();
+  private readonly renderer = new SetupRenderer("setup");
   private readonly interactionHandler = new SetupInteractionHandler(
     this.renderer,
     this.updateConfig.bind(this),
@@ -35,26 +35,23 @@ export class SetupCommand extends Command {
   public override async chatInputRun(
     interaction: Command.ChatInputCommandInteraction,
   ) {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await interaction.editReply({
         content: "Setup can only be used inside a server.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     if (!canManageServer(interaction.member)) {
-      await interaction.reply({
+      await interaction.editReply({
         content:
           "You need Manage Server or Administrator permission to run setup.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
-
-    // Acknowledge before touching the database; Discord invalidates an
-    // interaction if its first response takes longer than three seconds.
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const sessionId = interaction.id;
     let config: GuildConfig;
@@ -86,6 +83,8 @@ export class SetupCommand extends Command {
       time: SESSION_TTL,
     });
 
+    let finished = false;
+    let busy = false;
     collector.on("collect", async (componentInteraction) => {
       if (!componentInteraction.customId.startsWith(`setup:${sessionId}:`)) {
         return;
@@ -103,11 +102,18 @@ export class SetupCommand extends Command {
       if (
         !componentInteraction.isButton() &&
         !componentInteraction.isChannelSelectMenu() &&
-        !componentInteraction.isRoleSelectMenu()
+        !componentInteraction.isRoleSelectMenu() &&
+        !componentInteraction.isStringSelectMenu()
       ) {
         return;
       }
 
+      if (finished || busy) {
+        await componentInteraction.reply({ content: finished ? "This setup session is complete. Run /setup again." : "Finish the current setup action before starting another.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      collector.resetTimer();
+      busy = true;
       try {
         config = await this.interactionHandler.handleComponent({
           componentInteraction,
@@ -115,6 +121,10 @@ export class SetupCommand extends Command {
           config,
           sessionId,
         });
+        if (componentInteraction.customId === `setup:${sessionId}:finish` && componentInteraction.deferred) {
+          finished = true;
+          collector.stop("finished");
+        }
       } catch (error) {
         logger.error(
           {
@@ -137,11 +147,13 @@ export class SetupCommand extends Command {
               "Failed to send setup error response",
             );
           });
+      } finally {
+        busy = false;
       }
     });
 
     collector.on("end", async () => {
-      if (config.setupCompleted) {
+      if (finished) {
         return;
       }
 

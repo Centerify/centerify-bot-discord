@@ -27,6 +27,7 @@ export class GuildOwnershipService {
     }
 
     await db.orm.public.GuildOwnership.upsert({
+      conflictOn: { guildId: guild.id },
       create: { guildId: guild.id, ownerUserId: userId },
       update: { ownerUserId: userId, verifiedAt: new Date().toISOString() },
     });
@@ -41,7 +42,9 @@ export async function requireVerifiedOwnership(interaction: RepliableInteraction
     return true;
   }
   const response = { content: OWNERSHIP_REQUIRED_MESSAGE, flags: MessageFlags.Ephemeral as const };
-  if (interaction.deferred || interaction.replied) {
+  if (interaction.deferred && !interaction.replied) {
+    await interaction.editReply({ content: OWNERSHIP_REQUIRED_MESSAGE });
+  } else if (interaction.replied) {
     await interaction.followUp(response);
   } else {
     await interaction.reply(response);

@@ -1,5 +1,6 @@
 import { Precondition } from "@sapphire/framework";
 import type { ChatInputCommandInteraction, ContextMenuCommandInteraction, Message } from "discord.js";
+import { MessageFlags } from "discord.js";
 import { guildOwnershipService, OWNERSHIP_REQUIRED_MESSAGE, requireVerifiedOwnership } from "../services/guildOwnershipService.js";
 
 export class VerifiedGuildOwnershipPrecondition extends Precondition {
@@ -9,6 +10,10 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
 
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     if (interaction.commandName === "verify") return this.ok();
+    // Ownership checks make REST and database requests before the command runs.
+    if (["settings", "setup"].includes(interaction.commandName) && !interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
     return this.checkInteraction(interaction);
   }
 

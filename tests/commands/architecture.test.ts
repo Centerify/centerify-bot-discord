@@ -18,6 +18,7 @@ const expectedCommands = [
   "general/ping.ts",
   "general/server.ts",
   "general/status.ts",
+  "general/xp.ts",
   "moderation/ban.ts",
   "moderation/case.ts",
   "moderation/history.ts",
