@@ -42,6 +42,10 @@ export class UnbanCommand extends Command {
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const reason = interaction.options.getString("reason", true).trim();
+    if (!reason) {
+      await interaction.editReply({ content: "The reason cannot be empty." });
+      return;
+    }
     try {
       const ban = await interaction.guild.bans.fetch(userId).catch(() => null);
       if (!ban) {

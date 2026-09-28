@@ -68,15 +68,15 @@ export class ReportService {
     status: Exclude<ReportStatus, "PENDING">;
     reviewedBy: string;
   }) {
-    await db.orm.public.MemberReport
-      .where({ guildId, reportNumber })
+    const report = await db.orm.public.MemberReport
+      .where({ guildId, reportNumber, status: "PENDING" })
       .update({
         status,
         reviewedBy,
         reviewedAt: new Date().toISOString(),
       });
 
-    return this.findByReportNumber(guildId, reportNumber);
+    return report;
   }
 
   private isReportNumberConflict(error: unknown) {

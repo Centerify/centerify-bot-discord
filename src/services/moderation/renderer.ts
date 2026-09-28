@@ -143,9 +143,8 @@ export function formatAction(action: string) {
 export function cleanFieldValue(value: string, maxLength = 1_000) {
   const trimmed = value.trim();
   const safe = trimmed.length > 0 ? trimmed : "No reason provided.";
-  return escapeMarkdown(
-    safe.length > maxLength ? `${safe.slice(0, maxLength - 1)}...` : safe,
-  );
+  const escaped = escapeMarkdown(safe);
+  return escaped.length > maxLength ? `${escaped.slice(0, maxLength - 3)}...` : escaped;
 }
 
 function actionColor(action: string) {

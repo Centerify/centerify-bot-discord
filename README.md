@@ -5,6 +5,7 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 ## Features
 
 - Discord slash command support with Sapphire Framework
+- Message XP, levels, and a leaderboard with server, global, or selected-server sharing
 - `/ping` command for checking bot responsiveness
 - TypeScript-first project structure
 - Environment-based configuration with `dotenv`
@@ -25,7 +26,7 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 
 The current Discord server owner must run `/verify` inside the server before
 Centerify commands or automatic actions can run. Administrator permission alone
-does not authorize the bot. After verification, run `/setup` to configure it.
+does not authorize the bot. After verification, run `/settings` to configure it.
 If server ownership changes, the new owner must run `/verify` again.
 
 ### Prerequisites
@@ -185,3 +186,10 @@ and you must have Manage Server permission in every server. The whole group
 is saved in one transaction after these checks. With selected sharing, the
 servers in the group are added as mutual peers; previously selected peers
 are retained. Server-specific channels, roles, and greeting settings stay local.
+
+All server configuration is available as buttons in both `/setup` and `/settings`:
+XP, Welcome, Goodbye, Auto Role, Logging, and Global Moderation. Use `/setup`
+for the guided configuration flow or `/settings` for the summary and quick edits.
+The separate `/welcome` and `/logging` commands have been removed.
+Use **Welcome → Test** in settings to preview a greeting. Command registration
+replaces the command list on startup so removed commands disappear after a restart.

@@ -100,6 +100,10 @@ export class UnwarnCommand extends Command {
     }
 
     const reason = interaction.options.getString("reason", true).trim();
+    if (!reason) {
+      await interaction.editReply({ content: "The reason cannot be empty." });
+      return;
+    }
     const caseNumber = interaction.options.getInteger("case-number");
 
     try {

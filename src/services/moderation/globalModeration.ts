@@ -40,5 +40,5 @@ export async function getGlobalModerationTargets(
 }
 
 export function globalModerationDisabledMessage() {
-  return "This global moderation action is disabled for this server. Enable it with `/settings` or `/setup` → Global Moderation.";
+  return "This global moderation action is disabled for this server. Enable it with `/settings` → Global Moderation.";
 }

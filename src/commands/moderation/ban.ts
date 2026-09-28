@@ -59,6 +59,10 @@ export class BanCommand extends Command {
       }
     }
     const reason = interaction.options.getString("reason", true).trim();
+    if (!reason) {
+      await interaction.editReply({ content: "The reason cannot be empty." });
+      return;
+    }
     const deleteMessageSeconds = (interaction.options.getInteger("delete-days") ?? 0) * 24 * 60 * 60;
     const isGlobal = interaction.options.getBoolean("global") ?? false;
     try {

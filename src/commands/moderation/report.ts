@@ -45,10 +45,19 @@ export class ReportCommand extends Command {
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const reason = interaction.options.getString("reason", true).trim();
+    if (!reason) {
+      await interaction.editReply({ content: "A report reason cannot be empty." });
+      return;
+    }
     try {
+      const target = await interaction.guild.members.fetch(user.id).catch(() => null);
+      if (!target) {
+        await interaction.editReply({ content: "Please choose a current server member to report." });
+        return;
+      }
       const config = await guildConfigService.getOrCreate(interaction.guildId);
       if (!config.loggingEnabled || !config.loggingChannelId) {
-        await interaction.editReply({ content: "Reports need a configured logging channel. Ask an administrator to run `/logging channel`." });
+        await interaction.editReply({ content: "Reports need a configured logging channel. Ask an administrator to run `/settings` → Logging." });
         return;
       }
       const channel = await interaction.guild.channels.fetch(config.loggingChannelId).catch(() => null);
@@ -56,7 +65,7 @@ export class ReportCommand extends Command {
         !isModerationLogChannel(channel) ||
         validateChannelSendAccess(interaction.guild, channel)
       ) {
-        await interaction.editReply({ content: "The configured logging channel is unavailable. Ask an administrator to update `/logging channel`." });
+        await interaction.editReply({ content: "The configured logging channel is unavailable. Ask an administrator to update `/settings` → Logging." });
         return;
       }
       const report = await reportService.createReport({ guildId: interaction.guildId, reportedUserId: user.id, reporterUserId: interaction.user.id, reason });
@@ -70,27 +79,40 @@ export class ReportCommand extends Command {
         if (!buttonInteraction.inCachedGuild() || buttonInteraction.guildId !== interaction.guildId) {
           return;
         }
-        if (!await requireVerifiedOwnership(buttonInteraction)) return;
-        if (!hasModeratorPermission(buttonInteraction.member, PermissionFlagsBits.ModerateMembers)) {
-          await buttonInteraction.reply({ content: "Only moderators can review reports.", flags: MessageFlags.Ephemeral });
-          return;
-        }
-        const action = buttonInteraction.customId.split(":").at(3);
-        if (action === "history") {
-          const history = await moderationCaseService.recentForUser(interaction.guildId, user.id, 5);
-          await buttonInteraction.reply({
-            content: history.length > 0 ? history.map((item) => `#${item.caseNumber} ${item.action}: ${item.reason}`).join("\n") : "No moderation history found.",
-            flags: MessageFlags.Ephemeral,
-          });
-          return;
-        }
-        if (action === "view") {
-          await buttonInteraction.reply({ content: `Reported user: <@${user.id}> (\`${user.id}\`)`, flags: MessageFlags.Ephemeral });
-          return;
-        }
-        if (action === "accept" || action === "reject") {
-          const next = await reportService.updateStatus({ guildId: interaction.guildId, reportNumber: report.reportNumber, status: action === "accept" ? "ACCEPTED" : "REJECTED", reviewedBy: buttonInteraction.user.id });
-          await buttonInteraction.update({ embeds: [this.buildReportEmbed(report.reportNumber, user.id, interaction.user.id, reason, next?.status ?? "PENDING", buttonInteraction.user.id)], components: [] });
+        try {
+          if (!await requireVerifiedOwnership(buttonInteraction)) return;
+          if (!hasModeratorPermission(buttonInteraction.member, PermissionFlagsBits.ModerateMembers)) {
+            await buttonInteraction.reply({ content: "Only moderators can review reports.", flags: MessageFlags.Ephemeral });
+            return;
+          }
+          const action = buttonInteraction.customId.split(":").at(3);
+          if (action === "history") {
+            await buttonInteraction.deferReply({ flags: MessageFlags.Ephemeral });
+            const history = await moderationCaseService.recentForUser(interaction.guildId, user.id, 5);
+            await buttonInteraction.editReply({
+              content: history.length > 0 ? history.map((item) => `#${item.caseNumber} ${item.action}: ${item.reason.slice(0, 250)}`).join("\n") : "No moderation history found.",
+              allowedMentions: { parse: [] },
+            });
+            return;
+          }
+          if (action === "view") {
+            await buttonInteraction.reply({ content: `Reported user: <@${user.id}> (\`${user.id}\`)`, flags: MessageFlags.Ephemeral });
+            return;
+          }
+          if (action === "accept" || action === "reject") {
+            await buttonInteraction.deferUpdate();
+            const next = await reportService.updateStatus({ guildId: interaction.guildId, reportNumber: report.reportNumber, status: action === "accept" ? "ACCEPTED" : "REJECTED", reviewedBy: buttonInteraction.user.id });
+            if (!next) {
+              await buttonInteraction.followUp({ content: "This report was already reviewed.", flags: MessageFlags.Ephemeral });
+              return;
+            }
+            await buttonInteraction.editReply({ embeds: [this.buildReportEmbed(report.reportNumber, user.id, interaction.user.id, reason, next.status, buttonInteraction.user.id)], components: [] });
+          }
+        } catch (error) {
+          logger.error({ err: error, guildId: interaction.guildId }, "Report review failed");
+          const response = { content: "I could not review that report right now.", flags: MessageFlags.Ephemeral as const };
+          if (buttonInteraction.deferred || buttonInteraction.replied) await buttonInteraction.followUp(response);
+          else await buttonInteraction.reply(response);
         }
       });
 

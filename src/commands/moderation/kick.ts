@@ -46,6 +46,10 @@ export class KickCommand extends Command {
       return;
     }
     const reason = interaction.options.getString("reason", true).trim();
+    if (!reason) {
+      await interaction.editReply({ content: "The reason cannot be empty." });
+      return;
+    }
     try {
       await dmUser(user, `You were kicked from ${interaction.guild.name}: ${reason}`, { guildId: interaction.guildId, userId: user.id });
       await member.kick(toAuditLogReason(reason));

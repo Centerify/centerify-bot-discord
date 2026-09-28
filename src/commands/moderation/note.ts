@@ -60,6 +60,11 @@ export class NoteCommand extends Command {
     const isGlobal = interaction.options.getBoolean("global") ?? false;
     try {
       if (subcommand === "add") {
+        const reason = interaction.options.getString("note", true).trim();
+        if (!reason) {
+          await interaction.editReply({ content: "The note cannot be empty." });
+          return;
+        }
         if (isGlobal) {
           const targets = await getGlobalModerationTargets(
             interaction.client,
@@ -71,7 +76,6 @@ export class NoteCommand extends Command {
             return;
           }
 
-          const reason = interaction.options.getString("note", true).trim();
           const createdCases = [];
           for (const guild of targets.guilds) {
             try {
@@ -107,7 +111,7 @@ export class NoteCommand extends Command {
           targetUserId: user.id,
           moderatorUserId: interaction.user.id,
           action: "NOTE",
-          reason: interaction.options.getString("note", true).trim(),
+          reason,
         });
         await interaction.editReply({ content: `Note created - Case #${moderationCase.caseNumber}`, embeds: [buildCaseEmbed(moderationCase)] });
         return;

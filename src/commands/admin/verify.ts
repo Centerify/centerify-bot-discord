@@ -20,7 +20,7 @@ export class VerifyCommand extends Command {
     try {
       const verified = await guildOwnershipService.verify(interaction.guild, interaction.user.id);
       await interaction.editReply(verified
-        ? "Server ownership verified. You can now configure Centerify with `/setup`."
+        ? "Server ownership verified. You can now configure Centerify with `/settings`."
         : "Only the current server owner can verify ownership. Administrator permission is not sufficient.");
     } catch (error) {
       logger.error({ err: error, guildId: interaction.guildId }, "Failed to verify guild ownership");
