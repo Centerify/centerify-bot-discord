@@ -2,6 +2,7 @@ import { Listener } from "@sapphire/framework";
 import { Events, type GuildMember, type PartialGuildMember } from "discord.js";
 import { logger } from "../logger.js";
 import { guildConfigService } from "../services/guildConfigService.js";
+import { guildOwnershipService } from "../services/guildOwnershipService.js";
 import { greetingService } from "../services/greetingService.js";
 
 export class GuildMemberRemoveListener extends Listener<typeof Events.GuildMemberRemove> {
@@ -10,6 +11,10 @@ export class GuildMemberRemoveListener extends Listener<typeof Events.GuildMembe
   }
 
   public override async run(member: GuildMember | PartialGuildMember) {
+    if (!await guildOwnershipService.isVerified(member.guild)) {
+      return;
+    }
+
     const config = await guildConfigService.getOrCreate(member.guild.id).catch((error) => {
       logger.error(
         { err: error, guildId: member.guild.id, userId: member.id },

@@ -10,9 +10,13 @@ import {
   type ModalSubmitInteraction,
   type RoleSelectMenuInteraction,
 } from "discord.js";
+import { handleXpModal } from "./xpInteractionHandler.js";
+import { handleXpServerPicker } from "./xpServerPicker.js";
+import { requireVerifiedOwnership } from "../guildOwnershipService.js";
 import { greetingService } from "../greetingService.js";
 import type { GuildConfig, GuildConfigUpdate } from "../guildConfigService.js";
 import {
+  canManageServer,
   canSendToChannel,
   isUsableTextChannel,
   validateAssignableRole,
@@ -42,8 +46,39 @@ export class SetupInteractionHandler {
     config: GuildConfig;
     sessionId: string;
   }) {
+    if (componentInteraction.user.id !== rootInteraction.user.id || !canManageServer(componentInteraction.member)) {
+      await componentInteraction.reply({ content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral });
+      return config;
+    }
     const action = componentInteraction.customId.split(":").at(2);
+    const opensModal = componentInteraction.isButton() && ["welcome-edit", "goodbye-edit", "xp-rewards", "xp-peers-id", "xp-apply-id"].includes(action ?? "");
+    if (!opensModal) {
+      // Acknowledge before the ownership check's network and database requests.
+      if (componentInteraction.isButton() && (action === "xp-peers" || action === "xp-apply")) {
+        await componentInteraction.deferReply({ flags: MessageFlags.Ephemeral });
+      } else {
+        await componentInteraction.deferUpdate();
+      }
+      if (!await requireVerifiedOwnership(componentInteraction)) return config;
+    }
+    // Modal submissions recheck ownership before saving; showing a modal must
+    // itself be the initial response to its button interaction.
 
+    if (componentInteraction.isStringSelectMenu()) {
+      let data: GuildConfigUpdate;
+      if (action === "xp-methods" && componentInteraction.values.length > 0 && componentInteraction.values.every((value) => ["messages", "reactions", "daily"].includes(value))) {
+        data = { xpMethods: ["messages", "reactions", "daily"].filter((method) => componentInteraction.values.includes(method)).join(",") };
+      } else if (action === "xp-sharing" && componentInteraction.values.length === 1 && ["server", "global", "selected"].includes(componentInteraction.values[0])) {
+        data = { xpSharing: componentInteraction.values[0] };
+      } else {
+        await componentInteraction.followUp({ content: "Choose valid XP options.", flags: MessageFlags.Ephemeral });
+        return config;
+      }
+      if (!componentInteraction.deferred) await componentInteraction.deferUpdate();
+      const next = await this.updateConfig(componentInteraction.guildId, data);
+      await rootInteraction.editReply(this.renderer.buildScreen("xp", componentInteraction.guild, next, sessionId));
+      return next;
+    }
     if (componentInteraction.isButton()) {
       return this.handleButton({
         interaction: componentInteraction,
@@ -76,14 +111,14 @@ export class SetupInteractionHandler {
   }
 
   public async respondWithError(interaction: SetupComponentInteraction) {
-    const content = "Something went wrong while saving setup. Please try again.";
+    const content = "Something went wrong while saving settings. Please try again.";
 
     if (interaction.deferred || interaction.replied) {
       await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
       return;
     }
 
-    await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
   }
 
   private async handleButton({
@@ -100,6 +135,7 @@ export class SetupInteractionHandler {
     action: string | undefined;
   }) {
     switch (action) {
+      case "xp":
       case "main":
       case "welcome":
       case "welcome-variables":
@@ -108,13 +144,28 @@ export class SetupInteractionHandler {
       case "autorole":
       case "logging":
       case "moderation":
-        await interaction.update(
+        await interaction.editReply(
           this.renderer.buildScreen(action, interaction.guild, config, sessionId),
         );
         return config;
 
+      case "xp-toggle": {
+        if (!interaction.deferred) await interaction.deferUpdate();
+        const next = await this.updateConfig(interaction.guildId, { xpEnabled: !config.xpEnabled });
+        await rootInteraction.editReply(this.renderer.buildScreen("xp", interaction.guild, next, sessionId));
+        return next;
+      }
+      case "xp-rewards":
+        return handleXpModal(interaction, rootInteraction, config, sessionId, action, this.renderer, this.updateConfig);
+      case "xp-peers":
+      case "xp-apply":
+        return handleXpServerPicker(interaction, rootInteraction, config, sessionId, action === "xp-apply", this.renderer, this.updateConfig);
+      case "xp-peers-id":
+      case "xp-apply-id":
+        return handleXpModal(interaction, rootInteraction, config, sessionId, action === "xp-peers-id" ? "xp-peers" : "xp-apply", this.renderer, this.updateConfig);
+
       case "welcome-toggle": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, {
           welcomeEnabled: !config.welcomeEnabled,
         });
@@ -125,7 +176,7 @@ export class SetupInteractionHandler {
       }
 
       case "goodbye-toggle": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, {
           goodbyeEnabled: !config.goodbyeEnabled,
         });
@@ -136,7 +187,7 @@ export class SetupInteractionHandler {
       }
 
       case "autorole-toggle": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, {
           autoRoleEnabled: !config.autoRoleEnabled,
         });
@@ -147,7 +198,7 @@ export class SetupInteractionHandler {
       }
 
       case "logging-toggle": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, {
           loggingEnabled: !config.loggingEnabled,
         });
@@ -160,7 +211,7 @@ export class SetupInteractionHandler {
       case "global-ban-toggle":
       case "global-warn-toggle":
       case "global-note-toggle": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const update = action === "global-ban-toggle"
           ? { globalBanEnabled: !config.globalBanEnabled }
           : action === "global-warn-toggle"
@@ -184,7 +235,7 @@ export class SetupInteractionHandler {
         });
 
       case "welcome-test":
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         await interaction.followUp({
           content: greetingService.renderWelcome(config, interaction.member),
           flags: MessageFlags.Ephemeral,
@@ -192,7 +243,7 @@ export class SetupInteractionHandler {
         return config;
 
       case "goodbye-test":
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         await interaction.followUp({
           content: greetingService.renderGoodbye(config, interaction.member),
           flags: MessageFlags.Ephemeral,
@@ -200,7 +251,7 @@ export class SetupInteractionHandler {
         return config;
 
       case "finish": {
-        await interaction.deferUpdate();
+        if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, {
           setupCompleted: true,
         });
@@ -209,8 +260,8 @@ export class SetupInteractionHandler {
       }
 
       default:
-        await interaction.reply({
-          content: "That setup control is no longer available.",
+        await interaction.followUp({
+          content: "That settings control is no longer available.",
           flags: MessageFlags.Ephemeral,
         });
         return config;
@@ -230,7 +281,7 @@ export class SetupInteractionHandler {
   }) {
     const channel = interaction.channels.first();
     if (!channel || !isUsableTextChannel(channel)) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "Please choose a text channel I can send messages in.",
         flags: MessageFlags.Ephemeral,
       });
@@ -238,7 +289,7 @@ export class SetupInteractionHandler {
     }
 
     if (!canSendToChannel(interaction.guild, channel)) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "I cannot send messages in that channel. Please check my channel permissions.",
         flags: MessageFlags.Ephemeral,
       });
@@ -255,14 +306,14 @@ export class SetupInteractionHandler {
             : null;
 
     if (!update) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "That channel selector is no longer available.",
         flags: MessageFlags.Ephemeral,
       });
       return config;
     }
 
-    await interaction.deferUpdate();
+    if (!interaction.deferred) await interaction.deferUpdate();
     const next = await this.updateConfig(interaction.guildId, update);
     const screen =
       action === "welcome-channel"
@@ -290,7 +341,7 @@ export class SetupInteractionHandler {
     action: string | undefined;
   }) {
     if (action !== "autorole-role") {
-      await interaction.reply({
+      await interaction.followUp({
         content: "That role selector is no longer available.",
         flags: MessageFlags.Ephemeral,
       });
@@ -299,7 +350,7 @@ export class SetupInteractionHandler {
 
     const role = interaction.roles.first();
     if (!role) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "Please choose a role.",
         flags: MessageFlags.Ephemeral,
       });
@@ -308,14 +359,14 @@ export class SetupInteractionHandler {
 
     const validation = validateAssignableRole(interaction.guild, role);
     if (validation) {
-      await interaction.reply({
+      await interaction.followUp({
         content: validation,
         flags: MessageFlags.Ephemeral,
       });
       return config;
     }
 
-    await interaction.deferUpdate();
+    if (!interaction.deferred) await interaction.deferUpdate();
     const next = await this.updateConfig(interaction.guildId, {
       autoRoleId: role.id,
     });
@@ -399,8 +450,19 @@ export class SetupInteractionHandler {
     fieldId: string;
     type: "welcome" | "goodbye";
   }) {
+    await modalSubmit.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!await requireVerifiedOwnership(modalSubmit)) {
+      throw new Error("Server ownership is no longer verified");
+    }
+    if (!canManageServer(modalSubmit.member)) {
+      await modalSubmit.editReply({ content: "You need Manage Server permission to save settings." });
+      throw new Error("Manage Server permission was revoked");
+    }
     const message = modalSubmit.fields.getTextInputValue(fieldId).trim();
-    await modalSubmit.deferUpdate();
+    if (!message) {
+      await modalSubmit.editReply({ content: "The message template cannot be empty." });
+      throw new Error("Empty message template");
+    }
 
     const next = await this.updateConfig(modalSubmit.guildId, {
       [type === "welcome" ? "welcomeMessage" : "goodbyeMessage"]: message,
@@ -409,6 +471,7 @@ export class SetupInteractionHandler {
     await rootInteraction.editReply(
       this.renderer.buildScreen(type, modalSubmit.guild, next, sessionId),
     );
+    await modalSubmit.editReply({ content: "Message settings saved." });
 
     return next;
   }

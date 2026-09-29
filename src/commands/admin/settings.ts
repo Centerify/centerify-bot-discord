@@ -1,6 +1,5 @@
 import { Command } from "@sapphire/framework";
 import {
-  ChannelType,
   Colors,
   EmbedBuilder,
   InteractionContextType,
@@ -10,14 +9,12 @@ import {
 import { logger } from "../../logger.js";
 import {
   guildConfigService,
-  type GuildConfigUpdate,
+  type GuildConfig,
 } from "../../services/guildConfigService.js";
-import {
-  canManageServer,
-  canSendToChannel,
-  isUsableTextChannel,
-  validateAssignableRole,
-} from "../../services/setup/guards.js";
+import { canManageServer } from "../../services/setup/guards.js";
+
+import { SetupRenderer } from "../../services/setup/renderer.js";
+import { SetupInteractionHandler } from "../../services/setup/interactionHandler.js";
 
 export class SettingsCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -26,175 +23,90 @@ export class SettingsCommand extends Command {
         .setName("settings")
         .setDescription("View or update this server's Centerify configuration")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        .setContexts(InteractionContextType.Guild)
-        .addBooleanOption((option) =>
-          option
-            .setName("global-ban")
-            .setDescription("Enable or disable global bans for this server")
-            .setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option.setName("welcome-enabled").setDescription("Enable or disable welcome messages").setRequired(false),
-        )
-        .addChannelOption((option) =>
-          option
-            .setName("welcome-channel")
-            .setDescription("Channel for welcome messages")
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(false),
-        )
-        .addStringOption((option) =>
-          option.setName("welcome-message").setDescription("Welcome message template").setMinLength(1).setMaxLength(1_500).setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option.setName("goodbye-enabled").setDescription("Enable or disable goodbye messages").setRequired(false),
-        )
-        .addChannelOption((option) =>
-          option
-            .setName("goodbye-channel")
-            .setDescription("Channel for goodbye messages")
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(false),
-        )
-        .addStringOption((option) =>
-          option.setName("goodbye-message").setDescription("Goodbye message template").setMinLength(1).setMaxLength(1_500).setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option.setName("auto-role-enabled").setDescription("Enable or disable automatic role assignment").setRequired(false),
-        )
-        .addRoleOption((option) =>
-          option.setName("auto-role").setDescription("Role to assign to new members").setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option.setName("logging-enabled").setDescription("Enable or disable server logging").setRequired(false),
-        )
-        .addChannelOption((option) =>
-          option
-            .setName("logging-channel")
-            .setDescription("Channel for server logs")
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option
-            .setName("global-warn")
-            .setDescription("Enable or disable global warnings for this server")
-            .setRequired(false),
-        )
-        .addBooleanOption((option) =>
-          option
-            .setName("global-note")
-            .setDescription("Enable or disable global notes for this server")
-            .setRequired(false),
-        ),
+        .setContexts(InteractionContextType.Guild),
     );
   }
 
   public override async chatInputRun(
     interaction: Command.ChatInputCommandInteraction,
   ) {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
+
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await interaction.editReply({
         content: "This command can only be used inside a server.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     if (!canManageServer(interaction.member)) {
-      await interaction.reply({
+      await interaction.editReply({
         content: "You need Manage Server permission to manage settings.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    const updates: GuildConfigUpdate = {
-      ...(interaction.options.getBoolean("global-ban") === null
-        ? {}
-        : { globalBanEnabled: interaction.options.getBoolean("global-ban", true) }),
-      ...(interaction.options.getBoolean("global-warn") === null
-        ? {}
-        : { globalWarnEnabled: interaction.options.getBoolean("global-warn", true) }),
-      ...(interaction.options.getBoolean("global-note") === null
-        ? {}
-        : { globalNoteEnabled: interaction.options.getBoolean("global-note", true) }),
-    };
-    const channelOptions = [
-      ["welcome-channel", "welcomeChannelId"],
-      ["goodbye-channel", "goodbyeChannelId"],
-      ["logging-channel", "loggingChannelId"],
-    ] as const;
-
-    for (const [optionName, fieldName] of channelOptions) {
-      const channel = interaction.options.getChannel(optionName);
-      if (!channel) continue;
-      if (!isUsableTextChannel(channel) || !canSendToChannel(interaction.guild, channel)) {
-        await interaction.reply({
-          content: `Choose a text channel I can view and send messages in for ${optionName.replace("-", " ")}.`,
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
-      updates[fieldName] = channel.id;
-    }
-
-    const autoRole = interaction.options.getRole("auto-role");
-    if (autoRole) {
-      const roleError = validateAssignableRole(interaction.guild, autoRole);
-      if (roleError) {
-        await interaction.reply({ content: roleError, flags: MessageFlags.Ephemeral });
-        return;
-      }
-      updates.autoRoleId = autoRole.id;
-    }
-
-    const booleanOptions = [
-      ["welcome-enabled", "welcomeEnabled"],
-      ["goodbye-enabled", "goodbyeEnabled"],
-      ["auto-role-enabled", "autoRoleEnabled"],
-      ["logging-enabled", "loggingEnabled"],
-    ] as const;
-    for (const [optionName, fieldName] of booleanOptions) {
-      const value = interaction.options.getBoolean(optionName);
-      if (value !== null) updates[fieldName] = value;
-    }
-
-    const messageOptions = [
-      ["welcome-message", "welcomeMessage"],
-      ["goodbye-message", "goodbyeMessage"],
-    ] as const;
-    for (const [optionName, fieldName] of messageOptions) {
-      const value = interaction.options.getString(optionName);
-      if (value !== null) {
-        const message = value.trim();
-        if (!message) {
-          await interaction.reply({ content: `${optionName.replace("-", " ")} cannot be empty.`, flags: MessageFlags.Ephemeral });
-          return;
-        }
-        updates[fieldName] = message;
-      }
-    }
-
-    const changed = Object.keys(updates).length > 0;
-    const config = await (changed
-      ? guildConfigService.update(interaction.guildId, updates)
-      : guildConfigService.getOrCreate(interaction.guildId)
-    ).catch((error) => {
-      logger.error({ err: error, guildId: interaction.guildId }, "Failed to load or update settings");
+    const config = await guildConfigService.getOrCreate(interaction.guildId).catch((error) => {
+      logger.error({ err: error, guildId: interaction.guildId }, "Failed to load settings");
       return null;
     });
 
     if (!config) {
-      await interaction.reply({
-        content: "I could not load or update this server's settings right now.",
-        flags: MessageFlags.Ephemeral,
+      await interaction.editReply({
+        content: "I could not load this server's settings right now.",
       });
       return;
     }
 
-    await interaction.reply({
-      content: changed ? "Server settings updated." : undefined,
+    const message = await interaction.editReply(this.buildView(interaction, config, "Choose a section below to manage settings."));
+    let current = config;
+    let busy = false;
+    let finished = false;
+    const renderer = new SetupRenderer();
+    const handler = new SetupInteractionHandler(renderer, (id, data) => guildConfigService.update(id, data));
+    const collector = message.createMessageComponentCollector({ time: 10 * 60_000 });
+    collector.on("collect", async (button) => {
+      if (!button.customId.startsWith(`setup:${interaction.id}:`)) return;
+      if (!button.isButton() && !button.isStringSelectMenu() && !button.isChannelSelectMenu() && !button.isRoleSelectMenu()) return;
+      if (button.user.id !== interaction.user.id || !button.inCachedGuild() || !canManageServer(button.member)) {
+        await button.reply({ content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (busy || finished) {
+        await button.reply({ content: finished ? "This settings session is closed. Run /settings again." : "Finish the current settings action first.", flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const action = button.customId.split(":").at(2);
+      busy = true;
+      collector.resetTimer();
+      try {
+        current = await handler.handleComponent({ componentInteraction: button, rootInteraction: interaction, config: current, sessionId: interaction.id });
+        if (action === "finish" && button.deferred) {
+          finished = true;
+          collector.stop("finished");
+        }
+      } catch (error) {
+        logger.error({ err: error, guildId: interaction.guildId }, "Settings interaction failed");
+        if (button.deferred || button.replied) {
+          await button.followUp({ content: "I could not load or save settings right now. Please try again.", flags: MessageFlags.Ephemeral }).catch(() => null);
+        } else {
+          await button.reply({ content: "I could not open settings right now. Please try again.", flags: MessageFlags.Ephemeral }).catch(() => null);
+        }
+      } finally {
+        busy = false;
+      }
+    });
+    collector.on("end", () => {
+      void interaction.editReply({ components: [] }).catch(() => null);
+    });
+  }
+
+  private buildView(interaction: Command.ChatInputCommandInteraction<"cached">, config: GuildConfig, content: string) {
+    return {
+      content,
+      components: new SetupRenderer().buildScreen("main", interaction.guild, config, interaction.id).components!,
       embeds: [
         new EmbedBuilder()
           .setColor(Colors.Blurple)
@@ -204,6 +116,19 @@ export class SettingsCommand extends Command {
             iconURL: interaction.guild.iconURL({ size: 128 }) ?? undefined,
           })
           .addFields(
+            {
+              name: "XP",
+              value: config.xpEnabled ? `On • ${config.xpSharing ?? "server"} sharing` : "Off",
+              inline: true,
+            },
+            {
+              name: "XP Earning",
+              value: `Methods: ${config.xpMethods}\nMessages: ${config.xpMessageAmount} XP • Reactions: ${config.xpReactionAmount} XP\nDaily: ${config.xpDailyAmount} XP per 24 hours\nMessage/reaction cooldown: ${config.xpCooldownSeconds}s (independent)`,
+            },
+            {
+              name: "Selected XP Servers",
+              value: config.xpSharedGuildIds.split(",").filter(Boolean).map((id) => (interaction.client?.guilds.cache.get(id)?.name ?? id).replace(/[\\`*_~|<>@\r\n]/g, "").slice(0, 35)).join(", ") || "None",
+            },
             {
               name: "Setup",
               value: config.setupCompleted ? "Complete" : "Not complete",
@@ -257,8 +182,7 @@ export class SettingsCommand extends Command {
           )
           .setTimestamp(),
       ],
-      flags: MessageFlags.Ephemeral,
-    });
+    };
   }
 
   private feature(enabled: boolean, channelId: string | null) {

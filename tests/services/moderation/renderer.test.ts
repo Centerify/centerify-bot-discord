@@ -59,3 +59,10 @@ test("history details label global moderation cases", () => {
 
   assert.match(field.name, /Warning • Global • Active/);
 });
+
+test("markdown-heavy reasons fit Discord embed field limits after escaping", async () => {
+  const { buildCaseEmbed, cleanFieldValue } = await import("../../../src/services/moderation/renderer.js");
+  const embed = buildCaseEmbed({ ...warning, reason: "*_".repeat(500) }).toJSON();
+  assert.ok(embed.fields!.every((field) => field.value.length <= 1024));
+  assert.ok(cleanFieldValue("*".repeat(1000), 120).length <= 120);
+});

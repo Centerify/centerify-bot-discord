@@ -18,9 +18,9 @@
   "type": "module",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/prune-command-build.mjs && tsc",
     "start": "node dist/src/index.js",
-    "dev": "tsc-watch --onSuccess \"node dist/src/index.js\"",
+    "dev": "tsc-watch --onSuccess \"node scripts/prune-command-build.mjs && node dist/src/index.js\"",
     "test": "XDG_DATA_HOME=.cache vitest run",
     "typecheck": "tsc --noEmit",
     "contract:emit": "prisma contract emit"

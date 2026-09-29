@@ -8,15 +8,16 @@ const root = join(fileURLToPath(new URL("../..", import.meta.url)));
 const commandsRoot = join(root, "src", "commands");
 
 const expectedCommands = [
-  "admin/logging.ts",
   "admin/settings.ts",
   "admin/setup.ts",
-  "admin/welcome.ts",
+  "admin/unverify.ts",
+  "admin/verify.ts",
   "general/help.ts",
   "general/info.ts",
   "general/ping.ts",
   "general/server.ts",
   "general/status.ts",
+  "general/xp.ts",
   "moderation/ban.ts",
   "moderation/case.ts",
   "moderation/history.ts",

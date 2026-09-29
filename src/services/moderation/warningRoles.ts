@@ -1,4 +1,5 @@
 import type { Client } from "discord.js";
+import { guildOwnershipService } from "../guildOwnershipService.js";
 import { logger } from "../../logger.js";
 import { toAuditLogReason } from "./commandUtils.js";
 import { moderationCaseService } from "./caseService.js";
@@ -161,6 +162,7 @@ export async function removeWarningRoleIfUnused(
     }
 
     const guild = await client.guilds.fetch(warning.guildId);
+    if (!await guildOwnershipService.isVerified(guild)) return "failed";
     const member = await guild.members.fetch(warning.targetUserId);
     if (!member.roles.cache.has(roleId)) {
       return "not-assigned";

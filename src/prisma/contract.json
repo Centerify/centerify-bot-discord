@@ -20,6 +20,10 @@
       "model": "MemberReport",
       "namespace": "public"
     },
+    "member_xp": {
+      "model": "MemberXp",
+      "namespace": "public"
+    },
     "moderation_case": {
       "model": "ModerationCase",
       "namespace": "public"
@@ -224,6 +228,62 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "xpCooldownSeconds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpDailyAmount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpMessageAmount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpMethods": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpReactionAmount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpSharedGuildIds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "xpSharing": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {},
@@ -282,6 +342,30 @@
                 },
                 "welcomeMessage": {
                   "column": "welcomeMessage"
+                },
+                "xpCooldownSeconds": {
+                  "column": "xpCooldownSeconds"
+                },
+                "xpDailyAmount": {
+                  "column": "xpDailyAmount"
+                },
+                "xpEnabled": {
+                  "column": "xpEnabled"
+                },
+                "xpMessageAmount": {
+                  "column": "xpMessageAmount"
+                },
+                "xpMethods": {
+                  "column": "xpMethods"
+                },
+                "xpReactionAmount": {
+                  "column": "xpReactionAmount"
+                },
+                "xpSharedGuildIds": {
+                  "column": "xpSharedGuildIds"
+                },
+                "xpSharing": {
+                  "column": "xpSharing"
                 }
               },
               "namespaceId": "public",
@@ -585,6 +669,87 @@
               },
               "namespaceId": "public",
               "table": "member_report"
+            }
+          },
+          "MemberXp": {
+            "fields": {
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastAwardedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastDailyAwardedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastReactionAwardedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "xp": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lastAwardedAt": {
+                  "column": "lastAwardedAt"
+                },
+                "lastDailyAwardedAt": {
+                  "column": "lastDailyAwardedAt"
+                },
+                "lastReactionAwardedAt": {
+                  "column": "lastReactionAwardedAt"
+                },
+                "userId": {
+                  "column": "userId"
+                },
+                "xp": {
+                  "column": "xp"
+                }
+              },
+              "namespaceId": "public",
+              "table": "member_xp"
             }
           },
           "ModerationCase": {
@@ -1209,6 +1374,78 @@
                   },
                   "nativeType": "text",
                   "nullable": false
+                },
+                "xpCooldownSeconds": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 60
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "xpDailyAmount": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 100
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "xpEnabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "xpMessageAmount": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 15
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "xpMethods": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "messages"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "xpReactionAmount": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 5
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "xpSharedGuildIds": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": ""
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "xpSharing": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "server"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
                 }
               },
               "foreignKeys": [],
@@ -1520,6 +1757,77 @@
                   "columns": [
                     "guildId",
                     "reportNumber"
+                  ]
+                }
+              ]
+            },
+            "member_xp": {
+              "columns": {
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "lastAwardedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "lastDailyAwardedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "lastReactionAwardedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "userId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "xp": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "member_xp_userId_idx_a489d58a",
+                  "prefix": "member_xp_userId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "userId"
                   ]
                 }
               ]
@@ -1979,7 +2287,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "289e75ce386293667f9839c22b44e60ed30997d855a5843fa1032c10c4beb58a"
+    "storageHash": "8a8f7abe3eda27e85d9e776a0ca06c36ef6dabf2b6e4767f0468f9acf10a17af"
   },
   "execution": {
     "executionHash": "f083ec1ec09dee9d98cdf6979278620a810017afa72a4dc8b83676643e6398b6",

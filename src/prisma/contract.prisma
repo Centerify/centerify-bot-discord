@@ -31,6 +31,14 @@ model TestRecord {
 model GuildConfig {
   id               Int      @id @default(autoincrement())
   guildId          String   @unique
+  xpEnabled        Boolean @default(false)
+  xpMethods        String @default("messages")
+  xpMessageAmount  Int @default(15)
+  xpReactionAmount Int @default(5)
+  xpDailyAmount    Int @default(100)
+  xpCooldownSeconds Int @default(60)
+  xpSharing        String @default("server")
+  xpSharedGuildIds String @default("")
   setupCompleted   Boolean  @default(false)
   welcomeEnabled   Boolean  @default(false)
   welcomeChannelId String?
@@ -158,4 +166,18 @@ model MemberReport {
   @@index([guildId, status])
   @@index([guildId, createdAt])
   @@map("member_report")
+}
+
+model MemberXp {
+  id            Int @id @default(autoincrement())
+  guildId       String
+  userId        String
+  xp            Int @default(0)
+  lastReactionAwardedAt TimestamptzString?
+  lastDailyAwardedAt TimestamptzString?
+  lastAwardedAt TimestamptzString
+
+  @@unique([guildId, userId])
+  @@index([userId])
+  @@map("member_xp")
 }

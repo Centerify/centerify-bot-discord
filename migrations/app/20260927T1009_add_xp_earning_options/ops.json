@@ -1,0 +1,296 @@
+[
+  {
+    "id": "column.public.guild_config.xpCooldownSeconds",
+    "label": "Add column \"xpCooldownSeconds\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpCooldownSeconds",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpCooldownSeconds\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpCooldownSeconds"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpCooldownSeconds\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpCooldownSeconds\" int4 DEFAULT 60 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpCooldownSeconds\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpCooldownSeconds"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpDailyAmount",
+    "label": "Add column \"xpDailyAmount\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpDailyAmount",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpDailyAmount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpDailyAmount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpDailyAmount\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpDailyAmount\" int4 DEFAULT 100 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpDailyAmount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpDailyAmount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpMessageAmount",
+    "label": "Add column \"xpMessageAmount\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpMessageAmount",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpMessageAmount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpMessageAmount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpMessageAmount\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpMessageAmount\" int4 DEFAULT 15 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpMessageAmount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpMessageAmount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpMethods",
+    "label": "Add column \"xpMethods\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpMethods",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpMethods\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpMethods"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpMethods\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpMethods\" text DEFAULT 'messages' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpMethods\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpMethods"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.xpReactionAmount",
+    "label": "Add column \"xpReactionAmount\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "xpReactionAmount",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"xpReactionAmount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpReactionAmount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"xpReactionAmount\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"xpReactionAmount\" int4 DEFAULT 5 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"xpReactionAmount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "xpReactionAmount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.member_xp.lastDailyAwardedAt",
+    "label": "Add column \"lastDailyAwardedAt\" to \"member_xp\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "lastDailyAwardedAt",
+        "table": "member_xp"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"lastDailyAwardedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "member_xp",
+          "lastDailyAwardedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"lastDailyAwardedAt\"",
+        "sql": "ALTER TABLE \"public\".\"member_xp\" ADD COLUMN \"lastDailyAwardedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"lastDailyAwardedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "member_xp",
+          "lastDailyAwardedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.member_xp.lastReactionAwardedAt",
+    "label": "Add column \"lastReactionAwardedAt\" to \"member_xp\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "lastReactionAwardedAt",
+        "table": "member_xp"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"lastReactionAwardedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "member_xp",
+          "lastReactionAwardedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"lastReactionAwardedAt\"",
+        "sql": "ALTER TABLE \"public\".\"member_xp\" ADD COLUMN \"lastReactionAwardedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"lastReactionAwardedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "member_xp",
+          "lastReactionAwardedAt"
+        ]
+      }
+    ]
+  }
+]
