@@ -28,6 +28,8 @@ The current Discord server owner must run `/verify` inside the server before
 Centerify commands or automatic actions can run. Administrator permission alone
 does not authorize the bot. After verification, run `/settings` to configure it.
 If server ownership changes, the new owner must run `/verify` again.
+The current owner can run `/unverify` to revoke authorization. Centerify
+commands remain disabled until the current owner runs `/verify` again.
 
 ### Prerequisites
 

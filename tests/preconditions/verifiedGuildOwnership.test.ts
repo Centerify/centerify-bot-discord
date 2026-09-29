@@ -42,3 +42,11 @@ test("verify bypasses ownership checks without precondition acknowledgement", as
   expect(mocks.check).not.toHaveBeenCalled();
   expect(interaction.deferReply).not.toHaveBeenCalled();
 });
+
+test("unverify remains available after verification is removed", async () => {
+  const interaction = { commandName: "unverify", deferReply: vi.fn() };
+  const result = await precondition.chatInputRun(interaction as unknown as ChatInputCommandInteraction);
+  expect(result.isOk()).toBe(true);
+  expect(mocks.check).not.toHaveBeenCalled();
+  expect(interaction.deferReply).not.toHaveBeenCalled();
+});

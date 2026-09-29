@@ -10,6 +10,7 @@ const commandsRoot = join(root, "src", "commands");
 const expectedCommands = [
   "admin/settings.ts",
   "admin/setup.ts",
+  "admin/unverify.ts",
   "admin/verify.ts",
   "general/help.ts",
   "general/info.ts",

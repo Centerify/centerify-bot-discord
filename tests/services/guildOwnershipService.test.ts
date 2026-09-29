@@ -1,10 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Guild, RepliableInteraction } from "discord.js";
 
-const mocks = vi.hoisted(() => ({ first: vi.fn(), upsert: vi.fn() }));
+const mocks = vi.hoisted(() => ({ first: vi.fn(), upsert: vi.fn(), where: vi.fn(), delete: vi.fn() }));
 vi.mock("../../src/prisma/db.js", () => ({
   db: { orm: { public: { GuildOwnership: {
-    where: () => ({ first: mocks.first }), upsert: mocks.upsert,
+    where: mocks.where, upsert: mocks.upsert,
   } } } },
 }));
 vi.mock("../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
@@ -17,6 +17,7 @@ const guild = { id: "guild", ownerId: "old-owner", fetch: fetchGuild } as unknow
 beforeEach(() => {
   vi.resetAllMocks();
   fetchGuild.mockResolvedValue({ ownerId: "current-owner" });
+  mocks.where.mockReturnValue({ first: mocks.first, delete: mocks.delete });
 });
 
 test("unverified servers cannot run the bot", async () => {
@@ -51,6 +52,16 @@ test("only the current owner can persist verification", async () => {
     create: { guildId: "guild", ownerUserId: "current-owner" },
     update: { ownerUserId: "current-owner", verifiedAt: expect.any(String) },
   });
+});
+
+test("only the current owner can remove verification", async () => {
+  expect(await service.unverify(guild, "administrator")).toBe(false);
+  expect(await service.unverify(guild, "old-owner")).toBe(false);
+  expect(mocks.delete).not.toHaveBeenCalled();
+
+  expect(await service.unverify(guild, "current-owner")).toBe(true);
+  expect(mocks.where).toHaveBeenCalledWith({ guildId: "guild" });
+  expect(mocks.delete).toHaveBeenCalledOnce();
 });
 
 test("ownership denial completes a deferred reply", async () => {

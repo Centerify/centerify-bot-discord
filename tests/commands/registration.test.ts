@@ -27,6 +27,7 @@ test("all command builders serialize valid unique names and stay within option l
   expect(new Set(names).size).toBe(names.length);
   expect(names).toContain("setup");
   expect(names).toContain("settings");
+  expect(names).toContain("unverify");
   expect(names).not.toContain("welcome");
   expect(names).not.toContain("logging");
 });

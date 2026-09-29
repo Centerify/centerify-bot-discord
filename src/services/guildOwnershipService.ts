@@ -33,6 +33,16 @@ export class GuildOwnershipService {
     });
     return true;
   }
+
+  public async unverify(guild: Guild, userId: string): Promise<boolean> {
+    const currentGuild = await guild.fetch();
+    if (currentGuild.ownerId !== userId) {
+      return false;
+    }
+
+    await db.orm.public.GuildOwnership.where({ guildId: guild.id }).delete();
+    return true;
+  }
 }
 
 export const guildOwnershipService = new GuildOwnershipService();
