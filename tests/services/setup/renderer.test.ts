@@ -1,7 +1,10 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { Guild } from "discord.js";
 import type { GuildConfig } from "../../../src/services/guildConfigService.js";
 import { SetupRenderer } from "../../../src/services/setup/renderer.js";
+
+vi.mock("../../../src/prisma/db.js", () => ({ db: {} }));
+
 const renderer = new SetupRenderer();
 const guild = { name: "Server", iconURL: () => null } as unknown as Guild;
 const config = { xpEnabled: true, xpMethods: "messages,daily", xpSharing: "selected", xpSharedGuildIds: "123456789012345678",
