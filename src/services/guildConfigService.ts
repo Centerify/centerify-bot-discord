@@ -22,6 +22,9 @@ export type GuildConfigUpdate = Partial<{
   autoRoleId: string | null;
   loggingEnabled: boolean;
   loggingChannelId: string | null;
+  globalBanEnabled: boolean;
+  globalWarnEnabled: boolean;
+  globalNoteEnabled: boolean;
 }>;
 
 export class GuildConfigService {
@@ -59,6 +62,27 @@ export class GuildConfigService {
 
       throw error;
     }
+  }
+
+  public async globalModerationGuildIds(
+    feature: "ban" | "warn" | "note",
+  ) {
+    const configs = feature === "ban"
+      ? await db.orm.public.GuildConfig
+          .where({ globalBanEnabled: true })
+          .select("guildId")
+          .all()
+      : feature === "warn"
+        ? await db.orm.public.GuildConfig
+            .where({ globalWarnEnabled: true })
+            .select("guildId")
+            .all()
+        : await db.orm.public.GuildConfig
+            .where({ globalNoteEnabled: true })
+            .select("guildId")
+            .all();
+
+    return configs.map((config) => config.guildId);
   }
 
   private createDefaults(guildId: string) {

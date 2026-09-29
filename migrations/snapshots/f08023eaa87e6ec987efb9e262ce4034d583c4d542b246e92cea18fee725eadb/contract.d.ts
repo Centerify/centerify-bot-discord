@@ -33,9 +33,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'289e75ce386293667f9839c22b44e60ed30997d855a5843fa1032c10c4beb58a'>;
+  StorageHashBase<'f08023eaa87e6ec987efb9e262ce4034d583c4d542b246e92cea18fee725eadb'>;
 export type ExecutionHash =
-  ExecutionHashBase<'f083ec1ec09dee9d98cdf6979278620a810017afa72a4dc8b83676643e6398b6'>;
+  ExecutionHashBase<'04e16fdbf290aa84498140a457a1dbce3a765f487bda95b6e83f5b6f2b2a0883'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -255,9 +255,6 @@ export type FieldOutputTypes = {
       readonly autoRoleId: CodecTypes['pg/text@1']['output'] | null;
       readonly loggingEnabled: CodecTypes['pg/bool@1']['output'];
       readonly loggingChannelId: CodecTypes['pg/text@1']['output'] | null;
-      readonly globalBanEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly globalWarnEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly globalNoteEnabled: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -266,17 +263,6 @@ export type FieldOutputTypes = {
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly ownerUserId: CodecTypes['pg/text@1']['output'];
       readonly verifiedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    };
-    readonly GuildOwnershipRequest: {
-      readonly id: CodecTypes['pg/int4@1']['output'];
-      readonly guildId: CodecTypes['pg/text@1']['output'];
-      readonly ownerUserId: CodecTypes['pg/text@1']['output'];
-      readonly tokenDigest: CodecTypes['pg/text@1']['output'];
-      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly acceptedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly acceptedByUserId: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -302,7 +288,6 @@ export type FieldOutputTypes = {
       readonly action: 'WARNING' | 'TIMEOUT' | 'KICK' | 'BAN' | 'UNBAN' | 'NOTE';
       readonly reason: CodecTypes['pg/text@1']['output'];
       readonly durationMs: CodecTypes['pg/int4@1']['output'] | null;
-      readonly isGlobal: CodecTypes['pg/bool@1']['output'];
       readonly metadata: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -360,9 +345,6 @@ export type FieldInputTypes = {
       readonly autoRoleId: CodecTypes['pg/text@1']['input'] | null;
       readonly loggingEnabled: CodecTypes['pg/bool@1']['input'];
       readonly loggingChannelId: CodecTypes['pg/text@1']['input'] | null;
-      readonly globalBanEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly globalWarnEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly globalNoteEnabled: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -371,17 +353,6 @@ export type FieldInputTypes = {
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly ownerUserId: CodecTypes['pg/text@1']['input'];
       readonly verifiedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-    };
-    readonly GuildOwnershipRequest: {
-      readonly id: CodecTypes['pg/int4@1']['input'];
-      readonly guildId: CodecTypes['pg/text@1']['input'];
-      readonly ownerUserId: CodecTypes['pg/text@1']['input'];
-      readonly tokenDigest: CodecTypes['pg/text@1']['input'];
-      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly acceptedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly acceptedByUserId: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -407,7 +378,6 @@ export type FieldInputTypes = {
       readonly action: 'WARNING' | 'TIMEOUT' | 'KICK' | 'BAN' | 'UNBAN' | 'NOTE';
       readonly reason: CodecTypes['pg/text@1']['input'];
       readonly durationMs: CodecTypes['pg/int4@1']['input'] | null;
-      readonly isGlobal: CodecTypes['pg/bool@1']['input'];
       readonly metadata: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -451,13 +421,10 @@ export type FieldInputTypes = {
 };
 export type StorageColumnTypes = {
   readonly public: {
-    readonly guild_config: {
+    readonly guildConfig: {
       readonly autoRoleEnabled: CodecTypes['pg/bool@1']['output'];
       readonly autoRoleId: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly globalBanEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly globalNoteEnabled: CodecTypes['pg/bool@1']['output'];
-      readonly globalWarnEnabled: CodecTypes['pg/bool@1']['output'];
       readonly goodbyeChannelId: CodecTypes['pg/text@1']['output'] | null;
       readonly goodbyeEnabled: CodecTypes['pg/bool@1']['output'];
       readonly goodbyeMessage: CodecTypes['pg/text@1']['output'];
@@ -471,7 +438,7 @@ export type StorageColumnTypes = {
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['output'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['output'];
     };
-    readonly guild_ownership: {
+    readonly guildOwnership: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -479,18 +446,7 @@ export type StorageColumnTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly verifiedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
-    readonly guild_ownership_request: {
-      readonly acceptedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly acceptedByUserId: CodecTypes['pg/text@1']['output'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly guildId: CodecTypes['pg/text@1']['output'];
-      readonly id: CodecTypes['pg/int4@1']['output'];
-      readonly ownerUserId: CodecTypes['pg/text@1']['output'];
-      readonly tokenDigest: CodecTypes['pg/text@1']['output'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    };
-    readonly member_report: {
+    readonly memberReport: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -503,21 +459,20 @@ export type StorageColumnTypes = {
       readonly status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
-    readonly moderation_case: {
+    readonly moderationCase: {
       readonly action: 'WARNING' | 'TIMEOUT' | 'KICK' | 'BAN' | 'UNBAN' | 'NOTE';
       readonly caseNumber: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly durationMs: CodecTypes['pg/int4@1']['output'] | null;
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
-      readonly isGlobal: CodecTypes['pg/bool@1']['output'];
       readonly metadata: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly moderatorUserId: CodecTypes['pg/text@1']['output'];
       readonly reason: CodecTypes['pg/text@1']['output'];
       readonly targetUserId: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
-    readonly moderation_case_counter: {
+    readonly moderationCaseCounter: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -532,14 +487,14 @@ export type StorageColumnTypes = {
       readonly title: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
-    readonly report_counter: {
+    readonly reportCounter: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly guildId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly nextReportNumber: CodecTypes['pg/int4@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
-    readonly test_record: {
+    readonly testRecord: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
@@ -556,13 +511,10 @@ export type StorageColumnTypes = {
 };
 export type StorageColumnInputTypes = {
   readonly public: {
-    readonly guild_config: {
+    readonly guildConfig: {
       readonly autoRoleEnabled: CodecTypes['pg/bool@1']['input'];
       readonly autoRoleId: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly globalBanEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly globalNoteEnabled: CodecTypes['pg/bool@1']['input'];
-      readonly globalWarnEnabled: CodecTypes['pg/bool@1']['input'];
       readonly goodbyeChannelId: CodecTypes['pg/text@1']['input'] | null;
       readonly goodbyeEnabled: CodecTypes['pg/bool@1']['input'];
       readonly goodbyeMessage: CodecTypes['pg/text@1']['input'];
@@ -576,7 +528,7 @@ export type StorageColumnInputTypes = {
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['input'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['input'];
     };
-    readonly guild_ownership: {
+    readonly guildOwnership: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -584,18 +536,7 @@ export type StorageColumnInputTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly verifiedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
-    readonly guild_ownership_request: {
-      readonly acceptedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly acceptedByUserId: CodecTypes['pg/text@1']['input'] | null;
-      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly expiresAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly guildId: CodecTypes['pg/text@1']['input'];
-      readonly id: CodecTypes['pg/int4@1']['input'];
-      readonly ownerUserId: CodecTypes['pg/text@1']['input'];
-      readonly tokenDigest: CodecTypes['pg/text@1']['input'];
-      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-    };
-    readonly member_report: {
+    readonly memberReport: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -608,21 +549,20 @@ export type StorageColumnInputTypes = {
       readonly status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
-    readonly moderation_case: {
+    readonly moderationCase: {
       readonly action: 'WARNING' | 'TIMEOUT' | 'KICK' | 'BAN' | 'UNBAN' | 'NOTE';
       readonly caseNumber: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly durationMs: CodecTypes['pg/int4@1']['input'] | null;
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
-      readonly isGlobal: CodecTypes['pg/bool@1']['input'];
       readonly metadata: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly moderatorUserId: CodecTypes['pg/text@1']['input'];
       readonly reason: CodecTypes['pg/text@1']['input'];
       readonly targetUserId: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
-    readonly moderation_case_counter: {
+    readonly moderationCaseCounter: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -637,14 +577,14 @@ export type StorageColumnInputTypes = {
       readonly title: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
-    readonly report_counter: {
+    readonly reportCounter: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly guildId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly nextReportNumber: CodecTypes['pg/int4@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
-    readonly test_record: {
+    readonly testRecord: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
@@ -677,7 +617,7 @@ type ContractBase = Omit<
         readonly kind: 'postgres-schema';
         readonly entries: {
           readonly table: {
-            readonly guild_config: {
+            readonly guildConfig: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -782,33 +722,6 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
-                readonly globalBanEnabled: {
-                  readonly nativeType: 'bool';
-                  readonly codecId: 'pg/bool@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                };
-                readonly globalWarnEnabled: {
-                  readonly nativeType: 'bool';
-                  readonly codecId: 'pg/bool@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                };
-                readonly globalNoteEnabled: {
-                  readonly nativeType: 'bool';
-                  readonly codecId: 'pg/bool@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-string@1';
@@ -826,7 +739,7 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
-            readonly guild_ownership: {
+            readonly guildOwnership: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -869,89 +782,15 @@ type ContractBase = Omit<
               uniques: readonly [{ readonly columns: readonly ['guildId'] }];
               indexes: readonly [
                 {
-                  readonly name: 'guild_ownership_ownerUserId_idx_f93ae154';
-                  readonly prefix: 'guild_ownership_ownerUserId_idx';
+                  readonly name: 'guildOwnership_ownerUserId_idx_f93ae154';
+                  readonly prefix: 'guildOwnership_ownerUserId_idx';
                   readonly columns: readonly ['ownerUserId'];
                   readonly unique: false;
                 },
               ];
               foreignKeys: readonly [];
             };
-            readonly guild_ownership_request: {
-              columns: {
-                readonly id: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'function';
-                    readonly expression: 'autoincrement()';
-                  };
-                };
-                readonly guildId: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                };
-                readonly ownerUserId: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                };
-                readonly tokenDigest: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
-                };
-                readonly expiresAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: false;
-                };
-                readonly acceptedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: true;
-                };
-                readonly acceptedByUserId: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly createdAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: false;
-                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
-                };
-                readonly updatedAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                  readonly nullable: false;
-                };
-              };
-              primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [
-                { readonly columns: readonly ['guildId'] },
-                { readonly columns: readonly ['tokenDigest'] },
-              ];
-              indexes: readonly [
-                {
-                  readonly name: 'guild_ownership_request_expiresAt_idx_6b6b8c10';
-                  readonly prefix: 'guild_ownership_request_expiresAt_idx';
-                  readonly columns: readonly ['expiresAt'];
-                  readonly unique: false;
-                },
-                {
-                  readonly name: 'guild_ownership_request_ownerUserId_idx_f93ae154';
-                  readonly prefix: 'guild_ownership_request_ownerUserId_idx';
-                  readonly columns: readonly ['ownerUserId'];
-                  readonly unique: false;
-                },
-              ];
-              foreignKeys: readonly [];
-            };
-            readonly member_report: {
+            readonly memberReport: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -1022,33 +861,33 @@ type ContractBase = Omit<
               uniques: readonly [{ readonly columns: readonly ['guildId', 'reportNumber'] }];
               indexes: readonly [
                 {
-                  readonly name: 'member_report_guildId_reportedUserId_idx_c12523fc';
-                  readonly prefix: 'member_report_guildId_reportedUserId_idx';
+                  readonly name: 'memberReport_guildId_reportedUserId_idx_c12523fc';
+                  readonly prefix: 'memberReport_guildId_reportedUserId_idx';
                   readonly columns: readonly ['guildId', 'reportedUserId'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'member_report_guildId_reporterUserId_idx_f83dc8fa';
-                  readonly prefix: 'member_report_guildId_reporterUserId_idx';
+                  readonly name: 'memberReport_guildId_reporterUserId_idx_f83dc8fa';
+                  readonly prefix: 'memberReport_guildId_reporterUserId_idx';
                   readonly columns: readonly ['guildId', 'reporterUserId'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'member_report_guildId_status_idx_1c75905a';
-                  readonly prefix: 'member_report_guildId_status_idx';
+                  readonly name: 'memberReport_guildId_status_idx_1c75905a';
+                  readonly prefix: 'memberReport_guildId_status_idx';
                   readonly columns: readonly ['guildId', 'status'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'member_report_guildId_createdAt_idx_058cef23';
-                  readonly prefix: 'member_report_guildId_createdAt_idx';
+                  readonly name: 'memberReport_guildId_createdAt_idx_058cef23';
+                  readonly prefix: 'memberReport_guildId_createdAt_idx';
                   readonly columns: readonly ['guildId', 'createdAt'];
                   readonly unique: false;
                 },
               ];
               foreignKeys: readonly [];
             };
-            readonly moderation_case: {
+            readonly moderationCase: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -1094,15 +933,6 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
                 };
-                readonly isGlobal: {
-                  readonly nativeType: 'bool';
-                  readonly codecId: 'pg/bool@1';
-                  readonly nullable: false;
-                  readonly default: {
-                    readonly kind: 'literal';
-                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
-                  };
-                };
                 readonly metadata: {
                   readonly nativeType: 'jsonb';
                   readonly codecId: 'pg/jsonb@1';
@@ -1124,39 +954,33 @@ type ContractBase = Omit<
               uniques: readonly [{ readonly columns: readonly ['guildId', 'caseNumber'] }];
               indexes: readonly [
                 {
-                  readonly name: 'moderation_case_guildId_targetUserId_idx_03f6a49f';
-                  readonly prefix: 'moderation_case_guildId_targetUserId_idx';
+                  readonly name: 'moderationCase_guildId_targetUserId_idx_03f6a49f';
+                  readonly prefix: 'moderationCase_guildId_targetUserId_idx';
                   readonly columns: readonly ['guildId', 'targetUserId'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'moderation_case_guildId_moderatorUserId_idx_5a51b46e';
-                  readonly prefix: 'moderation_case_guildId_moderatorUserId_idx';
+                  readonly name: 'moderationCase_guildId_moderatorUserId_idx_5a51b46e';
+                  readonly prefix: 'moderationCase_guildId_moderatorUserId_idx';
                   readonly columns: readonly ['guildId', 'moderatorUserId'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'moderation_case_guildId_action_idx_473346f7';
-                  readonly prefix: 'moderation_case_guildId_action_idx';
+                  readonly name: 'moderationCase_guildId_action_idx_473346f7';
+                  readonly prefix: 'moderationCase_guildId_action_idx';
                   readonly columns: readonly ['guildId', 'action'];
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'moderation_case_guildId_createdAt_idx_058cef23';
-                  readonly prefix: 'moderation_case_guildId_createdAt_idx';
+                  readonly name: 'moderationCase_guildId_createdAt_idx_058cef23';
+                  readonly prefix: 'moderationCase_guildId_createdAt_idx';
                   readonly columns: readonly ['guildId', 'createdAt'];
-                  readonly unique: false;
-                },
-                {
-                  readonly name: 'moderation_case_targetUserId_isGlobal_action_idx_6ac275c1';
-                  readonly prefix: 'moderation_case_targetUserId_isGlobal_action_idx';
-                  readonly columns: readonly ['targetUserId', 'isGlobal', 'action'];
                   readonly unique: false;
                 },
               ];
               foreignKeys: readonly [];
             };
-            readonly moderation_case_counter: {
+            readonly moderationCaseCounter: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -1261,7 +1085,7 @@ type ContractBase = Omit<
                 },
               ];
             };
-            readonly report_counter: {
+            readonly reportCounter: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -1303,7 +1127,7 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
-            readonly test_record: {
+            readonly testRecord: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
@@ -1397,35 +1221,31 @@ type ContractBase = Omit<
   readonly roots: {
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly post: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
-    readonly test_record: {
+    readonly testRecord: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'TestRecord';
     };
-    readonly guild_config: {
+    readonly guildConfig: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'GuildConfig';
     };
-    readonly guild_ownership: {
+    readonly guildOwnership: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'GuildOwnership';
     };
-    readonly guild_ownership_request: {
-      readonly namespace: 'public' & NamespaceId;
-      readonly model: 'GuildOwnershipRequest';
-    };
-    readonly moderation_case_counter: {
+    readonly moderationCaseCounter: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ModerationCaseCounter';
     };
-    readonly moderation_case: {
+    readonly moderationCase: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ModerationCase';
     };
-    readonly report_counter: {
+    readonly reportCounter: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ReportCounter';
     };
-    readonly member_report: {
+    readonly memberReport: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'MemberReport';
     };
@@ -1488,18 +1308,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly globalBanEnabled: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
-              };
-              readonly globalWarnEnabled: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
-              };
-              readonly globalNoteEnabled: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
-              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -1517,7 +1325,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'guild_config';
+              readonly table: 'guildConfig';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1533,9 +1341,6 @@ type ContractBase = Omit<
                 readonly autoRoleId: { readonly column: 'autoRoleId' };
                 readonly loggingEnabled: { readonly column: 'loggingEnabled' };
                 readonly loggingChannelId: { readonly column: 'loggingChannelId' };
-                readonly globalBanEnabled: { readonly column: 'globalBanEnabled' };
-                readonly globalWarnEnabled: { readonly column: 'globalWarnEnabled' };
-                readonly globalNoteEnabled: { readonly column: 'globalNoteEnabled' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
@@ -1579,81 +1384,13 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'guild_ownership';
+              readonly table: 'guildOwnership';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly guildId: { readonly column: 'guildId' };
                 readonly ownerUserId: { readonly column: 'ownerUserId' };
                 readonly verifiedAt: { readonly column: 'verifiedAt' };
-                readonly createdAt: { readonly column: 'createdAt' };
-                readonly updatedAt: { readonly column: 'updatedAt' };
-              };
-            };
-          };
-          readonly GuildOwnershipRequest: {
-            readonly fields: {
-              readonly id: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
-              };
-              readonly guildId: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly ownerUserId: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly tokenDigest: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly expiresAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly acceptedAt: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly acceptedByUserId: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly createdAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-              readonly updatedAt: {
-                readonly nullable: false;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-string@1';
-                };
-              };
-            };
-            readonly relations: Record<string, never>;
-            readonly storage: {
-              readonly table: 'guild_ownership_request';
-              readonly namespaceId: 'public';
-              readonly fields: {
-                readonly id: { readonly column: 'id' };
-                readonly guildId: { readonly column: 'guildId' };
-                readonly ownerUserId: { readonly column: 'ownerUserId' };
-                readonly tokenDigest: { readonly column: 'tokenDigest' };
-                readonly expiresAt: { readonly column: 'expiresAt' };
-                readonly acceptedAt: { readonly column: 'acceptedAt' };
-                readonly acceptedByUserId: { readonly column: 'acceptedByUserId' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
@@ -1717,7 +1454,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'member_report';
+              readonly table: 'memberReport';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1768,10 +1505,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
-              readonly isGlobal: {
-                readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
-              };
               readonly metadata: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
@@ -1793,7 +1526,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'moderation_case';
+              readonly table: 'moderationCase';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1804,7 +1537,6 @@ type ContractBase = Omit<
                 readonly action: { readonly column: 'action' };
                 readonly reason: { readonly column: 'reason' };
                 readonly durationMs: { readonly column: 'durationMs' };
-                readonly isGlobal: { readonly column: 'isGlobal' };
                 readonly metadata: { readonly column: 'metadata' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -1842,7 +1574,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'moderation_case_counter';
+              readonly table: 'moderationCaseCounter';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1940,7 +1672,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'report_counter';
+              readonly table: 'reportCounter';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1971,7 +1703,7 @@ type ContractBase = Omit<
             };
             readonly relations: Record<string, never>;
             readonly storage: {
-              readonly table: 'test_record';
+              readonly table: 'testRecord';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -2087,7 +1819,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'guild_config';
+            readonly table: 'guildConfig';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
@@ -2096,7 +1828,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'guild_ownership';
+            readonly table: 'guildOwnership';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
@@ -2105,7 +1837,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'guild_ownership_request';
+            readonly table: 'memberReport';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
@@ -2114,7 +1846,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'member_report';
+            readonly table: 'moderationCase';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
@@ -2123,16 +1855,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'moderation_case';
-            readonly column: 'updatedAt';
-          };
-          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
-          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
-        },
-        {
-          readonly ref: {
-            readonly namespace: 'public';
-            readonly table: 'moderation_case_counter';
+            readonly table: 'moderationCaseCounter';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
@@ -2150,7 +1873,7 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
-            readonly table: 'report_counter';
+            readonly table: 'reportCounter';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };

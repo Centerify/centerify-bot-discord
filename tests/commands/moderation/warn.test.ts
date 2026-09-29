@@ -21,12 +21,14 @@ test("warn command registers warnings with optional durations and automatic role
   assertOption(command, "User", "user", true);
   assertOption(command, "String", "reason", true);
   assertOption(command, "String", "duration", false);
+  assertOption(command, "Boolean", "global", false);
   assert.doesNotMatch(command.source, /\.setName\("role"\)/);
   assert.match(command.source, /countWarningsForUser/);
   assert.match(command.source, /getOrCreateWarnRole/);
   assert.match(command.source, /scheduleWarningRoleRemoval/);
   assertUsesService(command, "dmUser");
   assertUsesService(command, "moderationCaseService");
+  assertUsesService(command, "getGlobalModerationTargets");
   assert.equal(getWarnRoleName(1), "warn1");
   assert.equal(getWarnRoleName(12), "warn12");
 });

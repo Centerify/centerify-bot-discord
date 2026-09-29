@@ -36,10 +36,10 @@ export class ReportService {
   ) {
     const rows = await tx.query(
       db.raw.sql`
-        INSERT INTO "reportCounter" ("guildId", "nextReportNumber", "createdAt", "updatedAt")
+        INSERT INTO report_counter ("guildId", "nextReportNumber", "createdAt", "updatedAt")
         VALUES (${guildId}, 2, now(), now())
         ON CONFLICT ("guildId") DO UPDATE
-        SET "nextReportNumber" = "reportCounter"."nextReportNumber" + 1,
+        SET "nextReportNumber" = report_counter."nextReportNumber" + 1,
             "updatedAt" = now()
         RETURNING "nextReportNumber" - 1 AS "reportNumber"
       `.returnsRow({ reportNumber: "pg/int4@1" }).build(),
@@ -88,7 +88,7 @@ export class ReportService {
       "sqlState" in error &&
       "constraint" in error &&
       error.sqlState === "23505" &&
-      error.constraint === "memberReport_guildId_reportNumber_key"
+      error.constraint === "member_report_guildId_reportNumber_key"
     );
   }
 }

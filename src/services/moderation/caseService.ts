@@ -73,6 +73,18 @@ export class ModerationCaseService {
       .all();
   }
 
+  public recentGlobalNotesForUser(
+    guildId: string,
+    targetUserId: string,
+    limit = defaultLimit,
+  ) {
+    return db.orm.public.ModerationCase
+      .where({ guildId, targetUserId, action: "NOTE", isGlobal: true })
+      .orderBy((moderationCase) => moderationCase.createdAt.desc())
+      .limit(limit)
+      .all();
+  }
+
   public async countForUser(guildId: string, targetUserId: string) {
     const result = await db.orm.public.ModerationCase
       .where({ guildId, targetUserId })
@@ -140,6 +152,7 @@ export class ModerationCaseService {
         action: input.action,
         reason: input.reason,
         durationMs: input.durationMs ?? null,
+        isGlobal: input.isGlobal ?? false,
         metadata: input.metadata ?? null,
       });
     });
@@ -151,10 +164,10 @@ export class ModerationCaseService {
   ) {
     const rows = await tx.query(
       db.raw.sql`
-        INSERT INTO "moderationCaseCounter" ("guildId", "nextCaseNumber", "createdAt", "updatedAt")
+        INSERT INTO moderation_case_counter ("guildId", "nextCaseNumber", "createdAt", "updatedAt")
         VALUES (${guildId}, 2, now(), now())
         ON CONFLICT ("guildId") DO UPDATE
-        SET "nextCaseNumber" = "moderationCaseCounter"."nextCaseNumber" + 1,
+        SET "nextCaseNumber" = moderation_case_counter."nextCaseNumber" + 1,
             "updatedAt" = now()
         RETURNING "nextCaseNumber" - 1 AS "caseNumber"
       `.returnsRow({ caseNumber: "pg/int4@1" }).build(),
@@ -177,7 +190,7 @@ export class ModerationCaseService {
       "sqlState" in error &&
       "constraint" in error &&
       error.sqlState === "23505" &&
-      error.constraint === "moderationCase_guildId_caseNumber_key"
+      error.constraint === "moderation_case_guildId_caseNumber_key"
     );
   }
 }

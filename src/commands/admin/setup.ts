@@ -52,16 +52,19 @@ export class SetupCommand extends Command {
       return;
     }
 
+    // Acknowledge before touching the database; Discord invalidates an
+    // interaction if its first response takes longer than three seconds.
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const sessionId = interaction.id;
     let config: GuildConfig;
 
     try {
       config = await this.loadConfig(interaction.guildId);
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content:
           "I could not load this server's setup right now. Please try again shortly.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -73,10 +76,9 @@ export class SetupCommand extends Command {
       sessionId,
     );
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: initialScreen.embeds,
       components: initialScreen.components,
-      flags: MessageFlags.Ephemeral,
     });
 
     const reply = await interaction.fetchReply();

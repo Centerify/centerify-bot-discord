@@ -1,0 +1,209 @@
+[
+  {
+    "id": "column.public.guildConfig.globalBanEnabled",
+    "label": "Add column \"globalBanEnabled\" to \"guildConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "globalBanEnabled",
+        "table": "guildConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"globalBanEnabled\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalBanEnabled"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"globalBanEnabled\"",
+        "sql": "ALTER TABLE \"public\".\"guildConfig\" ADD COLUMN \"globalBanEnabled\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"globalBanEnabled\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalBanEnabled"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guildConfig.globalNoteEnabled",
+    "label": "Add column \"globalNoteEnabled\" to \"guildConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "globalNoteEnabled",
+        "table": "guildConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"globalNoteEnabled\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalNoteEnabled"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"globalNoteEnabled\"",
+        "sql": "ALTER TABLE \"public\".\"guildConfig\" ADD COLUMN \"globalNoteEnabled\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"globalNoteEnabled\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalNoteEnabled"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guildConfig.globalWarnEnabled",
+    "label": "Add column \"globalWarnEnabled\" to \"guildConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "globalWarnEnabled",
+        "table": "guildConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"globalWarnEnabled\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalWarnEnabled"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"globalWarnEnabled\"",
+        "sql": "ALTER TABLE \"public\".\"guildConfig\" ADD COLUMN \"globalWarnEnabled\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"globalWarnEnabled\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guildConfig",
+          "globalWarnEnabled"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.moderationCase.isGlobal",
+    "label": "Add column \"isGlobal\" to \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isGlobal",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isGlobal\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "moderationCase",
+          "isGlobal"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isGlobal\"",
+        "sql": "ALTER TABLE \"public\".\"moderationCase\" ADD COLUMN \"isGlobal\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isGlobal\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "moderationCase",
+          "isGlobal"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationCase.moderationCase_targetUserId_isGlobal_action_idx_6ac275c1",
+    "label": "Create index \"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\" on \"moderationCase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationCase_targetUserId_isGlobal_action_idx_6ac275c1",
+        "table": "moderationCase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\"",
+        "sql": "CREATE INDEX \"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\" ON \"public\".\"moderationCase\" (\"targetUserId\", \"isGlobal\", \"action\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationCase_targetUserId_isGlobal_action_idx_6ac275c1\""
+        ]
+      }
+    ]
+  }
+]

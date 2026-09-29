@@ -69,7 +69,7 @@ export function assertGuildCommand(command: CommandSource, permission?: string) 
 
 export function assertOption(
   command: CommandSource,
-  optionType: "User" | "String" | "Integer" | "Channel",
+  optionType: "User" | "String" | "Integer" | "Boolean" | "Channel" | "Role",
   name: string,
   required?: boolean,
 ) {
