@@ -4,6 +4,7 @@ import { logger } from "../logger.js";
 import { guildConfigService } from "../services/guildConfigService.js";
 import { guildOwnershipService } from "../services/guildOwnershipService.js";
 import { greetingService } from "../services/greetingService.js";
+import { runCustomEvent } from "../services/customResponseRunner.js";
 
 export class GuildMemberRemoveListener extends Listener<typeof Events.GuildMemberRemove> {
   public constructor(context: Listener.LoaderContext, options: Listener.Options) {
@@ -28,5 +29,6 @@ export class GuildMemberRemoveListener extends Listener<typeof Events.GuildMembe
     }
 
     await greetingService.sendGoodbye(config, member);
+    await runCustomEvent("member_leave", member);
   }
 }

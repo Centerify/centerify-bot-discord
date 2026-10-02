@@ -11,7 +11,7 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
   public override async chatInputRun(interaction: ChatInputCommandInteraction) {
     if (interaction.commandName === "verify" || interaction.commandName === "unverify") return this.ok();
     // Ownership checks make REST and database requests before the command runs.
-    if (["settings", "setup"].includes(interaction.commandName) && !interaction.deferred && !interaction.replied) {
+    if (["settings", "setup", "custom"].includes(interaction.commandName) && !interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
     return this.checkInteraction(interaction);

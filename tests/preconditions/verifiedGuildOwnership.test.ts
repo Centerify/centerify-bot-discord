@@ -12,10 +12,10 @@ import { VerifiedGuildOwnershipPrecondition } from "../../src/preconditions/veri
 const precondition = Object.create(VerifiedGuildOwnershipPrecondition.prototype) as VerifiedGuildOwnershipPrecondition;
 beforeEach(() => vi.resetAllMocks());
 
-test("settings acknowledgement completes before slow ownership checks start", async () => {
+test.each(["settings", "setup", "custom"])("%s acknowledgement completes before slow ownership checks start", async (commandName) => {
   let acknowledged = false;
   const interaction = {
-    commandName: "settings", deferred: false, replied: false,
+    commandName, deferred: false, replied: false,
     deferReply: vi.fn(async () => { acknowledged = true; }),
   };
   mocks.check.mockImplementation(async () => {
@@ -27,9 +27,9 @@ test("settings acknowledgement completes before slow ownership checks start", as
   expect(interaction.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
 });
 
-test("an acknowledged settings interaction is not deferred twice", async () => {
+test.each(["settings", "setup", "custom"])("an acknowledged %s interaction is not deferred twice", async (commandName) => {
   mocks.check.mockResolvedValue(true);
-  const interaction = { commandName: "settings", deferred: true, replied: false, deferReply: vi.fn() };
+  const interaction = { commandName, deferred: true, replied: false, deferReply: vi.fn() };
   await precondition.chatInputRun(interaction as unknown as ChatInputCommandInteraction);
   expect(interaction.deferReply).not.toHaveBeenCalled();
   expect(mocks.check).toHaveBeenCalledOnce();

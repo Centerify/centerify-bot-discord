@@ -101,6 +101,7 @@ export class SetupRenderer {
             "`Auto Role` new member role",
             "`Logging` server log channel",
             "`Global Moderation` shared bans, warnings, and notes",
+            ...(this.entryCommand === "settings" ? ["`Custom Commands` responses and global or selected-server scope"] : []),
           ].join("\n"),
         },
       );
@@ -117,6 +118,7 @@ export class SetupRenderer {
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           this.button(sessionId, "xp", "XP", ButtonStyle.Primary),
+          ...(this.entryCommand === "settings" ? [this.button(sessionId, "custom-commands", "Custom Commands", ButtonStyle.Primary)] : []),
           this.button(sessionId, "finish", "Done", ButtonStyle.Success),
         ),
       ],

@@ -1,0 +1,566 @@
+[
+  {
+    "id": "table.custom_command",
+    "label": "Create table \"custom_command\"",
+    "summary": "Creates table \"custom_command\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"custom_command\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"custom_command\"",
+        "sql": "CREATE TABLE \"public\".\"custom_command\" (\n  \"content\" jsonb NOT NULL,\n  \"cooldownScope\" text DEFAULT 'USER' NOT NULL,\n  \"cooldownSeconds\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"deleteInvocation\" bool DEFAULT false NOT NULL,\n  \"description\" text DEFAULT '' NOT NULL,\n  \"enabled\" bool DEFAULT true NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"lastUsedAt\" timestamptz,\n  \"name\" text NOT NULL,\n  \"replyToInvocation\" bool DEFAULT true NOT NULL,\n  \"responseType\" text DEFAULT 'TEXT' NOT NULL,\n  \"triggerType\" text DEFAULT 'BOTH' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"updatedBy\" text NOT NULL,\n  \"usageCount\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"custom_command_cooldown_6f7f823d\" CHECK (\"cooldownSeconds\" >= 0 AND \"cooldownSeconds\" <= 86400),\n  CONSTRAINT \"custom_command_normalized_name_3dad82ba\" CHECK (name = lower(btrim(name))),\n  CONSTRAINT \"custom_command_response_b4a3f921\" CHECK (\"responseType\" IN ('TEXT', 'EMBED', 'MULTI')),\n  CONSTRAINT \"custom_command_scope_3827e66b\" CHECK (\"cooldownScope\" IN ('USER', 'CHANNEL', 'GUILD', 'GLOBAL_COMMAND')),\n  CONSTRAINT \"custom_command_trigger_f7eca854\" CHECK (\"triggerType\" IN ('SLASH', 'MESSAGE', 'BOTH'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"custom_command\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.custom_command_name",
+    "label": "Create table \"custom_command_name\"",
+    "summary": "Creates table \"custom_command_name\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "custom_command_name"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"custom_command_name\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"custom_command_name\"",
+        "sql": "CREATE TABLE \"public\".\"custom_command_name\" (\n  \"commandId\" int4 NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"custom_command_name_normalized_3dad82ba\" CHECK (name = lower(btrim(name)))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"custom_command_name\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.custom_command_restriction",
+    "label": "Create table \"custom_command_restriction\"",
+    "summary": "Creates table \"custom_command_restriction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "custom_command_restriction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"custom_command_restriction\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"custom_command_restriction\"",
+        "sql": "CREATE TABLE \"public\".\"custom_command_restriction\" (\n  \"commandId\" int4 NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"kind\" text NOT NULL,\n  \"value\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"custom_command_restriction_kind_0b28cb65\" CHECK (kind IN ('allowedRoleIds', 'deniedRoleIds', 'allowedChannelIds', 'deniedChannelIds', 'requiredUserPermissions', 'requiredBotPermissions'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"custom_command_restriction\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.custom_command.custom_command_guildId_id_key",
+    "label": "Add unique constraint on \"custom_command\" (guildId, id)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "custom_command_guildId_id_key",
+        "table": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"custom_command_guildId_id_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_guildId_id_key",
+          "public",
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"custom_command_guildId_id_key\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command\" ADD CONSTRAINT \"custom_command_guildId_id_key\" UNIQUE (\"guildId\", \"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"custom_command_guildId_id_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_guildId_id_key",
+          "public",
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.custom_command.custom_command_guildId_name_key",
+    "label": "Add unique constraint on \"custom_command\" (guildId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "custom_command_guildId_name_key",
+        "table": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"custom_command_guildId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_guildId_name_key",
+          "public",
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"custom_command_guildId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command\" ADD CONSTRAINT \"custom_command_guildId_name_key\" UNIQUE (\"guildId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"custom_command_guildId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_guildId_name_key",
+          "public",
+          "\"public\".\"custom_command\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.custom_command_name.custom_command_name_guildId_name_key",
+    "label": "Add unique constraint on \"custom_command_name\" (guildId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "custom_command_name_guildId_name_key",
+        "table": "custom_command_name"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"custom_command_name_guildId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_name_guildId_name_key",
+          "public",
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"custom_command_name_guildId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command_name\" ADD CONSTRAINT \"custom_command_name_guildId_name_key\" UNIQUE (\"guildId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"custom_command_name_guildId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_name_guildId_name_key",
+          "public",
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.custom_command_restriction.custom_command_restriction_guildId_commandId_kind_value_key",
+    "label": "Add unique constraint on \"custom_command_restriction\" (guildId, commandId, kind, value)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "custom_command_restriction_guildId_commandId_kind_value_key",
+        "table": "custom_command_restriction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"custom_command_restriction_guildId_commandId_kind_value_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_restriction_guildId_commandId_kind_value_key",
+          "public",
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"custom_command_restriction_guildId_commandId_kind_value_key\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command_restriction\" ADD CONSTRAINT \"custom_command_restriction_guildId_commandId_kind_value_key\" UNIQUE (\"guildId\", \"commandId\", \"kind\", \"value\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"custom_command_restriction_guildId_commandId_kind_value_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_restriction_guildId_commandId_kind_value_key",
+          "public",
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command.custom_command_enabled_idx_7f014af8",
+    "label": "Create index \"custom_command_enabled_idx_7f014af8\" on \"custom_command\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_enabled_idx_7f014af8",
+        "table": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_enabled_idx_7f014af8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_enabled_idx_7f014af8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_enabled_idx_7f014af8\"",
+        "sql": "CREATE INDEX \"custom_command_enabled_idx_7f014af8\" ON \"public\".\"custom_command\" (\"enabled\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_enabled_idx_7f014af8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_enabled_idx_7f014af8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command.custom_command_guildId_enabled_triggerType_idx_df732914",
+    "label": "Create index \"custom_command_guildId_enabled_triggerType_idx_df732914\" on \"custom_command\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_guildId_enabled_triggerType_idx_df732914",
+        "table": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_guildId_enabled_triggerType_idx_df732914\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_guildId_enabled_triggerType_idx_df732914\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_guildId_enabled_triggerType_idx_df732914\"",
+        "sql": "CREATE INDEX \"custom_command_guildId_enabled_triggerType_idx_df732914\" ON \"public\".\"custom_command\" (\"guildId\", \"enabled\", \"triggerType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_guildId_enabled_triggerType_idx_df732914\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_guildId_enabled_triggerType_idx_df732914\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command.custom_command_triggerType_idx_fe2bcd74",
+    "label": "Create index \"custom_command_triggerType_idx_fe2bcd74\" on \"custom_command\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_triggerType_idx_fe2bcd74",
+        "table": "custom_command"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_triggerType_idx_fe2bcd74\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_triggerType_idx_fe2bcd74\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_triggerType_idx_fe2bcd74\"",
+        "sql": "CREATE INDEX \"custom_command_triggerType_idx_fe2bcd74\" ON \"public\".\"custom_command\" (\"triggerType\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_triggerType_idx_fe2bcd74\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_triggerType_idx_fe2bcd74\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command_name.custom_command_name_guildId_commandId_idx_eb216ee4",
+    "label": "Create index \"custom_command_name_guildId_commandId_idx_eb216ee4\" on \"custom_command_name\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_name_guildId_commandId_idx_eb216ee4",
+        "table": "custom_command_name"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_name_guildId_commandId_idx_eb216ee4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_name_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_name_guildId_commandId_idx_eb216ee4\"",
+        "sql": "CREATE INDEX \"custom_command_name_guildId_commandId_idx_eb216ee4\" ON \"public\".\"custom_command_name\" (\"guildId\", \"commandId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_name_guildId_commandId_idx_eb216ee4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_name_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command_restriction.custom_command_restriction_guildId_commandId_idx_eb216ee4",
+    "label": "Create index \"custom_command_restriction_guildId_commandId_idx_eb216ee4\" on \"custom_command_restriction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_restriction_guildId_commandId_idx_eb216ee4",
+        "table": "custom_command_restriction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_restriction_guildId_commandId_idx_eb216ee4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_restriction_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_restriction_guildId_commandId_idx_eb216ee4\"",
+        "sql": "CREATE INDEX \"custom_command_restriction_guildId_commandId_idx_eb216ee4\" ON \"public\".\"custom_command_restriction\" (\"guildId\", \"commandId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_restriction_guildId_commandId_idx_eb216ee4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_restriction_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.custom_command_name.custom_command_name_guildId_commandId_fkey",
+    "label": "Add foreign key \"custom_command_name_guildId_commandId_fkey\" on \"custom_command_name\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "custom_command_name_guildId_commandId_fkey",
+        "table": "custom_command_name"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"custom_command_name_guildId_commandId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_name_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"custom_command_name_guildId_commandId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command_name\"\nADD CONSTRAINT \"custom_command_name_guildId_commandId_fkey\"\nFOREIGN KEY (\"guildId\", \"commandId\")\nREFERENCES \"public\".\"custom_command\" (\"guildId\", \"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"custom_command_name_guildId_commandId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_name_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_name\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.custom_command_restriction.custom_command_restriction_guildId_commandId_fkey",
+    "label": "Add foreign key \"custom_command_restriction_guildId_commandId_fkey\" on \"custom_command_restriction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "custom_command_restriction_guildId_commandId_fkey",
+        "table": "custom_command_restriction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"custom_command_restriction_guildId_commandId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_restriction_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"custom_command_restriction_guildId_commandId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command_restriction\"\nADD CONSTRAINT \"custom_command_restriction_guildId_commandId_fkey\"\nFOREIGN KEY (\"guildId\", \"commandId\")\nREFERENCES \"public\".\"custom_command\" (\"guildId\", \"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"custom_command_restriction_guildId_commandId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_restriction_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_restriction\""
+        ]
+      }
+    ]
+  }
+]

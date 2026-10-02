@@ -82,6 +82,12 @@ export class SettingsCommand extends Command {
       busy = true;
       collector.resetTimer();
       try {
+        if (action === "custom-commands" && button.isButton()) {
+          await button.deferReply({ flags: MessageFlags.Ephemeral });
+          const { openCustomCommandSettings } = await import("../../services/customCommands/settings.js");
+          await openCustomCommandSettings(button);
+          return;
+        }
         current = await handler.handleComponent({ componentInteraction: button, rootInteraction: interaction, config: current, sessionId: interaction.id });
         if (action === "finish" && button.deferred) {
           finished = true;

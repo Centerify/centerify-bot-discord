@@ -1,0 +1,473 @@
+import { randomUUID } from "node:crypto";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest";
+import { container } from "@sapphire/framework";
+import {
+  Collection,
+  ComponentType,
+  MessageFlags,
+  PermissionFlagsBits,
+  PermissionsBitField,
+  type Client,
+  type Guild,
+  type GuildMember,
+  type Message,
+} from "discord.js";
+
+// Only Discord delivery is simulated. Commands, Settings, the editor, ownership,
+// validation, resolution, execution, cooldowns and PostgreSQL use production code.
+const url = process.env.TEST_DATABASE_URL;
+const prefix = `sharing-e2e-${randomUUID()}`;
+const ADMIN = "323456789012345678",
+  USER = "423456789012345678";
+const ids = ["source", "selected", "excluded", "future"].map(
+  (name) => `${prefix}-${name}`,
+);
+let db: typeof import("../../src/prisma/db.js").db;
+let ownership: typeof import("../../src/services/guildOwnershipService.js").guildOwnershipService;
+let runtime: typeof import("../../src/services/customCommands/runtime.js");
+let SettingsCommand: typeof import("../../src/commands/admin/settings.js").SettingsCommand;
+let CustomCommand: typeof import("../../src/commands/admin/custom.js").CustomCommand;
+let MessageCreateListener: typeof import("../../src/listeners/messageCreate.js").MessageCreateListener;
+let previousClient: PropertyDescriptor | undefined;
+let errorLog: ReturnType<typeof vi.spyOn> | undefined;
+const guilds = new Collection<string, Guild>();
+const client = {
+  guilds: { cache: guilds, fetch: async (id: string) => guilds.get(id)! },
+} as unknown as Client;
+const collectors = new Set<{ stop(reason?: string): void }>();
+
+function makeGuild(id: string, name: string) {
+  const guild = {
+    id,
+    name,
+    ownerId: ADMIN,
+    client,
+    memberCount: 3,
+    iconURL: () => null,
+    fetch: async () => guild,
+    members: {
+      me: null as GuildMember | null,
+      fetch: vi.fn(async (input: { user: string } | string) =>
+        members.get(typeof input === "string" ? input : input.user)!,
+      ),
+    },
+    roles: { cache: new Collection() },
+    channels: { cache: new Collection() },
+  };
+  const members = new Map<string, GuildMember>();
+  for (const id of [ADMIN, USER, "bot"])
+    members.set(id, {
+      id,
+      guild,
+      user: { id, username: id === USER ? "Alex" : "Admin", bot: id === "bot" },
+      displayName: id === USER ? "Alex" : "Admin",
+      roles: { cache: new Collection() },
+      permissions: new PermissionsBitField(
+        id === USER
+          ? [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+          : [PermissionFlagsBits.Administrator],
+      ),
+    } as unknown as GuildMember);
+  guild.members.me = members.get("bot")!;
+  guilds.set(id, guild as unknown as Guild);
+  return { guild, members };
+}
+function channel(guild: Guild) {
+  return {
+    id: `channel-${guild.id}`,
+    guildId: guild.id,
+    name: "general",
+    isThread: () => false,
+    isDMBased: () => false,
+    permissionsFor: (member: GuildMember) => member.permissions,
+    send: vi.fn().mockResolvedValue(undefined),
+  };
+}
+function interaction(guild: Guild, actor = ADMIN) {
+  const callbacks = new Map<string, (...args: any[]) => any>();
+  const collector = {
+    ended: false,
+    resetTimer: vi.fn(),
+    on: (event: string, callback: (...args: any[]) => any) => {
+      callbacks.set(event, callback);
+      return collector;
+    },
+    stop: (reason = "finished") => {
+      collector.ended = true;
+      callbacks.get("end")?.([], reason);
+    },
+  };
+  const message = { createMessageComponentCollector: () => collector };
+  collectors.add(collector);
+  const root = {
+    id: randomUUID(),
+    guild,
+    guildId: guild.id,
+    client,
+    user: { id: actor },
+    member: null as GuildMember | null,
+    channel: channel(guild),
+    deferred: false,
+    replied: false,
+    inCachedGuild: () => true,
+    reply: vi.fn().mockResolvedValue(undefined),
+    followUp: vi.fn().mockResolvedValue(undefined),
+    deferReply: vi.fn(async function (this: { deferred: boolean }) {
+      this.deferred = true;
+    }),
+    deferUpdate: vi.fn(async function (this: { deferred: boolean }) {
+      this.deferred = true;
+    }),
+    editReply: vi.fn(async function (
+      this: { replied: boolean },
+      _payload: any,
+    ) {
+      this.replied = true;
+      return message;
+    }),
+  };
+  return { root, collector, callbacks, message };
+}
+async function withMember(guild: Guild, actor = ADMIN) {
+  const fixture = interaction(guild, actor);
+  fixture.root.member = await guild.members.fetch({ user: actor });
+  return fixture;
+}
+function customOptions(
+  sub: string,
+  values: Record<string, string | number | boolean> = {},
+) {
+  return {
+    getSubcommand: () => sub,
+    getString: (key: string) => values[key] ?? null,
+    getBoolean: (key: string) => values[key] ?? null,
+    getInteger: (key: string) => values[key] ?? null,
+    getRole: () => null,
+    getChannel: () => null,
+  };
+}
+async function custom(
+  guild: Guild,
+  sub: string,
+  values: Record<string, string | number | boolean>,
+  actor = ADMIN,
+) {
+  const f = await withMember(guild, actor);
+  await Object.create(CustomCommand.prototype).chatInputRun({
+    ...f.root,
+    options: customOptions(sub, values),
+  });
+  // A production command completes expected errors in its reply instead of throwing.
+  return f;
+}
+function controls(f: Awaited<ReturnType<typeof withMember>>) {
+  const payload = f.root.editReply.mock.calls.at(-1)![0];
+  const flatten = (items: any[]): any[] =>
+    items.flatMap((item) => [item, ...flatten(item.components ?? [])]);
+  return flatten(
+    (payload.components ?? []).map((item: any) =>
+      item.toJSON ? item.toJSON() : item,
+    ),
+  );
+}
+async function click(
+  f: Awaited<ReturnType<typeof withMember>>,
+  action: string,
+  values?: string[],
+) {
+  const control = controls(f).find((item) =>
+    item.custom_id?.endsWith(`:${action}`),
+  );
+  expect(control, `Control ${action} should be rendered`).toBeDefined();
+  const item = await withMember(f.root.guild);
+  const component = {
+    ...item.root,
+    customId: control.custom_id,
+    values: values ?? [],
+    isButton: () => values === undefined,
+    isStringSelectMenu: () => values !== undefined,
+    isChannelSelectMenu: () => false,
+    isRoleSelectMenu: () => false,
+  };
+  await f.callbacks.get("collect")!(component);
+  expect(item.root.followUp).not.toHaveBeenCalled();
+  return item;
+}
+async function settings(guild: Guild) {
+  const f = await withMember(guild);
+  await Object.create(SettingsCommand.prototype).chatInputRun(f.root);
+  const panel = await click(f, "custom-commands");
+  expect(panel.root.editReply.mock.calls[0]![0].flags).toBe(
+    MessageFlags.IsComponentsV2,
+  );
+  return panel;
+}
+async function prefixMessage(guild: Guild, content: string) {
+  const member = await guild.members.fetch({ user: USER });
+  const message = {
+    guild,
+    member,
+    client,
+    channel: channel(guild),
+    content,
+    author: member.user,
+    webhookId: null,
+    system: false,
+    reply: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+  };
+  await Object.create(MessageCreateListener.prototype).run(
+    message as unknown as Message,
+  );
+  return message;
+}
+
+// Two workflows cover integration seams; lower-level edge cases live in their
+// dedicated unit/repository suites instead of being repeated here.
+describe.skipIf(!url)(
+  "custom command sharing from Discord controls to PostgreSQL and execution",
+  () => {
+    beforeAll(async () => {
+      process.env.DATABASE_URL = url!;
+      previousClient = Object.getOwnPropertyDescriptor(container, "client");
+      Object.defineProperty(container, "client", {
+        configurable: true,
+        value: client,
+      });
+      ({ db } = await import("../../src/prisma/db.js"));
+      ({ guildOwnershipService: ownership } =
+        await import("../../src/services/guildOwnershipService.js"));
+      runtime = await import("../../src/services/customCommands/runtime.js");
+      ({ SettingsCommand } =
+        await import("../../src/commands/admin/settings.js"));
+      ({ CustomCommand } = await import("../../src/commands/admin/custom.js"));
+      ({ MessageCreateListener } =
+        await import("../../src/listeners/messageCreate.js"));
+    });
+    beforeEach(async () => {
+      const { logger } = await import("../../src/logger.js");
+      errorLog = vi.spyOn(logger, "error");
+      guilds.clear();
+      for (const [index, id] of ids.slice(0, 3).entries()) {
+        runtime.customCommandService.invalidate(id);
+        const { guild } = makeGuild(
+          id,
+          ["Source", "Selected", "Excluded"][index]!,
+        );
+        expect(await ownership.verify(guild as unknown as Guild, ADMIN)).toBe(
+          true,
+        );
+      }
+    });
+    afterEach(async () => {
+      const unexpectedErrors = errorLog?.mock.calls ?? [];
+      errorLog?.mockRestore();
+      for (const collector of collectors) collector.stop("test-complete");
+      collectors.clear();
+      if (db)
+        await db.transaction(async (tx) => {
+          for (const guildId of ids) {
+            await tx.orm.public.CustomCommandName.where({
+              guildId,
+            }).deleteAll();
+            await tx.orm.public.CustomCommandRestriction.where({
+              guildId,
+            }).deleteAll();
+            await tx.orm.public.CustomCommand.where({ guildId }).deleteAll();
+            await tx.orm.public.CustomResponse.where({ guildId }).deleteAll();
+            await tx.orm.public.MemberXp.where({ guildId }).deleteAll();
+            await tx.orm.public.GuildOwnership.where({ guildId }).deleteAll();
+            await tx.orm.public.GuildConfig.where({ guildId }).deleteAll();
+          }
+        });
+      expect(
+        unexpectedErrors,
+        "Expected denials must not hide runtime or database failures",
+      ).toEqual([]);
+    });
+    afterAll(async () => {
+      try {
+        if (db) await db.close();
+      } finally {
+        if (previousClient)
+          Object.defineProperty(container, "client", previousClient);
+        else Reflect.deleteProperty(container, "client");
+      }
+    });
+    test("create, customize and select servers through Settings; prefix and slash use one persisted response", async () => {
+      const source = guilds.get(ids[0]!)!,
+        selected = guilds.get(ids[1]!)!,
+        excluded = guilds.get(ids[2]!)!;
+      const created = await custom(source, "create", {
+        name: "greet",
+        aliases: "hello",
+        response: "Initial",
+      });
+      expect(created.root.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining("created"),
+        }),
+      );
+      const panel = await settings(source);
+      const editor = await click(panel, "customize");
+      const responseControl = controls(editor).find((item) =>
+        item.custom_id?.endsWith(":response"),
+      );
+      expect(responseControl).toBeDefined();
+      const modal = await withMember(source);
+      const text = "Hello {user.name} in {guild.name}: {args}";
+      const button = {
+        ...modal.root,
+        customId: responseControl.custom_id,
+        isButton: () => true,
+        showModal: vi.fn(),
+        awaitModalSubmit: vi.fn(
+          async ({ filter }: { filter: (item: unknown) => boolean }) => {
+            const submitted = {
+              ...modal.root,
+              customId: button.showModal.mock.calls[0]![0].toJSON().custom_id,
+              fields: { getTextInputValue: () => text },
+            };
+            expect(filter(submitted)).toBe(true);
+            return submitted;
+          },
+        ),
+      };
+      await editor.callbacks.get("collect")!(button);
+      expect(modal.root.editReply).toHaveBeenCalledWith(
+        "Custom command updated.",
+      );
+      await click(panel, "refresh");
+      await click(panel, "scope", ["selected"]);
+      await click(panel, "servers", [selected.id]);
+      const serverSelect = controls(panel).find((item) =>
+        item.custom_id?.endsWith(":servers"),
+      );
+      expect(serverSelect.type).toBe(ComponentType.StringSelect);
+      await click(panel, "save");
+      // Reopening proves persistence independently of the panel's in-memory state.
+      const reopened = await settings(source);
+      expect(
+        controls(reopened)
+          .find((item) => item.custom_id?.endsWith(":scope"))
+          .options.find((option: any) => option.default).value,
+      ).toBe("selected");
+      expect(
+        controls(reopened)
+          .find((item) => item.custom_id?.endsWith(":servers"))
+          .options.find((option: any) => option.default).value,
+      ).toBe(selected.id);
+      const prefix = await prefixMessage(selected, "!hello John Doe");
+      expect(prefix.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: "Hello Alex in Selected: John Doe",
+          allowedMentions: {
+            parse: [],
+            users: [USER],
+            roles: [],
+            repliedUser: false,
+          },
+        }),
+      );
+      expect(
+        (await prefixMessage(excluded, "!greet John")).reply,
+      ).not.toHaveBeenCalled();
+      const slash = await custom(
+        selected,
+        "run",
+        { command: "greet", args: "Jane" },
+        USER,
+      );
+      expect(slash.root.followUp).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Hello Alex in Selected: Jane" }),
+      );
+      const stored = await db.orm.public.CustomCommand.where({
+        guildId: source.id,
+        name: "greet",
+      }).first();
+      expect(stored).toMatchObject({
+        usageCount: 2,
+        content: [{ type: "TEXT", text }],
+      });
+      expect(
+        await db.orm.public.CustomCommand.where({ guildId: selected.id }).all(),
+      ).toEqual([]);
+      await click(reopened, "scope", ["server"]);
+      await click(reopened, "save");
+      expect(
+        (await prefixMessage(selected, "!hello")).reply,
+      ).not.toHaveBeenCalled();
+      await click(panel, "close");
+      await click(reopened, "close");
+    }, 15_000);
+    test("all-server scope includes later installations, shares cooldowns, and stops after ownership changes", async () => {
+      const source = guilds.get(ids[0]!)!,
+        selected = guilds.get(ids[1]!)!;
+      await custom(source, "create", {
+        name: "broadcast",
+        response: "Global in {guild.name}",
+        cooldown: 3600,
+        cooldown_scope: "GLOBAL_COMMAND",
+      });
+      const panel = await settings(source);
+      const command = (
+        await runtime.customCommandService.listCommands(source.id)
+      ).find((item) => item.name === "broadcast")!;
+      await click(panel, "command", [String(command.id)]);
+      await click(panel, "scope", ["all"]);
+      await click(panel, "save");
+      const future = makeGuild(ids[3]!, "Future").guild as unknown as Guild;
+      expect(await ownership.verify(future, ADMIN)).toBe(true);
+      expect(
+        (await prefixMessage(future, "!broadcast")).reply,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Global in Future" }),
+      );
+      const blockedByCooldown = await custom(
+        selected,
+        "run",
+        { command: "broadcast" },
+        USER,
+      );
+      expect(blockedByCooldown.root.followUp).not.toHaveBeenCalled();
+      expect(blockedByCooldown.root.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining("seconds"),
+        }),
+      );
+      await custom(source, "create", {
+        name: "verified-share",
+        response: "Verified",
+      });
+      await click(panel, "refresh");
+      const verifiedCommand = (
+        await runtime.customCommandService.listCommands(source.id)
+      ).find((item) => item.name === "verified-share")!;
+      await click(panel, "command", [String(verifiedCommand.id)]);
+      await click(panel, "scope", ["all"]);
+      await click(panel, "save");
+      expect(
+        (await prefixMessage(selected, "!verified-share")).reply,
+      ).toHaveBeenCalledOnce();
+      source.ownerId = "new-owner";
+      expect(
+        (await prefixMessage(selected, "!verified-share")).reply,
+      ).not.toHaveBeenCalled();
+      const stored = await db.orm.public.CustomCommand.where({
+        guildId: source.id,
+        name: "verified-share",
+      }).first();
+      expect(stored?.usageCount).toBe(1);
+      panel.collector.stop("test-complete");
+    }, 15_000);
+  },
+);

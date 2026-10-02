@@ -22,6 +22,9 @@
     "start": "node dist/src/index.js",
     "dev": "tsc-watch --onSuccess \"node scripts/prune-command-build.mjs && node dist/src/index.js\"",
     "test": "XDG_DATA_HOME=.cache vitest run",
+    "test:database": "node scripts/test-database.mjs",
+    "test:e2e": "node scripts/test-database.mjs --e2e",
+    "check:discord": "node scripts/verify-discord.mjs",
     "typecheck": "tsc --noEmit",
     "contract:emit": "prisma contract emit"
   },

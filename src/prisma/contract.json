@@ -4,6 +4,26 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "custom_command": {
+      "model": "CustomCommand",
+      "namespace": "public"
+    },
+    "custom_command_name": {
+      "model": "CustomCommandName",
+      "namespace": "public"
+    },
+    "custom_command_restriction": {
+      "model": "CustomCommandRestriction",
+      "namespace": "public"
+    },
+    "custom_command_sharing": {
+      "model": "CustomCommandSharing",
+      "namespace": "public"
+    },
+    "custom_response": {
+      "model": "CustomResponse",
+      "namespace": "public"
+    },
     "guild_config": {
       "model": "GuildConfig",
       "namespace": "public"
@@ -101,6 +121,630 @@
           }
         },
         "models": {
+          "CustomCommand": {
+            "fields": {
+              "content": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
+              "cooldownScope": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cooldownSeconds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdBy": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deleteInvocation": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "enabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastUsedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "replyToInvocation": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "responseType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "triggerType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedBy": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "usageCount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "names": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "guildId",
+                    "id"
+                  ],
+                  "targetFields": [
+                    "guildId",
+                    "commandId"
+                  ]
+                },
+                "to": {
+                  "model": "CustomCommandName",
+                  "namespace": "public"
+                }
+              },
+              "restrictions": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "guildId",
+                    "id"
+                  ],
+                  "targetFields": [
+                    "guildId",
+                    "commandId"
+                  ]
+                },
+                "to": {
+                  "model": "CustomCommandRestriction",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "content": {
+                  "column": "content"
+                },
+                "cooldownScope": {
+                  "column": "cooldownScope"
+                },
+                "cooldownSeconds": {
+                  "column": "cooldownSeconds"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "createdBy": {
+                  "column": "createdBy"
+                },
+                "deleteInvocation": {
+                  "column": "deleteInvocation"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "enabled": {
+                  "column": "enabled"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lastUsedAt": {
+                  "column": "lastUsedAt"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "replyToInvocation": {
+                  "column": "replyToInvocation"
+                },
+                "responseType": {
+                  "column": "responseType"
+                },
+                "triggerType": {
+                  "column": "triggerType"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "updatedBy": {
+                  "column": "updatedBy"
+                },
+                "usageCount": {
+                  "column": "usageCount"
+                }
+              },
+              "namespaceId": "public",
+              "table": "custom_command"
+            }
+          },
+          "CustomCommandName": {
+            "fields": {
+              "commandId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "command": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "targetFields": [
+                    "guildId",
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CustomCommand",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "commandId": {
+                  "column": "commandId"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "name": {
+                  "column": "name"
+                }
+              },
+              "namespaceId": "public",
+              "table": "custom_command_name"
+            }
+          },
+          "CustomCommandRestriction": {
+            "fields": {
+              "commandId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "value": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "command": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "targetFields": [
+                    "guildId",
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CustomCommand",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "commandId": {
+                  "column": "commandId"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "value": {
+                  "column": "value"
+                }
+              },
+              "namespaceId": "public",
+              "table": "custom_command_restriction"
+            }
+          },
+          "CustomCommandSharing": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "commandId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "scope": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "selectedGuildIds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "command": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "targetFields": [
+                    "guildId",
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CustomCommand",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "commandId": {
+                  "column": "commandId"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "scope": {
+                  "column": "scope"
+                },
+                "selectedGuildIds": {
+                  "column": "selectedGuildIds"
+                }
+              },
+              "namespaceId": "public",
+              "table": "custom_command_sharing"
+            }
+          },
+          "CustomResponse": {
+            "fields": {
+              "adminOnly": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "allowedRoleId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "channelId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cooldownSeconds": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdBy": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "embed": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "enabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "exactMatch": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "guildId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "kind": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "response": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "trigger": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "adminOnly": {
+                  "column": "adminOnly"
+                },
+                "allowedRoleId": {
+                  "column": "allowedRoleId"
+                },
+                "channelId": {
+                  "column": "channelId"
+                },
+                "cooldownSeconds": {
+                  "column": "cooldownSeconds"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "createdBy": {
+                  "column": "createdBy"
+                },
+                "embed": {
+                  "column": "embed"
+                },
+                "enabled": {
+                  "column": "enabled"
+                },
+                "exactMatch": {
+                  "column": "exactMatch"
+                },
+                "guildId": {
+                  "column": "guildId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "kind": {
+                  "column": "kind"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "response": {
+                  "column": "response"
+                },
+                "trigger": {
+                  "column": "trigger"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "custom_response"
+            }
+          },
           "GuildConfig": {
             "fields": {
               "autoRoleEnabled": {
@@ -1235,6 +1879,608 @@
       "public": {
         "entries": {
           "table": {
+            "custom_command": {
+              "checks": [
+                {
+                  "expression": "\"cooldownSeconds\" >= 0 AND \"cooldownSeconds\" <= 86400",
+                  "name": "custom_command_cooldown_6f7f823d",
+                  "prefix": "custom_command_cooldown"
+                },
+                {
+                  "expression": "name = lower(btrim(name))",
+                  "name": "custom_command_normalized_name_3dad82ba",
+                  "prefix": "custom_command_normalized_name"
+                },
+                {
+                  "expression": "\"responseType\" IN ('TEXT', 'EMBED', 'MULTI')",
+                  "name": "custom_command_response_b4a3f921",
+                  "prefix": "custom_command_response"
+                },
+                {
+                  "expression": "\"cooldownScope\" IN ('USER', 'CHANNEL', 'GUILD', 'GLOBAL_COMMAND')",
+                  "name": "custom_command_scope_3827e66b",
+                  "prefix": "custom_command_scope"
+                },
+                {
+                  "expression": "\"triggerType\" IN ('SLASH', 'MESSAGE', 'BOTH')",
+                  "name": "custom_command_trigger_f7eca854",
+                  "prefix": "custom_command_trigger"
+                }
+              ],
+              "columns": {
+                "content": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": false
+                },
+                "cooldownScope": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USER"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "cooldownSeconds": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deleteInvocation": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": ""
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "enabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "lastUsedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "replyToInvocation": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "responseType": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "TEXT"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "triggerType": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "BOTH"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "updatedBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "usageCount": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "enabled"
+                  ],
+                  "name": "custom_command_enabled_idx_7f014af8",
+                  "prefix": "custom_command_enabled_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "enabled",
+                    "triggerType"
+                  ],
+                  "name": "custom_command_guildId_enabled_triggerType_idx_df732914",
+                  "prefix": "custom_command_guildId_enabled_triggerType_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "triggerType"
+                  ],
+                  "name": "custom_command_triggerType_idx_fe2bcd74",
+                  "prefix": "custom_command_triggerType_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "id"
+                  ]
+                },
+                {
+                  "columns": [
+                    "guildId",
+                    "name"
+                  ]
+                }
+              ]
+            },
+            "custom_command_name": {
+              "checks": [
+                {
+                  "expression": "name = lower(btrim(name))",
+                  "name": "custom_command_name_normalized_3dad82ba",
+                  "prefix": "custom_command_name_normalized"
+                }
+              ],
+              "columns": {
+                "commandId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "guildId",
+                      "commandId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command_name"
+                  },
+                  "target": {
+                    "columns": [
+                      "guildId",
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "name": "custom_command_name_guildId_commandId_idx_eb216ee4",
+                  "prefix": "custom_command_name_guildId_commandId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "name"
+                  ]
+                }
+              ]
+            },
+            "custom_command_restriction": {
+              "checks": [
+                {
+                  "expression": "kind IN ('allowedRoleIds', 'deniedRoleIds', 'allowedChannelIds', 'deniedChannelIds', 'requiredUserPermissions', 'requiredBotPermissions')",
+                  "name": "custom_command_restriction_kind_0b28cb65",
+                  "prefix": "custom_command_restriction_kind"
+                }
+              ],
+              "columns": {
+                "commandId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "value": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "guildId",
+                      "commandId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command_restriction"
+                  },
+                  "target": {
+                    "columns": [
+                      "guildId",
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "name": "custom_command_restriction_guildId_commandId_idx_eb216ee4",
+                  "prefix": "custom_command_restriction_guildId_commandId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "commandId",
+                    "kind",
+                    "value"
+                  ]
+                }
+              ]
+            },
+            "custom_command_sharing": {
+              "checks": [
+                {
+                  "expression": "scope IN ('all', 'selected')",
+                  "name": "custom_command_sharing_scope_21852f16",
+                  "prefix": "custom_command_sharing_scope"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "commandId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "scope": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "selectedGuildIds": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": ""
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "guildId",
+                      "commandId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command_sharing"
+                  },
+                  "target": {
+                    "columns": [
+                      "guildId",
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "custom_command"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "commandId"
+                  ],
+                  "name": "custom_command_sharing_guildId_commandId_idx_eb216ee4",
+                  "prefix": "custom_command_sharing_guildId_commandId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "guildId"
+                  ],
+                  "name": "custom_command_sharing_guildId_idx_b8c02cbb",
+                  "prefix": "custom_command_sharing_guildId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "commandId"
+                ]
+              },
+              "uniques": []
+            },
+            "custom_response": {
+              "columns": {
+                "adminOnly": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "allowedRoleId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "channelId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cooldownSeconds": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdBy": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "embed": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "enabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "exactMatch": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "guildId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "kind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "response": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "trigger": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "guildId",
+                    "kind",
+                    "enabled"
+                  ],
+                  "name": "custom_response_guildId_kind_enabled_idx_0ebf4a27",
+                  "prefix": "custom_response_guildId_kind_enabled_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "guildId",
+                    "name"
+                  ]
+                }
+              ]
+            },
             "guild_config": {
               "columns": {
                 "autoRoleEnabled": {
@@ -2287,12 +3533,42 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8a8f7abe3eda27e85d9e776a0ca06c36ef6dabf2b6e4767f0468f9acf10a17af"
+    "storageHash": "8f45d6d1cc46b2fe3738fc8990f468c978137894031c5a92132729734c689b05"
   },
   "execution": {
-    "executionHash": "f083ec1ec09dee9d98cdf6979278620a810017afa72a4dc8b83676643e6398b6",
+    "executionHash": "6c0cf42c3de6e117af55ef6825b671cedb3060cd1618d842f7b9845b03132d25",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "custom_command"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "custom_response"
+          }
+        },
         {
           "onCreate": {
             "id": "timestampNow",

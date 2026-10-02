@@ -1,0 +1,161 @@
+[
+  {
+    "id": "table.custom_command_sharing",
+    "label": "Create table \"custom_command_sharing\"",
+    "summary": "Creates table \"custom_command_sharing\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "custom_command_sharing"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"custom_command_sharing\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"custom_command_sharing\"",
+        "sql": "CREATE TABLE \"public\".\"custom_command_sharing\" (\n  \"actorId\" text NOT NULL,\n  \"commandId\" int4 NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"scope\" text NOT NULL,\n  \"selectedGuildIds\" text DEFAULT '' NOT NULL,\n  PRIMARY KEY (\"commandId\"),\n  CONSTRAINT \"custom_command_sharing_scope_21852f16\" CHECK (scope IN ('all', 'selected'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"custom_command_sharing\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command_sharing.custom_command_sharing_guildId_commandId_idx_eb216ee4",
+    "label": "Create index \"custom_command_sharing_guildId_commandId_idx_eb216ee4\" on \"custom_command_sharing\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_sharing_guildId_commandId_idx_eb216ee4",
+        "table": "custom_command_sharing"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_sharing_guildId_commandId_idx_eb216ee4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_sharing_guildId_commandId_idx_eb216ee4\"",
+        "sql": "CREATE INDEX \"custom_command_sharing_guildId_commandId_idx_eb216ee4\" ON \"public\".\"custom_command_sharing\" (\"guildId\", \"commandId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_sharing_guildId_commandId_idx_eb216ee4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing_guildId_commandId_idx_eb216ee4\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_command_sharing.custom_command_sharing_guildId_idx_b8c02cbb",
+    "label": "Create index \"custom_command_sharing_guildId_idx_b8c02cbb\" on \"custom_command_sharing\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_command_sharing_guildId_idx_b8c02cbb",
+        "table": "custom_command_sharing"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_command_sharing_guildId_idx_b8c02cbb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing_guildId_idx_b8c02cbb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_command_sharing_guildId_idx_b8c02cbb\"",
+        "sql": "CREATE INDEX \"custom_command_sharing_guildId_idx_b8c02cbb\" ON \"public\".\"custom_command_sharing\" (\"guildId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_command_sharing_guildId_idx_b8c02cbb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_command_sharing_guildId_idx_b8c02cbb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.custom_command_sharing.custom_command_sharing_guildId_commandId_fkey",
+    "label": "Add foreign key \"custom_command_sharing_guildId_commandId_fkey\" on \"custom_command_sharing\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "custom_command_sharing_guildId_commandId_fkey",
+        "table": "custom_command_sharing"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"custom_command_sharing_guildId_commandId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_sharing_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_sharing\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"custom_command_sharing_guildId_commandId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"custom_command_sharing\"\nADD CONSTRAINT \"custom_command_sharing_guildId_commandId_fkey\"\nFOREIGN KEY (\"guildId\", \"commandId\")\nREFERENCES \"public\".\"custom_command\" (\"guildId\", \"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"custom_command_sharing_guildId_commandId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_command_sharing_guildId_commandId_fkey",
+          "public",
+          "\"public\".\"custom_command_sharing\""
+        ]
+      }
+    ]
+  }
+]
