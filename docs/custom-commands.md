@@ -82,7 +82,15 @@ the existing editor, and a scope dropdown:
 - **Specific servers** opens a paginated server dropdown. Choose up to 100 other
   servers; selections survive page changes. The source server also keeps the command.
 
-Press **Save Scope** to persist a scope change. Refresh reloads the command and
+Press **Save Scope** to persist a scope change. If a command name or alias already
+exists in an eligible destination (including legacy triggers and other shared
+commands), the panel warns before saving. **Proceed** saves the scope without
+replacing any commands; **Cancel** leaves the saved scope unchanged. Changing the
+selection invalidates the confirmation. Proceed rechecks permissions and duplicate
+names; new conflicts require another warning. Local commands still take precedence,
+and ambiguous shared names remain unavailable. All-server checks cover currently
+eligible destinations; later additions and command edits can introduce conflicts.
+Refresh reloads the command and
 saved scope, discarding pending selections. Customize saves command edits immediately
 as before; refresh this panel after editing. Closing or expiry discards unsaved scope
 changes and disables the panel's controls. No additional slash command is registered.

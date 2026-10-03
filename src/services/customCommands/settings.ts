@@ -14,7 +14,10 @@ import {
   customSettingsView,
   type CustomSettingsState,
 } from "./settingsView.js";
-import type { CommandScope } from "./CustomCommandSharingService.js";
+import {
+  CustomCommandSharingConflictError,
+  type CommandScope,
+} from "./CustomCommandSharingService.js";
 
 export async function openCustomCommandSettings(
   root: ButtonInteraction<"cached">,
@@ -75,7 +78,9 @@ export async function openCustomCommandSettings(
   };
   await load();
   const message = await root.editReply(customSettingsView(state, session));
-  let busy = false;
+  let pending = Promise.resolve();
+  const closedNotice =
+    "This custom command settings session is closed. Reopen /settings to continue.";
   const collector = message.createMessageComponentCollector({
     time: 10 * 60_000,
     filter: (item) => item.customId.startsWith(`cc-settings:${session}:`),
@@ -93,27 +98,45 @@ export async function openCustomCommandSettings(
       });
       return;
     }
-    if (busy || collector.ended) {
+    if (collector.ended) {
       await item.reply({
-        content: "Finish the current action or reopen Settings.",
+        content: closedNotice,
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-    busy = true;
+    // Reserve click order before acknowledging; saves must see earlier selections.
+    const previous = pending;
+    let release!: () => void;
+    const completed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    pending = previous.then(() => completed);
     const action = item.customId.split(":").at(-1);
     try {
       if (action === "customize" && item.isButton())
         await item.deferReply({ flags: MessageFlags.Ephemeral });
       else await item.deferUpdate();
+      await previous;
+      if (collector.ended) throw new CustomCommandValidationError(closedNotice);
       if (
         !(await customCommandSharingService.canManage(root.guild, item.user.id))
       )
         throw new CustomCommandValidationError(
           "Administrator permission and verified ownership are required. Reopen Settings after access is restored.",
         );
+      if (collector.ended) throw new CustomCommandValidationError(closedNotice);
       collector.resetTimer();
       state.notice = undefined;
+      const proceeding = action?.startsWith("proceed-") && item.isButton();
+      if (
+        proceeding &&
+        (!state.confirmation || action !== `proceed-${state.confirmation.id}`)
+      )
+        throw new CustomCommandValidationError(
+          "This confirmation is no longer valid. Save Scope to review the current selection.",
+        );
+      if (!proceeding) state.confirmation = undefined;
       if (action === "close") {
         state.notice =
           "Custom command settings closed. Unsaved scope changes were discarded.";
@@ -134,7 +157,10 @@ export async function openCustomCommandSettings(
         await openCustomCommandEditor(item, current);
         return;
       }
-      if (action === "refresh") await load();
+      if (action === "cancel")
+        state.notice =
+          "Scope was not saved. Review your selection before saving.";
+      else if (action === "refresh") await load();
       else if (action === "command" && item.isStringSelectMenu()) {
         const id = Number(item.values[0]);
         if (
@@ -154,13 +180,19 @@ export async function openCustomCommandSettings(
         )
           throw new CustomCommandValidationError("Choose a valid scope.");
         state.scope = item.values[0] as CommandScope;
-        if (state.scope === "selected")
+        if (state.scope === "selected") {
           state.choices = await customCommandSharingService.discover(
             root.client,
             root.user.id,
             root.guildId,
           );
+          state.serverPage = 0;
+        }
       } else if (action === "servers" && item.isStringSelectMenu()) {
+        if (state.scope !== "selected")
+          throw new CustomCommandValidationError(
+            "Choose Specific servers before selecting servers.",
+          );
         const visible = state.choices.slice(
           state.serverPage * 25,
           (state.serverPage + 1) * 25,
@@ -195,20 +227,54 @@ export async function openCustomCommandSettings(
             state.serverPage + 1,
           ),
         );
-      else if (action === "save" && command) {
+      else if (
+        (action === "save" || proceeding) &&
+        item.isButton() &&
+        command
+      ) {
         await customCommandSharingService.save(
           root.client,
           root.user.id,
           command,
           state.scope,
           [...state.selected],
+          ...(proceeding ? [state.confirmation!.fingerprint] : []),
         );
+        state.confirmation = undefined;
         state.notice =
           "Command scope saved. The original command is used in every eligible server.";
       }
       if (!collector.ended)
         await root.editReply(customSettingsView(state, session));
     } catch (error) {
+      if (
+        error instanceof CustomCommandSharingConflictError &&
+        !collector.ended
+      ) {
+        state.confirmation = {
+          id: randomUUID(),
+          fingerprint: error.fingerprint,
+          conflicts: error.conflicts,
+        };
+        try {
+          await root.editReply(customSettingsView(state, session));
+        } catch (renderError) {
+          state.confirmation = undefined;
+          logger.error(
+            { guildId: root.guildId, err: renderError },
+            "custom_command.settings_warning_failed",
+          );
+          await item
+            .followUp({
+              content:
+                "Could not display the duplicate warning. Nothing was saved. Try Save Scope again.",
+              flags: MessageFlags.Ephemeral,
+              allowedMentions: { parse: [] },
+            })
+            .catch(() => null);
+        }
+        return;
+      }
       if (!(error instanceof CustomCommandError))
         logger.error(
           { guildId: root.guildId, err: error },
@@ -229,7 +295,7 @@ export async function openCustomCommandSettings(
           })
           .catch(() => null);
     } finally {
-      busy = false;
+      release();
     }
   });
   collector.on("end", (_items, reason) => {

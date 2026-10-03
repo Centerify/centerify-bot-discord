@@ -1,9 +1,25 @@
+import { createHash } from "node:crypto";
 import { PermissionFlagsBits, type Client, type Guild } from "discord.js";
 import type { CustomCommandRecord } from "../../lib/customCommands/types.js";
 import { CustomCommandValidationError } from "../../lib/customCommands/errors.js";
 import type { CustomCommandService } from "./CustomCommandService.js";
 
 export type CommandScope = "server" | "all" | "selected";
+export interface SharingConflict {
+  guildId: string;
+  guildName: string;
+  names: string[];
+}
+export class CustomCommandSharingConflictError extends CustomCommandValidationError {
+  public constructor(
+    public readonly conflicts: SharingConflict[],
+    public readonly fingerprint: string,
+  ) {
+    super(
+      "Duplicate command names or aliases found. Review the warning before proceeding.",
+    );
+  }
+}
 export interface CommandSharing {
   guildId: string;
   commandId: number;
@@ -85,12 +101,101 @@ export class CustomCommandSharingService {
     return this.repository.get(command.guildId, command.id);
   }
 
+  private async conflicts(
+    client: Client,
+    command: CustomCommandRecord,
+    targets: { id: string; name: string }[],
+  ): Promise<SharingConflict[]> {
+    if (!targets.length) return [];
+    const names = [...new Set([command.name, ...command.aliases])].sort();
+    const candidates = new Map<string, CommandSharing[]>();
+    for (const name of names) {
+      const matches = await this.repository.candidates(name);
+      if (matches.length > 100)
+        throw new CustomCommandValidationError(
+          "Too many shared commands use this name. Rename the command or alias before sharing.",
+        );
+      candidates.set(name, matches);
+    }
+    const records = new Map<string, CustomCommandRecord[]>();
+    const load = async (id: string) => {
+      if (!records.has(id)) {
+        this.commands.invalidate(id);
+        records.set(id, await this.commands.listCommands(id));
+      }
+      return records.get(id)!;
+    };
+    const access = new Map<string, boolean>();
+    const canManage = async (guild: Guild, actor: string) => {
+      const key = `${guild.id}:${actor}`;
+      if (!access.has(key)) access.set(key, await this.canManage(guild, actor));
+      return access.get(key)!;
+    };
+    const conflicts: SharingConflict[] = [];
+    for (const target of targets) {
+      const guild = client.guilds.cache.get(target.id);
+      if (!guild)
+        throw new CustomCommandValidationError(
+          "Refresh the server list before saving.",
+        );
+      const localNames = new Set(
+        (await load(target.id)).flatMap((row) => [row.name, ...row.aliases]),
+      );
+      const duplicateNames: string[] = [];
+      for (const name of names) {
+        let duplicate =
+          localNames.has(name) ||
+          (await this.repository.hasLegacyName(target.id, name));
+        if (!duplicate) {
+          for (const sharing of candidates.get(name)!) {
+            if (
+              (sharing.guildId === command.guildId &&
+                sharing.commandId === command.id) ||
+              sharing.guildId === target.id ||
+              (sharing.scope !== "all" && sharing.scope !== "selected") ||
+              (sharing.scope === "selected" &&
+                !sharing.selectedGuildIds.split(",").includes(target.id))
+            )
+              continue;
+            const source = client.guilds.cache.get(sharing.guildId);
+            if (
+              !source ||
+              !(await canManage(source, sharing.actorId)) ||
+              !(await canManage(guild, sharing.actorId))
+            )
+              continue;
+            const shared = (await load(source.id)).find(
+              (row) => row.id === sharing.commandId,
+            );
+            if (
+              shared?.enabled &&
+              !hasServerRestrictions(shared) &&
+              [shared.name, ...shared.aliases].includes(name)
+            ) {
+              duplicate = true;
+              break;
+            }
+          }
+        }
+        if (duplicate) duplicateNames.push(name);
+      }
+      if (duplicateNames.length)
+        conflicts.push({
+          guildId: target.id,
+          guildName: target.name,
+          names: duplicateNames,
+        });
+    }
+    return conflicts.sort((a, b) => a.guildId.localeCompare(b.guildId));
+  }
+
   public async save(
     client: Client,
     actorId: string,
     command: CustomCommandRecord,
     scope: CommandScope,
     selected: string[],
+    confirmation?: string,
   ) {
     if (!["server", "all", "selected"].includes(scope))
       throw new CustomCommandValidationError("Choose a valid command scope.");
@@ -113,6 +218,32 @@ export class CustomCommandSharingService {
           throw new CustomCommandValidationError(
             "Every selected server must have verified ownership and you must be an administrator there. Refresh the server list.",
           );
+      }
+    }
+    if (scope !== "server") {
+      const targets =
+        scope === "selected"
+          ? ids.map((id) => ({ id, name: client.guilds.cache.get(id)!.name }))
+          : await this.discover(client, actorId, command.guildId);
+      const conflicts = await this.conflicts(client, command, targets);
+      if (conflicts.length) {
+        // Bind consent to this definition, scope, selection and observed conflicts.
+        // Names can change after this check; resolution still fails closed on ambiguity.
+        const fingerprint = createHash("sha256")
+          .update(
+            JSON.stringify({
+              command: [command.guildId, command.id, command.updatedAt],
+              scope,
+              selected: scope === "selected" ? [...ids].sort() : [],
+              conflicts: conflicts.map(({ guildId, names }) => ({
+                guildId,
+                names,
+              })),
+            }),
+          )
+          .digest("hex");
+        if (confirmation !== fingerprint)
+          throw new CustomCommandSharingConflictError(conflicts, fingerprint);
       }
     }
     await this.repository.save(

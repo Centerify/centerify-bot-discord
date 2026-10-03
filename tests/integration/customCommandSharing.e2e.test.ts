@@ -231,7 +231,7 @@ async function prefixMessage(guild: Guild, content: string) {
   return message;
 }
 
-// Two workflows cover integration seams; lower-level edge cases live in their
+// Workflows cover integration seams; lower-level edge cases live in their
 // dedicated unit/repository suites instead of being repeated here.
 describe.skipIf(!url)(
   "custom command sharing from Discord controls to PostgreSQL and execution",
@@ -408,6 +408,50 @@ describe.skipIf(!url)(
       ).not.toHaveBeenCalled();
       await click(panel, "close");
       await click(reopened, "close");
+    }, 15_000);
+    test("duplicate selections warn before persisting, Cancel leaves scope unchanged, and Proceed preserves local commands", async () => {
+      const source = guilds.get(ids[0]!)!,
+        selected = guilds.get(ids[1]!)!;
+      await custom(source, "create", {
+        name: "greet",
+        aliases: "hello",
+        response: "Shared",
+      });
+      await custom(selected, "create", { name: "hello", response: "Local" });
+      const command = (
+        await runtime.customCommandService.listCommands(source.id)
+      )[0]!;
+      const panel = await settings(source);
+      await click(panel, "scope", ["selected"]);
+      await click(panel, "servers", [selected.id]);
+      await click(panel, "save");
+      expect(await runtime.customCommandSharingService.get(command)).toBeNull();
+      expect(
+        controls(panel).some((item) =>
+          item.content?.includes("Duplicate commands found"),
+        ),
+      ).toBe(true);
+      await click(panel, "cancel");
+      expect(await runtime.customCommandSharingService.get(command)).toBeNull();
+      await click(panel, "save");
+      const proceed = controls(panel)
+        .find((item) => item.label === "Proceed")
+        .custom_id.split(":")
+        .at(-1);
+      await click(panel, proceed);
+      expect(
+        await runtime.customCommandSharingService.get(command),
+      ).toMatchObject({ scope: "selected", selectedGuildIds: selected.id });
+      expect(
+        (await prefixMessage(selected, "!hello")).reply,
+      ).toHaveBeenCalledWith(expect.objectContaining({ content: "Local" }));
+      expect(
+        (await prefixMessage(selected, "!greet")).reply,
+      ).toHaveBeenCalledWith(expect.objectContaining({ content: "Shared" }));
+      expect(
+        await runtime.customCommandService.listCommands(selected.id),
+      ).toHaveLength(1);
+      await click(panel, "close");
     }, 15_000);
     test("all-server scope includes later installations, shares cooldowns, and stops after ownership changes", async () => {
       const source = guilds.get(ids[0]!)!,

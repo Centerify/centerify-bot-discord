@@ -70,3 +70,42 @@ test("no commands or eligible servers still produce valid V2 settings", () => {
     customSettingsView(noServers, "session").components[0].toJSON(),
   ).not.toThrow();
 });
+
+test("duplicate warnings escape server names, suppress mentions, and disable confirmation on expiry", () => {
+  const warning = state();
+  warning.confirmation = {
+    id: "nonce",
+    fingerprint: "confirmation",
+    conflicts: Array.from({ length: 100 }, (_, index) => ({
+      guildId: String(index),
+      guildName: "**Untrusted**\n@everyone",
+      names: ["welcome", "hi"],
+    })),
+  };
+  const view = customSettingsView(warning, "session");
+  expect(view.allowedMentions).toEqual({ parse: [] });
+  const container = view.components[0].toJSON();
+  const text = container.components.find(
+    (item) =>
+      item.type === ComponentType.TextDisplay &&
+      item.content.includes("Duplicate commands found"),
+  );
+  expect(text).toMatchObject({
+    content: expect.stringContaining("\\*\\*Untrusted\\*\\* @everyone"),
+  });
+  expect(text).toMatchObject({
+    content: expect.stringContaining("92 more servers"),
+  });
+  const controls = customSettingsView(warning, "session", true)
+    .components[0].toJSON()
+    .components.flatMap((item) =>
+      item.type === ComponentType.ActionRow ? item.components : [],
+    );
+  expect(
+    controls.find(
+      (item) =>
+        "custom_id" in item &&
+        item.custom_id === "cc-settings:session:proceed-nonce",
+    ),
+  ).toMatchObject({ disabled: true });
+});

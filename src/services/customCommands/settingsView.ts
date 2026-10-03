@@ -10,7 +10,10 @@ import {
   escapeMarkdown,
 } from "discord.js";
 import type { CustomCommandRecord } from "../../lib/customCommands/types.js";
-import type { CommandScope } from "./CustomCommandSharingService.js";
+import type {
+  CommandScope,
+  SharingConflict,
+} from "./CustomCommandSharingService.js";
 
 export interface CustomSettingsState {
   commands: CustomCommandRecord[];
@@ -21,6 +24,11 @@ export interface CustomSettingsState {
   selected: Set<string>;
   serverPage: number;
   notice?: string;
+  confirmation?: {
+    id: string;
+    fingerprint: string;
+    conflicts: SharingConflict[];
+  };
 }
 export function customSettingsView(
   state: CustomSettingsState,
@@ -158,6 +166,35 @@ export function customSettingsView(
         );
       }
     }
+  }
+  if (state.confirmation) {
+    const preview = state.confirmation.conflicts
+      .slice(0, 8)
+      .map(
+        (conflict) =>
+          `- ${escapeMarkdown(conflict.guildName.replace(/[\r\n]/g, " ").slice(0, 60))} (${conflict.guildId}): ${conflict.names
+            .slice(0, 5)
+            .map((name) => `\`${name}\``)
+            .join(", ")}${conflict.names.length > 5 ? ", …" : ""}`,
+      )
+      .join("\n");
+    const remaining = state.confirmation.conflicts.length - 8;
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `### Duplicate commands found\n${preview}${remaining > 0 ? `\n… and ${remaining} more servers.` : ""}\nProceed saves this scope without replacing existing commands. Local commands take precedence; conflicting shared names will not run.`,
+      ),
+    );
+    container.addActionRowComponents(
+      buttons([
+        [
+          `proceed-${state.confirmation.id}`,
+          "Proceed",
+          false,
+          ButtonStyle.Danger,
+        ],
+        ["cancel", "Cancel", false],
+      ]),
+    );
   }
   container.addActionRowComponents(
     buttons([
