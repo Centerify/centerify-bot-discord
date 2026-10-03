@@ -4,6 +4,7 @@ import { logger } from "../logger.js";
 import { guildConfigService } from "../services/guildConfigService.js";
 import { guildOwnershipService } from "../services/guildOwnershipService.js";
 import { greetingService } from "../services/greetingService.js";
+import { runCustomEvent } from "../services/customResponseRunner.js";
 
 export class GuildMemberAddListener extends Listener<typeof Events.GuildMemberAdd> {
   public constructor(context: Listener.LoaderContext, options: Listener.Options) {
@@ -32,6 +33,7 @@ export class GuildMemberAddListener extends Listener<typeof Events.GuildMemberAd
     }
 
     await greetingService.sendWelcome(config, member);
+    await runCustomEvent("member_join", member);
   }
 
   private async assignAutoRole(member: GuildMember, roleId: string) {

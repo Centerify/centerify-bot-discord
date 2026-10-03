@@ -5,7 +5,11 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 ## Features
 
 - Discord slash command support with Sapphire Framework
+- Independent server settings with current-owner verification
+- Interactive setup for greetings, automatic roles, logging, and moderation
+- Moderation cases, warnings, member reports, and opt-in global moderation
 - Message XP, levels, and a leaderboard with server, global, or selected-server sharing
+- Server-specific custom message commands and member join/leave responses
 - `/ping` command for checking bot responsiveness
 - TypeScript-first project structure
 - Environment-based configuration with `dotenv`
@@ -57,6 +61,25 @@ DISCORD_TOKEN=your_discord_bot_token
 DATABASE_URL=postgresql://user:password@localhost:5432/database
 ```
 
+### Discord application setup
+
+Create a bot application in the Discord Developer Portal and copy its bot token
+into `.env`. On the application's **Bot** page, enable **Server Members Intent**,
+**Presence Intent**, and **Message Content Intent**; this bot requests all three
+when connecting.
+
+Generate a server installation link with the `bot` and `applications.commands`
+scopes. Invite the same application to every server you want to manage. Grant
+View Channel, Send Messages, and Embed Links in its output channels, plus
+Read Message History for reaction XP. Features that assign roles or moderate
+members also need their corresponding Discord permissions. Place the bot's role
+above roles it assigns and members it moderates.
+
+Each server owner must run `/verify` in their own server, then use `/setup` or
+`/settings`. Verification and settings are stored separately for each server.
+Sharing XP or global moderation requires explicit configuration; installing the
+bot in another server does not automatically join its sharing scope.
+
 ## Scripts
 
 ```bash
@@ -89,9 +112,54 @@ npm run contract:emit
 
 Emits the Prisma contract files.
 
+```bash
+npm test
+```
+
+Runs the unit and command tests without accessing Discord or PostgreSQL.
+
+```bash
+npm run test:database
+```
+
+Runs live PostgreSQL integration and feature end-to-end tests against `TEST_DATABASE_URL`, or
+`DATABASE_URL` from `.env` when no test URL is set. Use a migrated development
+database. The tests create unique synthetic server records, verify server
+isolation and concurrent writes, and delete those records on completion. CI runs
+this suite against a fresh PostgreSQL service after applying all migrations.
+
+```bash
+TEST_DATABASE_URL=postgresql://user:password@localhost:5432/test_database npm run test:e2e
+```
+
+Runs the dedicated custom-command sharing workflows with the real command,
+Settings, editor, ownership, execution and PostgreSQL code. Only Discord delivery
+is simulated. It covers customization, selected servers, reopening saved settings,
+prefix and slash execution, future installations, shared cooldowns and ownership
+changes. This command requires an explicit test URL and never falls back to `.env`.
+
+```bash
+npm run build
+npm run check:discord
+```
+
+Checks the configured bot token, its Gateway intents, installed server count,
+and core registered slash commands, then disconnects. It does not register
+commands or send messages. Run the built bot once to register commands before
+checking. The check requires installation in at least two servers and reports
+any missing core commands. A successful check establishes connectivity and
+registration; command execution also requires owner verification in each server.
+
 ## Running the Bot
 
-After configuring `.env`, start the bot in development mode:
+After configuring `.env`, start PostgreSQL and apply the included migrations
+before starting the bot. The migration command targets `DATABASE_URL`:
+
+```bash
+npx prisma db migrate
+```
+
+Then start the bot in development mode:
 
 ```bash
 npm run dev
@@ -108,6 +176,27 @@ npm start
 
 This project is licensed under the ISC License.
 
+## Custom commands and member events
+
+After the server owner runs `/verify`, the owner or an administrator can use
+`/custom create` to save a message command (`!trigger`), a member join response,
+or a member leave response. Use `/custom list`, `/custom edit`, `/custom enable`,
+and `/custom delete` to manage them. Each server can save up to 25 rules.
+
+Responses can include `{user}`, `{username}`, `{server}`, `{channel}`, and
+`{memberCount}`. Commands can also include `{args}` when **allow_args** is on.
+Commands support an optional output channel, required role, admin-only access,
+per-member cooldown, and embed output. Join and leave responses require an
+output channel. Custom responses do not allow `@everyone` or role pings.
+Only the member whose command or event triggered the response can be mentioned.
+Expanded responses are truncated to Discord's message or embed description
+limit. Command cooldowns are per member, rule, and server; they reset when the
+bot process restarts. Failed sends release the cooldown so members can retry.
+
+Enable the **Message Content Intent** for this bot in the Discord Developer
+Portal so `!trigger` commands can read messages, then deploy the database
+migration with `npx prisma db migrate` before restarting the bot.
+
 ## XP
 
 Apply the included database migration before starting the updated bot:
@@ -119,8 +208,9 @@ npx prisma db migrate
 XP is off by default. After verifying the server, a member with Manage Server
 permission can enable it with `/settings` → **XP** → **Enable XP**.
 By default, members earn 15 XP per message, with a persisted 60-second cooldown
-per member per server. Bot, webhook, and system messages are excluded. Message content is
-not read, so the Message Content intent is not required.
+per member per server. Bot, webhook, and system messages are excluded. Message XP
+does not inspect message content; the bot requests Message Content Intent for
+custom commands.
 
 - `/xp rank` shows your XP and level; use the `user` option to view another member.
 - `/xp leaderboard` shows the top 10 earners for the configured sharing scope.
@@ -195,3 +285,15 @@ for the guided configuration flow or `/settings` for the summary and quick edits
 The separate `/welcome` and `/logging` commands have been removed.
 Use **Welcome → Test** in settings to preview a greeting. Command registration
 replaces the command list on startup so removed commands disappear after a restart.
+
+### Global custom commands
+
+Every verified guild can manage independent custom commands with `/custom create`,
+edit them with `/custom configure`, and execute them with `!name` or `/custom run`.
+In `/settings`, **Custom Commands** adds Components V2 dropdowns to select an
+existing command and use it in this server, all eligible servers, or specific
+servers. **Customize** reuses the command editor. Sharing uses one definition;
+eligible servers require verified ownership and the sharing administrator's
+current Administrator permission. Save the scope after reviewing the selection.
+See [custom-command configuration, security and deployment](docs/custom-commands.md)
+for response types, permissions, import/export, limits and migration instructions.

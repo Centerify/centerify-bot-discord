@@ -1,0 +1,154 @@
+import { beforeEach, expect, test, vi } from "vitest";
+import { MessageFlags } from "discord.js";
+const mocks = vi.hoisted(() => ({ update: vi.fn(), ownership: vi.fn() }));
+vi.mock("../../../src/services/customCommands/runtime.js", () => ({
+  customCommandService: { updateCommand: mocks.update },
+}));
+vi.mock("../../../src/services/guildOwnershipService.js", () => ({
+  requireVerifiedOwnership: mocks.ownership,
+}));
+vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
+import { openCustomCommandEditor } from "../../../src/services/customCommands/editor.js";
+import { record, USER } from "./fixtures.js";
+function fixture() {
+  let collect!: (interaction: unknown) => Promise<void>;
+  const collector = {
+    ended: false,
+    on: (event: string, listener: (interaction: unknown) => Promise<void>) => {
+      if (event === "collect") collect = listener;
+    },
+  };
+  const guild = {
+    id: "guild-a",
+    ownerId: USER,
+    members: {
+      fetch: vi
+        .fn()
+        .mockResolvedValue({ id: USER, permissions: { has: () => true } }),
+    },
+  };
+  const root = {
+    user: { id: USER },
+    guildId: guild.id,
+    guild,
+    editReply: vi
+      .fn()
+      .mockResolvedValue({ createMessageComponentCollector: () => collector }),
+  };
+  const button = {
+    user: { id: USER },
+    guildId: guild.id,
+    guild,
+    customId: "cc:session:response",
+    inCachedGuild: () => true,
+    isButton: () => true,
+    showModal: vi.fn(),
+    awaitModalSubmit: vi.fn(),
+    reply: vi.fn(),
+    followUp: vi.fn(),
+    deferUpdate: vi.fn(),
+  };
+  return {
+    collector,
+    root,
+    guild,
+    button,
+    collect: (interaction: unknown) => collect(interaction),
+  };
+}
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.ownership.mockResolvedValue(true);
+  mocks.update.mockResolvedValue(record());
+});
+test("foreign users cannot use an editor and current permissions are rechecked on saves", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.user.id = "other";
+  await f.collect(f.button);
+  expect(f.button.reply).toHaveBeenCalledWith(
+    expect.objectContaining({ flags: MessageFlags.Ephemeral }),
+  );
+  expect(mocks.update).not.toHaveBeenCalled();
+  f.button.user.id = USER;
+  f.guild.ownerId = "other";
+  f.guild.members.fetch.mockResolvedValue({
+    id: USER,
+    permissions: { has: () => false },
+  });
+  f.button.customId = "cc:session:clear";
+  await f.collect(f.button);
+  expect(f.guild.members.fetch).toHaveBeenCalledWith({
+    user: USER,
+    force: true,
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+test("unverified guilds cannot save component changes", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.customId = "cc:session:clear";
+  mocks.ownership.mockResolvedValue(false);
+  await f.collect(f.button);
+  expect(mocks.ownership).toHaveBeenCalledOnce();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+test("a modal validation error completes the modal reply without writing", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.customId = "cc:session:settings";
+  const submission = {
+    user: { id: USER },
+    guildId: f.guild.id,
+    guild: f.guild,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    editReply: vi.fn().mockResolvedValue(undefined),
+    fields: {
+      getTextInputValue: (key: string) => (key === "flags" ? "bad" : ""),
+    },
+  };
+  f.button.awaitModalSubmit.mockResolvedValue(submission);
+  await f.collect(f.button);
+  expect(submission.deferReply).toHaveBeenCalledWith({
+    flags: MessageFlags.Ephemeral,
+  });
+  expect(submission.editReply).toHaveBeenCalledWith(
+    expect.objectContaining({
+      content: expect.stringContaining("Flags may contain"),
+    }),
+  );
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+test("modal saves use the observed revision and never revive expired controls", async () => {
+  const f = fixture();
+  const command = record();
+  await openCustomCommandEditor(f.root as never, command);
+  const submission = {
+    user: { id: USER },
+    guildId: f.guild.id,
+    guild: f.guild,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    editReply: vi.fn().mockResolvedValue(undefined),
+    fields: { getTextInputValue: () => "New response" },
+  };
+  f.button.awaitModalSubmit.mockImplementation(async () => {
+    f.collector.ended = true;
+    return submission;
+  });
+  await f.collect(f.button);
+  expect(mocks.update).toHaveBeenCalledWith(
+    f.guild.id,
+    USER,
+    command.name,
+    expect.objectContaining({
+      content: [{ type: "TEXT", text: "New response" }],
+    }),
+    "updated",
+    command.updatedAt,
+  );
+  expect(f.root.editReply).toHaveBeenLastCalledWith(
+    expect.objectContaining({ components: [] }),
+  );
+});

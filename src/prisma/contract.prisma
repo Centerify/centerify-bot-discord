@@ -59,6 +59,29 @@ model GuildConfig {
   @@map("guild_config")
 }
 
+model CustomResponse {
+  id              Int      @id @default(autoincrement())
+  guildId         String
+  name            String
+  kind            String
+  trigger         String
+  response        String
+  channelId       String?
+  allowedRoleId   String?
+  adminOnly       Boolean  @default(false)
+  exactMatch      Boolean  @default(true)
+  embed           Boolean  @default(false)
+  cooldownSeconds Int      @default(0)
+  enabled         Boolean  @default(true)
+  createdBy       String
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+
+  @@unique([guildId, name])
+  @@index([guildId, kind, enabled])
+  @@map("custom_response")
+}
+
 model GuildOwnership {
   id          Int      @id @default(autoincrement())
   guildId     String   @unique
@@ -180,4 +203,80 @@ model MemberXp {
   @@unique([guildId, userId])
   @@index([userId])
   @@map("member_xp")
+}
+
+
+// A guild-local namespace shared by canonical names and aliases.
+model CustomCommand {
+  id Int @id @default(autoincrement())
+  guildId String
+  name String
+  description String @default("")
+  enabled Boolean @default(true)
+  triggerType String @default("BOTH")
+  responseType String @default("TEXT")
+  content Jsonb
+  cooldownSeconds Int @default(0)
+  cooldownScope String @default("USER")
+  deleteInvocation Boolean @default(false)
+  replyToInvocation Boolean @default(true)
+  usageCount Int @default(0)
+  lastUsedAt TimestamptzString?
+  createdBy String
+  updatedBy String
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+  names CustomCommandName[]
+  restrictions CustomCommandRestriction[]
+
+  @@unique([guildId, id])
+  @@unique([guildId, name])
+  @@index([guildId, enabled, triggerType])
+  @@index([enabled])
+  @@index([triggerType])
+  @@check(expression: "name = lower(btrim(name))", name: "custom_command_normalized_name")
+  @@check(expression: "\"cooldownSeconds\" >= 0 AND \"cooldownSeconds\" <= 86400", name: "custom_command_cooldown")
+  @@check(expression: "\"triggerType\" IN ('SLASH', 'MESSAGE', 'BOTH')", name: "custom_command_trigger")
+  @@check(expression: "\"responseType\" IN ('TEXT', 'EMBED', 'MULTI')", name: "custom_command_response")
+  @@check(expression: "\"cooldownScope\" IN ('USER', 'CHANNEL', 'GUILD', 'GLOBAL_COMMAND')", name: "custom_command_scope")
+  @@map("custom_command")
+}
+
+model CustomCommandName {
+  id Int @id @default(autoincrement())
+  guildId String
+  commandId Int
+  name String
+  command CustomCommand @relation(fields: [guildId, commandId], references: [guildId, id])
+
+  @@unique([guildId, name])
+  @@index([guildId, commandId])
+  @@check(expression: "name = lower(btrim(name))", name: "custom_command_name_normalized")
+  @@map("custom_command_name")
+}
+
+model CustomCommandRestriction {
+  id Int @id @default(autoincrement())
+  guildId String
+  commandId Int
+  kind String
+  value String
+  command CustomCommand @relation(fields: [guildId, commandId], references: [guildId, id])
+
+  @@unique([guildId, commandId, kind, value])
+  @@check(expression: "kind IN ('allowedRoleIds', 'deniedRoleIds', 'allowedChannelIds', 'deniedChannelIds', 'requiredUserPermissions', 'requiredBotPermissions')", name: "custom_command_restriction_kind")
+  @@map("custom_command_restriction")
+}
+
+model CustomCommandSharing {
+  commandId Int @id
+  guildId String
+  actorId String
+  scope String
+  selectedGuildIds String @default("")
+  command CustomCommand @relation(fields: [guildId, commandId], references: [guildId, id], onDelete: Cascade)
+
+  @@check(expression: "scope IN ('all', 'selected')", name: "custom_command_sharing_scope")
+  @@index([guildId])
+  @@map("custom_command_sharing")
 }

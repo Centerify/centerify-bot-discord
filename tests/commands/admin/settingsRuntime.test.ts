@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Command } from "@sapphire/framework";
-const mocks = vi.hoisted(() => ({ load: vi.fn(), update: vi.fn(), handle: vi.fn() }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), update: vi.fn(), handle: vi.fn(), customSettings: vi.fn() }));
+vi.mock("../../../src/services/customCommands/settings.js", () => ({ openCustomCommandSettings: mocks.customSettings }));
 vi.mock("../../../src/services/setup/interactionHandler.js", () => ({ SetupInteractionHandler: class { handleComponent = mocks.handle; } }));
 vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: { getOrCreate: mocks.load, update: mocks.update } }));
 vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
@@ -55,7 +56,7 @@ test("settings keeps XP server controls inside the XP section", async () => {
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
   const view = f.editReply.mock.calls[0][0];
   const labels = view.components.flatMap((row: any) => row.toJSON().components.map((item: any) => item.label));
-  expect(labels).toEqual(expect.arrayContaining(["XP", "Welcome", "Goodbye", "Auto Role", "Logging", "Global Moderation"]));
+  expect(labels).toEqual(["Welcome", "Goodbye", "Auto Role", "Logging", "Global Moderation", "XP", "Custom Commands", "Done"]);
   expect(labels).not.toContain("Choose XP Servers");
   expect(labels).not.toContain("Apply XP to Servers");
   expect(view.components).toHaveLength(2);
@@ -98,4 +99,15 @@ test("settings prevents concurrent saves and Done closes the session", async () 
   mocks.handle.mockImplementation(async ({ componentInteraction }) => { componentInteraction.deferred = true; return config; });
   await f.callbacks.collect({ ...button(), customId: "setup:settings-session:finish" });
   expect(f.collector.stop).toHaveBeenCalledWith("finished");
+});
+
+test("custom command settings opens from the existing layout in a separate ephemeral panel", async () => {
+  const f = fixture();
+  await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
+  const b = { ...button(), customId: "setup:settings-session:custom-commands" };
+  await f.callbacks.collect(b);
+  expect(b.deferReply).toHaveBeenCalledOnce();
+  expect(mocks.customSettings).toHaveBeenCalledWith(b);
+  expect(mocks.handle).not.toHaveBeenCalled();
+  expect(f.editReply).toHaveBeenCalledOnce();
 });

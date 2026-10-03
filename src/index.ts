@@ -1,9 +1,8 @@
 import "dotenv/config";
 import { logger } from "./logger.js";
+import { gatewayOptions } from "./clientOptions.js";
 
-const [{ ApplicationCommandRegistries, LogLevel, RegisterBehavior, SapphireClient }, { GatewayIntentBits, Partials }] = await Promise.all(
-  [import("@sapphire/framework"), import("discord.js")],
-);
+const { ApplicationCommandRegistries, LogLevel, RegisterBehavior, SapphireClient } = await import("@sapphire/framework");
 
 const token = process.env["DISCORD_TOKEN"];
 
@@ -14,14 +13,7 @@ if (!token) {
 ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
 
 const client = new SapphireClient({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildPresences,
-  ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
+  ...gatewayOptions,
   loadMessageCommandListeners: true,
   logger: { level: LogLevel.Info },
 });

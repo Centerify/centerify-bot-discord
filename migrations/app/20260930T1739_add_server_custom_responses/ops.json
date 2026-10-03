@@ -1,0 +1,122 @@
+[
+  {
+    "id": "table.custom_response",
+    "label": "Create table \"custom_response\"",
+    "summary": "Creates table \"custom_response\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "custom_response"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"custom_response\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_response\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"custom_response\"",
+        "sql": "CREATE TABLE \"public\".\"custom_response\" (\n  \"adminOnly\" bool DEFAULT false NOT NULL,\n  \"allowedRoleId\" text,\n  \"channelId\" text,\n  \"cooldownSeconds\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdBy\" text NOT NULL,\n  \"embed\" bool DEFAULT false NOT NULL,\n  \"enabled\" bool DEFAULT true NOT NULL,\n  \"exactMatch\" bool DEFAULT true NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"kind\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"response\" text NOT NULL,\n  \"trigger\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"custom_response\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_response\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.custom_response.custom_response_guildId_name_key",
+    "label": "Add unique constraint on \"custom_response\" (guildId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "custom_response_guildId_name_key",
+        "table": "custom_response"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"custom_response_guildId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_response_guildId_name_key",
+          "public",
+          "\"public\".\"custom_response\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"custom_response_guildId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"custom_response\" ADD CONSTRAINT \"custom_response_guildId_name_key\" UNIQUE (\"guildId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"custom_response_guildId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "custom_response_guildId_name_key",
+          "public",
+          "\"public\".\"custom_response\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.custom_response.custom_response_guildId_kind_enabled_idx_0ebf4a27",
+    "label": "Create index \"custom_response_guildId_kind_enabled_idx_0ebf4a27\" on \"custom_response\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "custom_response_guildId_kind_enabled_idx_0ebf4a27",
+        "table": "custom_response"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"custom_response_guildId_kind_enabled_idx_0ebf4a27\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_response_guildId_kind_enabled_idx_0ebf4a27\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"custom_response_guildId_kind_enabled_idx_0ebf4a27\"",
+        "sql": "CREATE INDEX \"custom_response_guildId_kind_enabled_idx_0ebf4a27\" ON \"public\".\"custom_response\" (\"guildId\", \"kind\", \"enabled\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"custom_response_guildId_kind_enabled_idx_0ebf4a27\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"custom_response_guildId_kind_enabled_idx_0ebf4a27\""
+        ]
+      }
+    ]
+  }
+]
