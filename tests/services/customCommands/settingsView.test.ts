@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { ComponentType, MessageFlags } from "discord.js";
 import {
   customSettingsView,
+  customSettingsWarning,
   type CustomSettingsState,
 } from "../../../src/services/customCommands/settingsView.js";
 import { record } from "./fixtures.js";
@@ -34,9 +35,9 @@ test("settings uses a valid V2 container with paginated command, scope, and serv
   const selects = rows.flatMap((row) =>
     row.components.filter((item) => item.type === ComponentType.StringSelect),
   );
-  expect(selects.map((item) => item.options.length)).toEqual([5, 3, 25]);
+  expect(selects.map((item) => item.options.length)).toEqual([5, 5, 3, 25]);
   expect(selects[0]!.options.find((item) => item.default)?.value).toBe("26");
-  expect(selects[2]!.options.find((item) => item.default)?.value).toBe("27");
+  expect(selects[3]!.options.find((item) => item.default)?.value).toBe("27");
   expect(rows.every((row) => row.components.length <= 5)).toBe(true);
 });
 test("expired or closed V2 sessions keep their content and disable every control", () => {
@@ -71,7 +72,7 @@ test("no commands or eligible servers still produce valid V2 settings", () => {
   ).not.toThrow();
 });
 
-test("duplicate warnings escape server names, suppress mentions, and disable confirmation on expiry", () => {
+test("separate warning embeds escape server names and suppress mentions", () => {
   const warning = state();
   warning.confirmation = {
     id: "nonce",
@@ -82,30 +83,50 @@ test("duplicate warnings escape server names, suppress mentions, and disable con
       names: ["welcome", "hi"],
     })),
   };
-  const view = customSettingsView(warning, "session");
+  const view = customSettingsWarning(warning, "session");
+  expect(view.flags).toBe(MessageFlags.Ephemeral);
   expect(view.allowedMentions).toEqual({ parse: [] });
-  const container = view.components[0].toJSON();
-  const text = container.components.find(
-    (item) =>
-      item.type === ComponentType.TextDisplay &&
-      item.content.includes("Duplicate commands found"),
+  expect(view.embeds[0]!.toJSON().description).toContain(
+    "\\*\\*Untrusted\\*\\* @everyone",
   );
-  expect(text).toMatchObject({
-    content: expect.stringContaining("\\*\\*Untrusted\\*\\* @everyone"),
-  });
-  expect(text).toMatchObject({
-    content: expect.stringContaining("92 more servers"),
-  });
-  const controls = customSettingsView(warning, "session", true)
+  expect(view.embeds[0]!.toJSON().description).toContain("92 more servers");
+  expect(
+    view.components[0]!.toJSON().components.map((c) =>
+      "custom_id" in c ? c.custom_id : undefined,
+    ),
+  ).toEqual([
+    "cc-settings:session:proceed-nonce",
+    "cc-settings:session:replace-nonce",
+    "cc-settings:session:cancel-nonce",
+  ]);
+  expect(JSON.stringify(customSettingsView(warning, "session"))).not.toContain(
+    "Duplicate commands found",
+  );
+});
+
+test("batch selection keeps the independent customization selector available", () => {
+  const batch = state();
+  batch.commandIds = new Set([26, 27]);
+  batch.dirty = true;
+  const controls = customSettingsView(batch, "session")
     .components[0].toJSON()
     .components.flatMap((item) =>
       item.type === ComponentType.ActionRow ? item.components : [],
     );
+  const select = controls.find(
+    (item) =>
+      item.type === ComponentType.StringSelect &&
+      item.custom_id.endsWith(":command"),
+  );
+  expect(select).toMatchObject({ min_values: 0, max_values: 5 });
+  if (select?.type !== ComponentType.StringSelect)
+    throw new Error("Missing command input");
+  expect(
+    select.options.filter((item) => item.default).map((item) => item.value),
+  ).toEqual(["26", "27"]);
   expect(
     controls.find(
-      (item) =>
-        "custom_id" in item &&
-        item.custom_id === "cc-settings:session:proceed-nonce",
+      (item) => "custom_id" in item && item.custom_id.endsWith(":customize"),
     ),
-  ).toMatchObject({ disabled: true });
+  ).toMatchObject({ disabled: false });
 });

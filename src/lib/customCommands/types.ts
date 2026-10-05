@@ -44,8 +44,9 @@ export interface CustomCommandDefinition {
 export interface CustomCommandRecord extends CustomCommandDefinition {
   id: number;
   guildId: string;
-  /** Set only on an authorized shared execution; identity and metrics stay at the source. */
+  /** Shared commands retain their source identity for execution and editing. */
   sourceGuildId?: string;
+  sharingScope?: "server" | "all" | "selected";
   createdBy: string;
   updatedBy: string;
   createdAt: string;

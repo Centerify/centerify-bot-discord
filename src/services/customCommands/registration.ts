@@ -90,6 +90,11 @@ export function definitionOptions(
     );
 }
 export function extraSubcommands(builder: SlashCommandBuilder): void {
+  builder.addSubcommand((sub) =>
+    sub
+      .setName("options")
+      .setDescription("Configure custom commands and share them between servers"),
+  );
   for (const name of ["info", "disable", "configure"] as const)
     builder.addSubcommand((sub) =>
       sub

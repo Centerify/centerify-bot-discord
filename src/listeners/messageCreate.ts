@@ -18,11 +18,14 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
       logger.error({ err: error, guildId: message.guild.id }, "Failed to check message guild ownership");
       return;
     }
-    try {
-      await xpService.award(message.guild.id, message.author.id);
-    } catch (error) {
-      logger.error({ err: error, guildId: message.guild.id, userId: message.author.id }, "Failed to award message XP");
-    }
+    // XP persistence must not delay command delivery; still await it before exiting.
+    const awardXp = (async () => {
+      try {
+        await xpService.award(message.guild!.id, message.author.id);
+      } catch (error) {
+        logger.error({ err: error, guildId: message.guild!.id, userId: message.author.id }, "Failed to award message XP");
+      }
+    })();
     try {
       if (message.content?.startsWith("!")) {
         const { runDomainCustomCommand } = await import("../services/customCommands/runtime.js");
@@ -31,6 +34,8 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
       await runCustomCommand(message);
     } catch (error) {
       logger.error({ err: error, guildId: message.guild.id }, "Failed to run custom command");
+    } finally {
+      await awardXp;
     }
   }
 }

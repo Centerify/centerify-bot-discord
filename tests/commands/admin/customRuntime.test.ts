@@ -12,7 +12,7 @@ vi.mock("../../../src/services/customResponseService.js", () => ({
 }));
 vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
 
-vi.mock("../../../src/services/customCommands/runtime.js", () => ({ customCommandService: { listCommands: async () => [] } }));
+vi.mock("../../../src/services/customCommands/runtime.js", () => ({ customCommandService: { listCommands: async () => [] }, customCommandSharingService: { listAvailable: async () => [] } }));
 
 import { CustomCommand } from "../../../src/commands/admin/custom.js";
 import { VerifiedGuildOwnershipPrecondition } from "../../../src/preconditions/verifiedGuildOwnership.js";

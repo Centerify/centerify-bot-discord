@@ -23,6 +23,18 @@ test("verified guild messages award XP and run custom commands", async () => {
   expect(mocks.custom).toHaveBeenCalledWith(message);
 });
 
+test("custom command delivery does not wait for XP storage", async () => {
+  let finishXp!: () => void;
+  mocks.award.mockReturnValue(new Promise<void>((resolve) => { finishXp = resolve; }));
+  const running = listener.run(message as unknown as Message);
+  try {
+    await vi.waitFor(() => expect(mocks.custom).toHaveBeenCalledWith(message));
+  } finally {
+    finishXp();
+    await running;
+  }
+});
+
 test.each([
   { ...message, guild: null },
   { ...message, author: { ...message.author, bot: true } },

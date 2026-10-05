@@ -16,6 +16,7 @@ import type {
 import {
   customCommandExecutor,
   customCommandService,
+  customCommandSharingService,
   resolveExecutableCustomCommand,
 } from "./runtime.js";
 import { parseArguments } from "./CustomCommandVariableResolver.js";
@@ -163,13 +164,13 @@ export async function showCommandList(
   interaction: ChatInputCommandInteraction<"cached">,
   legacyLines: string[],
 ): Promise<void> {
-  const commands = await customCommandService.listCommands(interaction.guildId);
+  const commands = await customCommandSharingService.listAvailable(interaction.client, interaction.guild);
   const lines = [
     ...commands
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(
         (c) =>
-          `**${escapeMarkdown(c.name)}** — ${c.responseType} • ${c.enabled ? "on" : "off"}`,
+          `**${escapeMarkdown(c.name)}** — ${c.responseType} • ${c.enabled ? "on" : "off"} • ${c.sharingScope === "all" ? "Global" : c.sharingScope === "selected" ? "Specific servers" : "Local"}${c.sourceGuildId ? ` • Shared from ${c.sourceGuildId}` : ""}`,
       ),
     ...legacyLines,
   ];
@@ -211,13 +212,22 @@ export async function handleCustomManagement(
   const guildId = interaction.guildId;
   const actor = interaction.user.id;
   const sub = interaction.options.getSubcommand();
+  if (sub === "options") {
+    const { openCustomCommandSettings } = await import("./settings.js");
+    await openCustomCommandSettings(interaction);
+    return;
+  }
   if (sub === "run") {
     const name = interaction.options.getString("command", true);
-    const command = await resolveExecutableCustomCommand(
-      interaction.client,
-      interaction.guild,
-      name,
-    );
+    // Resolve the definition and refresh the caller's permissions concurrently.
+    const [command, member] = await Promise.all([
+      resolveExecutableCustomCommand(
+        interaction.client,
+        interaction.guild,
+        name,
+      ),
+      interaction.guild.members.fetch({ user: actor, force: true }),
+    ]);
     if (!command)
       throw new CustomCommandNotFoundError(
         `No custom command named \`${name}\` exists.`,
@@ -225,11 +235,6 @@ export async function handleCustomManagement(
     const channel = interaction.channel;
     if (!channel || channel.isDMBased() || !("send" in channel))
       throw new CustomCommandNotFoundError("Use a text channel.");
-    // Refresh roles and permissions for execution as well as administrative actions.
-    const member = await interaction.guild.members.fetch({
-      user: actor,
-      force: true,
-    });
     await customCommandExecutor.execute(
       {
         guildId,
@@ -243,12 +248,7 @@ export async function handleCustomManagement(
         source: "slash",
       },
       {
-        send: async (payload, index) => {
-          if (index === 0)
-            await interaction.editReply({
-              content: `Running \`${command.name}\`…`,
-              allowedMentions: { parse: [] },
-            });
+        send: async (payload) => {
           return command.replyToInvocation
             ? interaction.followUp({
                 content: payload.content ?? undefined,
@@ -304,14 +304,23 @@ export async function handleCustomManagement(
   const name = interaction.options.getString("name", true);
   if (sub === "info" || sub === "configure") {
     customCommandService.invalidate(guildId);
-    const command = await customCommandService.getCommand(guildId, name);
+    let command = await customCommandService.getCommand(guildId, name);
+    if (!command) {
+      const matches = (await customCommandSharingService.listAvailable(interaction.client, interaction.guild))
+        .filter((row) => row.name === name.trim().toLowerCase());
+      if (matches.length > 1)
+        throw new CustomCommandNotFoundError("Several shared commands have this name. Choose one in /custom options.");
+      command = matches[0] ?? null;
+    }
     if (!command)
       throw new CustomCommandNotFoundError(
         `No custom command named \`${name}\` exists.`,
       );
-    if (sub === "configure")
+    if (sub === "configure") {
+      if (command.sourceGuildId)
+        await customCommandSharingService.forManagement(interaction.client, interaction.guild, actor, command);
       await openCustomCommandEditor(interaction, command);
-    else
+    } else
       await interaction.editReply({
         embeds: [commandInfo(command)],
         allowedMentions: { parse: [] },

@@ -69,11 +69,16 @@ administrative access. Management still requires server-side Administrator acces
 availability; they never replace server-side checks. Administrative replies and
 execution acknowledgements are ephemeral; executed responses are public.
 
-## Global and selected-server commands in Settings
+## Global and selected-server commands
 
-Open `/settings` and press **Custom Commands** in the existing settings controls.
-The private Components V2 panel provides a command dropdown, **Customize** using
-the existing editor, and a scope dropdown:
+Open `/custom options` to configure sharing, or open `/settings` and press
+**Custom Commands** in the existing settings controls.
+The private Components V2 panel has separate dropdowns for commands to share
+together and one command to customize. Choosing **Customize** never clears your
+batch sharing selection. Choose any command in the customization dropdown and
+press **Only This Command** to set that command's scope independently. Command
+selections persist across pages. **Save Scope** applies the displayed scope to
+the sharing selection:
 
 - **This server only** keeps the command local and removes any sharing reference.
 - **All eligible servers** shares it with verified servers where the administrator
@@ -84,22 +89,42 @@ the existing editor, and a scope dropdown:
 
 Press **Save Scope** to persist a scope change. If a command name or alias already
 exists in an eligible destination (including legacy triggers and other shared
-commands), the panel warns before saving. **Proceed** saves the scope without
-replacing any commands; **Cancel** leaves the saved scope unchanged. Changing the
-selection invalidates the confirmation. Proceed rechecks permissions and duplicate
+commands), a separate private warning embed appears with Keep Existing, Replace Existing, and Cancel buttons; the
+settings panel stays in place. **Keep Existing** saves the scope without
+replacing any commands. **Replace Existing** permanently removes conflicting server custom commands (including all their aliases) and saves the scope atomically, allowing the global command to run. Replacement is unavailable for legacy triggers and incoming shared commands; a local command that is itself shared must have its sharing removed first. Changed definitions require a fresh review. **Cancel** stops the remaining saves. Batch saves run in
+order; the panel reports completed and pending commands if a duplicate or error
+interrupts saving. **Keep Existing** resumes at the conflicting command. Changing the
+selection invalidates the confirmation. Warning buttons expire after two minutes
+and are removed when cancelled, consumed, or when settings close. Confirmation rechecks permissions and duplicate
 names; new conflicts require another warning. Local commands still take precedence,
 and ambiguous shared names remain unavailable. All-server checks cover currently
 eligible destinations; later additions and command edits can introduce conflicts.
-Refresh reloads the command and
-saved scope, discarding pending selections. Customize saves command edits immediately
-as before; refresh this panel after editing. Closing or expiry discards unsaved scope
-changes and disables the panel's controls. No additional slash command is registered.
+If Discord cannot acknowledge a click, that action is not applied and earlier
+inputs are preserved. Retry the input or use Refresh to review the panel before
+Save Scope is enabled again.
+
+Inputs update the panel immediately. Refresh reloads command details and eligible
+servers while preserving unsaved scope and server selections. Switching commands
+also preserves their drafts. Customize saves command edits immediately and updates
+the settings panel automatically. Saving reloads the latest command definitions.
+Closing or expiry after ten minutes discards unsaved scope changes and disables
+the panel's controls. No additional slash command is registered.
 
 Shared commands keep one definition: changes to responses, aliases, enabled state
 and permission requirements apply everywhere. `!name` and `/custom run command:name`
 both resolve shared commands. Variables describe the server, channel and member
 where the command is invoked. Usage stays on the source definition; GLOBAL_COMMAND
 cooldowns span eligible servers, while GUILD cooldowns remain per invocation server.
+
+`/custom list` and `/custom options` include commands shared with the current
+server, including disabled commands that need to be re-enabled. The list labels
+each command Local, Global, or Specific servers and identifies shared sources.
+Customize and `/custom configure` edit the original definition from any eligible
+server. The editor must have Administrator permission (or own the server) in
+both the original and current verified servers. Sharing eligibility and access
+are checked again for each save. Scope changes from a destination also update
+the original grant; **Original server only** withdraws sharing. Duplicate names
+can be distinguished by their source in the options dropdowns. No copies are made.
 
 Ownership verification and the sharing administrator's current access are checked
 in both source and destination. Losing either stops remote execution. Existing local

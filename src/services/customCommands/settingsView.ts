@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   Colors,
   ContainerBuilder,
+  EmbedBuilder,
   MessageFlags,
   StringSelectMenuBuilder,
   TextDisplayBuilder,
@@ -18,6 +19,10 @@ import type {
 export interface CustomSettingsState {
   commands: CustomCommandRecord[];
   commandId?: number;
+  customizeId?: number;
+  commandIds?: Set<number>;
+  dirty?: boolean;
+  needsReview?: boolean;
   commandPage: number;
   scope: CommandScope;
   choices: { id: string; name: string }[];
@@ -28,6 +33,8 @@ export interface CustomSettingsState {
     id: string;
     fingerprint: string;
     conflicts: SharingConflict[];
+    remainingCommandIds?: number[];
+    savedCount?: number;
   };
 }
 export function customSettingsView(
@@ -37,6 +44,9 @@ export function customSettingsView(
 ) {
   const container = new ContainerBuilder().setAccentColor(Colors.Blurple);
   const command = state.commands.find((item) => item.id === state.commandId);
+  const customizeCommand = state.commands.find(
+    (item) => item.id === (state.customizeId ?? state.commandId),
+  );
   const buttons = (items: [string, string, boolean, ButtonStyle?][]) =>
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       items.map(([action, label, disabled, style]) =>
@@ -49,7 +59,7 @@ export function customSettingsView(
     );
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `## Custom Commands\n${state.notice ?? "Choose an existing command, customize it, and set where it runs."}\n` +
+      `## Custom Commands\n${state.notice ?? "Choose commands to share together. Use the separate customization dropdown to edit any one command, or Only This Command to set its individual scope."}\n` +
         "All servers includes verified servers where you are an administrator and Centerify is installed, including eligible servers added later. Local commands take precedence. Changes to a shared command apply everywhere.",
     ),
   );
@@ -68,17 +78,42 @@ export function customSettingsView(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId(`cc-settings:${session}:command`)
-          .setPlaceholder("Choose a custom command")
+          .setPlaceholder("Choose commands to share together")
+          .setMinValues(0)
+          .setMaxValues(visible.length)
           .setDisabled(closed)
           .addOptions(
             visible.map((item) => ({
               label: item.name.slice(0, 100),
+              description: item.sourceGuildId ? `Shared from ${item.sourceGuildId}` : "Saved in this server",
               value: String(item.id),
-              default: item.id === state.commandId,
+              default: state.commandIds
+                ? state.commandIds.has(item.id)
+                : item.id === state.commandId,
             })),
           ),
       ),
     );
+    container.addActionRowComponents(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`cc-settings:${session}:customize-command`)
+          .setPlaceholder("Choose one command to customize")
+          .setMinValues(1)
+          .setMaxValues(1)
+          .setDisabled(closed)
+          .addOptions(visible.map((item) => ({
+            label: item.name.slice(0, 100),
+            description: item.sourceGuildId ? `Shared from ${item.sourceGuildId}` : "Saved in this server",
+            value: String(item.id),
+            default: item.id === customizeCommand?.id,
+          }))),
+      ),
+    );
+    if (customizeCommand)
+      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `**Customize:** ${escapeMarkdown(customizeCommand.name)} • Editing this command keeps your sharing selection. **Only This Command** switches the scope controls to this command alone.${customizeCommand.sourceGuildId ? " This is a shared definition; edits apply in every server using it." : ""}`,
+      ));
     if (state.commands.length > 25)
       container.addActionRowComponents(
         buttons([
@@ -93,7 +128,7 @@ export function customSettingsView(
     if (command) {
       container.addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `**${escapeMarkdown(command.name)}:** ${command.enabled ? "Enabled" : "Disabled"}\n**Scope:** ${state.scope === "all" ? "All eligible servers" : state.scope === "selected" ? "Selected servers" : "This server"}\n**Selected:** ${state.selected.size} other servers`,
+          `**${escapeMarkdown(command.name)}:** ${command.enabled ? "Enabled" : "Disabled"}\n**Commands selected:** ${state.commandIds?.size ?? 1}\n**Scope:** ${state.scope === "all" ? "All eligible servers" : state.scope === "selected" ? "Selected servers" : "This server"}\n**Selected:** ${state.selected.size} other servers\n${state.dirty ? "Unsaved scope changes. " : ""}Save Scope applies the displayed scope to every selected command.`,
         ),
       );
       container.addActionRowComponents(
@@ -104,7 +139,7 @@ export function customSettingsView(
             .setDisabled(closed)
             .addOptions([
               {
-                label: "This server only",
+                label: command.sourceGuildId ? "Original server only" : "This server only",
                 value: "server",
                 default: state.scope === "server",
               },
@@ -167,44 +202,23 @@ export function customSettingsView(
       }
     }
   }
-  if (state.confirmation) {
-    const preview = state.confirmation.conflicts
-      .slice(0, 8)
-      .map(
-        (conflict) =>
-          `- ${escapeMarkdown(conflict.guildName.replace(/[\r\n]/g, " ").slice(0, 60))} (${conflict.guildId}): ${conflict.names
-            .slice(0, 5)
-            .map((name) => `\`${name}\``)
-            .join(", ")}${conflict.names.length > 5 ? ", …" : ""}`,
-      )
-      .join("\n");
-    const remaining = state.confirmation.conflicts.length - 8;
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `### Duplicate commands found\n${preview}${remaining > 0 ? `\n… and ${remaining} more servers.` : ""}\nProceed saves this scope without replacing existing commands. Local commands take precedence; conflicting shared names will not run.`,
-      ),
-    );
-    container.addActionRowComponents(
-      buttons([
-        [
-          `proceed-${state.confirmation.id}`,
-          "Proceed",
-          false,
-          ButtonStyle.Danger,
-        ],
-        ["cancel", "Cancel", false],
-      ]),
-    );
-  }
   container.addActionRowComponents(
     buttons([
       [
         "save",
         "Save Scope",
-        !command || (state.scope === "selected" && state.selected.size === 0),
+        Boolean(state.needsReview) ||
+          !command ||
+          (state.scope === "selected" && state.selected.size === 0),
         ButtonStyle.Success,
       ],
-      ["customize", "Customize", !command, ButtonStyle.Primary],
+      [
+        "customize",
+        "Customize",
+        !customizeCommand,
+        ButtonStyle.Primary,
+      ],
+      ["only-command", "Only This Command", !customizeCommand],
       ["refresh", "Refresh", false],
       ["close", "Done", false],
     ]),
@@ -212,6 +226,53 @@ export function customSettingsView(
   return {
     flags: MessageFlags.IsComponentsV2 as const,
     components: [container],
+    allowedMentions: { parse: [] as [] },
+  };
+}
+
+export function customSettingsWarning(
+  state: CustomSettingsState,
+  session: string,
+) {
+  const confirmation = state.confirmation!;
+  const preview = confirmation.conflicts
+    .slice(0, 8)
+    .map(
+      (conflict) =>
+        `- ${escapeMarkdown(conflict.guildName.replace(/[\r\n]/g, " ").slice(0, 60))} (${conflict.guildId}): ${conflict.names
+          .slice(0, 5)
+          .map((name) => `\`${name}\``)
+          .join(", ")}${conflict.names.length > 5 ? ", …" : ""}`,
+    )
+    .join("\n");
+  const remaining = confirmation.conflicts.length - 8;
+  return {
+    flags: MessageFlags.Ephemeral as const,
+    embeds: [
+      new EmbedBuilder()
+        .setColor(Colors.Yellow)
+        .setTitle("Duplicate commands found")
+        .setDescription(
+          `${state.notice ?? ""}\n\n${preview}${remaining > 0 ? `\n… and ${remaining} more servers.` : ""}\n\nKeep Existing saves this scope and keeps server commands taking precedence. Replace Existing permanently deletes conflicting server custom commands, including their aliases, so the global command can run. Replacement is unavailable for legacy commands or commands shared with other servers. Cancel stops the remaining saves.`,
+        ),
+    ],
+    components: [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`cc-settings:${session}:proceed-${confirmation.id}`)
+          .setLabel("Keep Existing")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(`cc-settings:${session}:replace-${confirmation.id}`)
+          .setLabel("Replace Existing")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(confirmation.conflicts.some((conflict) => !conflict.replaceable)),
+        new ButtonBuilder()
+          .setCustomId(`cc-settings:${session}:cancel-${confirmation.id}`)
+          .setLabel("Cancel")
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    ],
     allowedMentions: { parse: [] as [] },
   };
 }

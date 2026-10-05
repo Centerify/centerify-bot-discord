@@ -8,6 +8,7 @@ import {
 } from "../../../src/services/customCommands/CustomCommandSharingService.js";
 import { record } from "./fixtures.js";
 const repository: SharingRepository = {
+  available: vi.fn(),
   get: vi.fn(),
   candidates: vi.fn(),
   save: vi.fn(),
@@ -65,6 +66,35 @@ beforeEach(() => {
     },
   } as unknown as Client;
 });
+test("available commands combine local scopes and shared definitions, including disabled commands", async () => {
+  vi.mocked(repository.available).mockResolvedValue([sharing(), sharing({ guildId: target.id, commandId: 2, scope: "selected" })]);
+  commands.listCommands.mockImplementation(async (id) => id === source.id
+    ? [record({ enabled: false })]
+    : [record({ id: 2, guildId: target.id, name: "local" })]);
+  expect(await service.listAvailable(client, target)).toEqual([
+    expect.objectContaining({ id: 2, name: "local", sharingScope: "selected" }),
+    expect.objectContaining({ id: 1, guildId: target.id, sourceGuildId: source.id, sharingScope: "all", enabled: false }),
+  ]);
+  verified.mockResolvedValue(false);
+  expect(await service.listAvailable(client, target)).toHaveLength(1);
+});
+
+test("shared management rechecks scope and both servers before accessing the original definition", async () => {
+  vi.mocked(repository.get).mockResolvedValue(sharing({ scope: "selected", selectedGuildIds: target.id }));
+  const projected = record({ guildId: target.id, sourceGuildId: source.id });
+  expect(await service.forManagement(client, target, "admin", projected)).toMatchObject({ guildId: source.id, id: 1 });
+  vi.mocked(repository.get).mockResolvedValue(sharing({ scope: "selected", selectedGuildIds: "elsewhere" }));
+  await expect(service.forManagement(client, target, "admin", projected)).rejects.toThrow("no longer shared");
+  vi.mocked(repository.get).mockResolvedValue(sharing());
+  verified.mockImplementation(async (guild) => guild.id !== source.id);
+  await expect(service.forManagement(client, target, "admin", projected)).rejects.toThrow("both");
+});
+
+test("scope changes from a destination update the original grant", async () => {
+  vi.mocked(repository.get).mockResolvedValue(sharing());
+  await service.save(client, "admin", record({ guildId: target.id, sourceGuildId: source.id }), "selected", [target.id]);
+  expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ guildId: source.id }), sharing({ scope: "selected", selectedGuildIds: target.id }));
+});
 test("one global definition resolves in an authorized server with the original identity", async () => {
   const found = await service.resolve(client, target, "HI");
   expect(found).toMatchObject({
@@ -75,6 +105,21 @@ test("one global definition resolves in an authorized server with the original i
   });
   expect(repository.save).not.toHaveBeenCalled();
   expect(commands.invalidate).toHaveBeenCalledWith("guild-a");
+});
+
+test("shared execution checks both servers concurrently and awaits fresh authorization", async () => {
+  let finishSource!: (allowed: boolean) => void;
+  verified.mockImplementation((guild) => guild.id === source.id
+    ? new Promise<boolean>((resolve) => { finishSource = resolve; })
+    : Promise.resolve(true));
+  const resolving = service.resolve(client, target, "welcome");
+  try {
+    await vi.waitFor(() => expect(verified).toHaveBeenCalledWith(target));
+    expect(commands.listCommands).not.toHaveBeenCalled();
+  } finally {
+    finishSource(false);
+  }
+  expect(await resolving).toBeNull();
 });
 test("selected scope includes only chosen servers, and changes are read from the source", async () => {
   vi.mocked(repository.candidates).mockResolvedValue([
@@ -261,6 +306,8 @@ test.each(["name", "alias", "legacy", "shared"])(
         guildId: target.id,
         guildName: target.name,
         names: [kind === "name" ? "welcome" : "hi"],
+        replacements: kind === "name" || kind === "alias" ? [{ id: 2, updatedAt: duplicate.updatedAt }] : [],
+        replaceable: kind === "name" || kind === "alias",
       },
     ]);
     expect(repository.save).not.toHaveBeenCalled();
@@ -415,4 +462,30 @@ test("all-server scope can be saved before any other server is eligible", async 
   await service.save(client, "admin", record(), "all", []);
   expect(repository.save).toHaveBeenCalledExactlyOnceWith(record(), sharing());
   expect(repository.candidates).not.toHaveBeenCalled();
+});
+
+
+test("Replace requires current consent, passes reviewed definitions, and invalidates destination caches", async () => {
+  const existing = record({ id: 2, guildId: target.id, aliases: ["hi"] });
+  commands.listCommands.mockImplementation(async (id) => id === target.id ? [existing] : [record()]);
+  const command = record({ aliases: ["hi"] });
+  const error = await warning(command);
+  await expect(service.save(client, "admin", command, "selected", [target.id], undefined, "replace"))
+    .rejects.toBeInstanceOf(CustomCommandSharingConflictError);
+  expect(repository.save).not.toHaveBeenCalled();
+  await service.save(client, "admin", command, "selected", [target.id], error.fingerprint, "replace");
+  expect(repository.save).toHaveBeenCalledWith(command, sharing({ scope: "selected", selectedGuildIds: target.id }), error.conflicts);
+  expect(commands.invalidate).toHaveBeenCalledWith(target.id);
+  existing.updatedAt = "changed";
+  await expect(service.save(client, "admin", command, "selected", [target.id], error.fingerprint, "replace"))
+    .rejects.toBeInstanceOf(CustomCommandSharingConflictError);
+  expect(repository.save).toHaveBeenCalledTimes(1);
+});
+
+test("Replace cannot delete legacy conflicts even with a valid confirmation", async () => {
+  vi.mocked(repository.hasLegacyName).mockResolvedValue(true);
+  const error = await warning();
+  await expect(service.save(client, "admin", record({ aliases: ["hi"] }), "selected", [target.id], error.fingerprint, "replace"))
+    .rejects.toThrow("Only server custom commands");
+  expect(repository.save).not.toHaveBeenCalled();
 });
