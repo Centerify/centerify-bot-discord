@@ -273,3 +273,77 @@ test("explicit null configuration, NUL bytes and lone surrogates fail validation
       }),
     ).toThrow("invalid Unicode");
 });
+
+test("advanced variables expose command context and preserve numeric arguments", async () => {
+  const c = context({ args: ["one", "{user.name}", "three"] });
+  expect(
+    await variables.render(
+      "{args.count}|{args.first}|{args.last}|{args.1}|{command.prefix}|{command.source}|{command.usageCount}|{member.roleCount}",
+      c,
+    ),
+  ).toBe("3|one|three|{user.name}|!|message|0|1");
+  expect(variables.keys().length).toBeGreaterThan(70);
+  expect(
+    await variables.render(
+      "{member.joinedAt}|{member.boostingSince}|{guild.description}|{channel.topic}|{channel.parentId}",
+      c,
+    ),
+  ).toBe("||||");
+});
+
+test("dynamic media expands approved URLs, omits missing images and validates expanded URLs", async () => {
+  const c = context({
+    command: record({
+      responseType: "EMBED",
+      content: [
+        {
+          type: "EMBED",
+          embed: {
+            title: "Profile",
+            image: { url: "{user.avatar}" },
+            thumbnail: { url: "{guild.icon}" },
+            author: {
+              name: "{user.name}",
+              icon_url: "{user.avatar}",
+              url: "https://example.com/profile",
+            },
+            footer: { text: "Server", icon_url: "{guild.icon}" },
+          },
+        },
+      ],
+    }),
+  });
+  c.member.user.displayAvatarURL = () =>
+    "https://cdn.discordapp.com/avatar.png";
+  c.guild.iconURL = () => null;
+  const [payload] = await renderer.render(c);
+  const embed = payload.embeds![0]!;
+  const data = "toJSON" in embed ? embed.toJSON() : embed;
+  expect(data.image?.url).toBe("https://cdn.discordapp.com/avatar.png");
+  expect(data.thumbnail).toBeUndefined();
+  expect(data.footer?.icon_url).toBeUndefined();
+  expect(data.author?.icon_url).toBe(data.image?.url);
+  c.member.user.displayAvatarURL = () =>
+    "https://user:secret@example.com/image";
+  await expect(renderer.render(c)).rejects.toThrow("HTTPS");
+  for (const url of [
+    "{args}",
+    "{user.name}",
+    "https://example.com/{user.avatar}",
+    "{process.env.TOKEN}",
+  ])
+    expect(() =>
+      validator.embed({ title: "Invalid", image: { url } }),
+    ).toThrow();
+});
+
+test("an image-only embed with an unavailable dynamic image fails before sending", async () => {
+  const c = context({
+    command: record({
+      responseType: "EMBED",
+      content: [{ type: "EMBED", embed: { image: { url: "{guild.icon}" } } }],
+    }),
+  });
+  c.guild.iconURL = () => null;
+  await expect(renderer.render(c)).rejects.toThrow("text or an image");
+});

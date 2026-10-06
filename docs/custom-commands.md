@@ -41,11 +41,15 @@ or choose multiple roles/channels.
 
 `/custom configure name:welcome` opens a private, three-minute editor:
 
-- **Responses** selects an ordered message. Edit text or embed title, description,
-  color, author and footer. Media controls configure image, thumbnail, author and
-  footer icons and timestamp. Add/remove embed fields and add/remove text/embed
-  messages without typing JSON. Field changes can be made by removing trailing
-  fields and adding replacements.
+- **Responses** offers **Edit Markdown**, **Download .md**, and **Syntax & example**.
+  Write the whole response sequence as one template. Submitting parses, validates,
+  and saves all responses together. Invalid submissions keep the saved definition
+  intact and retain your draft in the open editor for correction.
+- **Preview** renders saved responses and interactive buttons privately with sample
+  arguments using your current server/member context. It does not execute the
+  command, enforce command access rules, record usage, reserve cooldowns or delete
+  messages.
+- **Variables** shows the available placeholders directly inside Discord.
 - **Access rules** selects allowed/denied roles/channels with Discord selectors,
   or edits permission names. Empty allowed lists impose no restriction. Empty
   denied lists deny nobody.
@@ -68,6 +72,130 @@ administrative access. Management still requires server-side Administrator acces
 (or server ownership). Discord integration command overrides can further restrict
 availability; they never replace server-side checks. Administrative replies and
 execution acknowledgements are ephemeral; executed responses are public.
+
+## Markdown response templates
+
+Only server owners and administrators may use the editor or upload templates.
+Use `/custom configure name:welcome` → **Edit Markdown** to replace the command's
+responses. Plain text uses Discord Markdown directly. For rich responses, paste:
+
+```markdown
+:::text
+Hello {user.mention}! **Welcome to {guild.name}.**
+:::
+
+:::embed
+@title Welcome to {guild.name}
+@color #5865f2
+@cover https://example.com/cover.png
+@thumbnail {user.avatar}
+@author {user.displayName}
+@author-icon {user.avatar}
+@footer Enjoy your stay!
+@timestamp true
+Read the **rules** and choose a link below.
+@field Members
+@inline true
+{guild.memberCount}
+@endfield
+@button [Read the rules](https://example.com/rules)
+@button [Website](https://example.com)
+:::
+```
+
+Each `:::text` or `:::embed` block creates one response, in order; close it with
+`:::` on its own line. Up to five messages are supported. Inside an embed, ordinary
+Markdown becomes its description. Cover images map to the embed's large image.
+The parser recognizes these directives at the beginning of a line:
+
+| Directive | Meaning |
+| --- | --- |
+| `@title Text` | Embed title |
+| `@color Blurple`, `#5865f2`, or `#abc` | Discord color name (case-insensitive), six- or three-digit hex color |
+| `@cover URL`, `@thumbnail URL` | Large image and thumbnail |
+| `@url URL` | Title link |
+| `@author Text`, `@author-icon URL`, `@author-url URL` | Author name, icon and link |
+| `@footer Text`, `@footer-icon URL` | Footer text and icon |
+| `@timestamp true`, `false`, or ISO date | Current time, no timestamp, or fixed time |
+| `@field Name` … `@endfield` | Field name and multiline Markdown value |
+| `@inline true` or `false` | Inside a field: display it inline or full width |
+| `@button [Label](https://example.com)` | Link button below the message |
+
+Link buttons work with both text and embed messages, with up to five per message.
+They open HTTPS URLs and do not run commands or change roles. Labels support
+variables and are limited to 80 characters after expansion; button URLs are static,
+credential-free HTTPS URLs of at most 512 characters. Escape brackets and backslashes
+in labels with a backslash. The parser rejects unknown directives, duplicate embed
+properties, incomplete blocks, invalid URLs, unsupported variables and oversized
+output before saving anything.
+
+### Stages and action buttons
+
+Use `@main` for the initial embed and `@stage(n)` for another page. In this
+shorthand, each marker starts a new embed; block delimiters are unnecessary:
+
+```markdown
+@main
+@title Welcome {user.name}
+@color Blurple
+Choose a page.
+@button primary [Details](Go(stage(1)))
+@button danger [Close](Cancel)
+@stage(1)
+@title Details
+@color #3a8
+This replaces the initial embed.
+@button secondary [Back](Back(stage(0)))
+@button success [Start over](Main)
+@button [Website](https://example.com)
+```
+
+For text pages or explicit blocks, put the marker inside each `:::text` or
+`:::embed` block. Every response in a staged template must have one unique marker,
+including exactly one `@main` (stage zero). Stage numbers are nonnegative safe
+integers; use `@main`, rather than `@stage(0)`, to declare zero. Up to five stages
+are supported. Templates without markers continue to send all messages in order.
+
+Action buttons accept `primary` (blue, the default), `secondary` (gray),
+`success` (green), or `danger` (red) before the label. HTTPS buttons use Discord's
+link style and cannot be recolored. There can be five total buttons per page.
+
+- `Go(stage(n))` and `Back(stage(n))` open the specified page; Back is an explicit
+  destination, not a history stack.
+- `Main` returns to stage zero.
+- `Cancel` removes the controls and leaves the current message visible.
+  `Cancle` is accepted as an alias. Action names are case-insensitive.
+
+Only the member who invoked the command can navigate its message. A click replaces
+the current message, clearing previous text or embeds as needed. Controls expire
+after 15 minutes or a bot restart; timeout removes the buttons. Navigation reuses
+the rendered snapshot from invocation, including variables and timestamps, and
+does not consume cooldowns or increase usage. Private previews support the same
+navigation. Unknown destinations, duplicate stages, mixed staged/unstaged
+responses and malformed actions are rejected before saving.
+
+Prefix a literal directive or block-marker line with a backslash, e.g.
+`\@title This is ordinary text`. Closed backtick/tilde code fences keep their
+contents literal. Single-value directives accept JSON-quoted strings when newlines,
+leading/trailing spaces, or a leading quote must be preserved. Downloaded templates
+add quoting and escaping automatically. Variables are still substituted in text,
+including code blocks; code is never executed.
+
+The modal accepts 4,000 characters. For larger templates, use **Download .md**, edit
+the file, then run `/custom markdown name:welcome file:<your-file.md>`. Uploads
+accept `.md` and `.markdown` files, with a 192,000-byte download limit and a
+48,000-character source limit. Parsed definitions still obey all normal response
+limits, including the 24,000-character JSON payload limit. File downloads use the
+same Discord-host allowlist, redirect rejection, timeout and stream-size checks
+as JSON imports.
+
+Saving replaces all response messages, leaving permissions, sharing, aliases and
+cooldowns unchanged. Markdown is converted into the existing structured response
+storage; no database migration is required. Reopening or downloading produces
+canonical Markdown from the saved definition, preserving text, embed settings,
+field order and link buttons. Existing commands, JSON imports/exports and shared
+commands use the same validation and rendering path. Updates to shared commands
+still require management access in both servers and save to the original definition.
 
 ## Global and selected-server commands
 
@@ -143,15 +271,36 @@ implementation follows [Discord's Components V2 reference](https://docs.discord.
 
 ## Templates, output and mentions
 
-Available variables:
+Available variables (also listed by the editor's **Variables** button):
 
 ```text
 {user.id} {user.name} {user.displayName} {user.mention}
-{guild.id} {guild.name} {guild.memberCount}
-{channel.id} {channel.name} {channel.mention}
-{command.name} {date} {time}
-{args} {args.0} ... {args.24}
+{user.globalName} {user.avatar} {user.defaultAvatar} {user.createdAt} {user.bot}
+{member.avatar} {member.nickname} {member.joinedAt} {member.boostingSince}
+{member.color} {member.topRole} {member.roleCount}
+{guild.id} {guild.name} {guild.memberCount} {guild.ownerId} {guild.createdAt}
+{guild.icon} {guild.banner} {guild.description} {guild.boostCount}
+{guild.boostTier} {guild.locale}
+{channel.id} {channel.name} {channel.mention} {channel.topic}
+{channel.createdAt} {channel.type} {channel.nsfw} {channel.parentId}
+{bot.id} {bot.name} {bot.mention} {bot.avatar}
+{command.name} {command.description} {command.usageCount} {command.cooldown}
+{command.prefix} {command.source}
+{date} {time} {datetime} {timestamp}
+{args} {args.count} {args.first} {args.last} {args.0} ... {args.24}
 ```
+
+These are runtime placeholders, not the host's environment variables; secrets and
+`.env` values are never exposed. Optional unavailable values return empty strings.
+`member.roleCount` excludes @everyone; `member.topRole` is the highest role's name.
+`member.avatar` includes the server avatar; `user.avatar` uses the global avatar.
+`channel.type` and `guild.boostTier` are Discord numeric values. `timestamp` is Unix
+seconds; other creation/join/boost dates and `datetime` use ISO 8601. Usage count is
+the stored count before this execution (and may reflect the cache snapshot).
+
+For example, create a `profile` command, then use `/custom configure name:profile`
+and **Edit Markdown** to paste an embed template with the variables above. Use
+Preview to check the saved result privately.
 
 Dates/times use UTC. Unknown variables or unbalanced braces are validation errors.
 Arguments and variable values are substituted once, without reinterpreting their
@@ -161,8 +310,13 @@ cannot execute JavaScript, SQL, shell commands, file access or arbitrary express
 Responses support text, a validated embed, or up to five ordered text/embed
 messages. The renderer validates all expanded messages before sending any. Embed
 limits follow [Discord's message documentation](https://docs.discord.com/developers/resources/message#embed-object).
-Only HTTPS media URLs without credentials or template variables are accepted.
-They are passed to Discord; Centerify does not fetch them.
+Static links and media must use HTTPS without credentials. Complete placeholders
+`{user.avatar}`, `{user.defaultAvatar}`, `{member.avatar}`, `{guild.icon}`,
+`{guild.banner}` and `{bot.avatar}` are also accepted in URL inputs. Arbitrary
+text/argument variables and mixed URLs such as `https://example.com/{args}` are
+rejected. Expanded URLs are validated again before delivery. Unavailable optional
+images/links are omitted; keep some text in the embed so it remains valid without
+an image. URLs are passed to Discord; Centerify does not fetch them.
 
 Every payload uses `allowedMentions: { parse: [], users: [invokingUserId], roles: [],
 repliedUser: false }`. Role mentions, other user mentions, `@everyone` and `@here`

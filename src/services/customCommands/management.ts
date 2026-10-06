@@ -21,6 +21,7 @@ import {
 } from "./runtime.js";
 import { parseArguments } from "./CustomCommandVariableResolver.js";
 import { readCommandAttachment } from "./CustomCommandImport.js";
+import { markdownPatch } from "./markdown.js";
 import { openCustomCommandEditor } from "./editor.js";
 
 export function canManageCustomCommands(member: GuildMember): boolean {
@@ -164,7 +165,10 @@ export async function showCommandList(
   interaction: ChatInputCommandInteraction<"cached">,
   legacyLines: string[],
 ): Promise<void> {
-  const commands = await customCommandSharingService.listAvailable(interaction.client, interaction.guild);
+  const commands = await customCommandSharingService.listAvailable(
+    interaction.client,
+    interaction.guild,
+  );
   const lines = [
     ...commands
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -302,23 +306,67 @@ export async function handleCustomManagement(
     return;
   }
   const name = interaction.options.getString("name", true);
-  if (sub === "info" || sub === "configure") {
+  if (sub === "info" || sub === "configure" || sub === "markdown") {
     customCommandService.invalidate(guildId);
     let command = await customCommandService.getCommand(guildId, name);
     if (!command) {
-      const matches = (await customCommandSharingService.listAvailable(interaction.client, interaction.guild))
-        .filter((row) => row.name === name.trim().toLowerCase());
+      const matches = (
+        await customCommandSharingService.listAvailable(
+          interaction.client,
+          interaction.guild,
+        )
+      ).filter((row) => row.name === name.trim().toLowerCase());
       if (matches.length > 1)
-        throw new CustomCommandNotFoundError("Several shared commands have this name. Choose one in /custom options.");
+        throw new CustomCommandNotFoundError(
+          "Several shared commands have this name. Choose one in /custom options.",
+        );
       command = matches[0] ?? null;
     }
     if (!command)
       throw new CustomCommandNotFoundError(
         `No custom command named \`${name}\` exists.`,
       );
-    if (sub === "configure") {
+    if (sub === "markdown") {
+      const source = await readCommandAttachment(
+        interaction.options.getAttachment("file", true),
+        "markdown",
+      );
+      const patch = markdownPatch(source);
+      const current = command.sourceGuildId
+        ? await customCommandSharingService.forManagement(
+            interaction.client,
+            interaction.guild,
+            actor,
+            command,
+          )
+        : command;
+      const saved = await customCommandService.updateCommand(
+        current.guildId,
+        actor,
+        current.name,
+        patch,
+        "updated",
+        command.updatedAt,
+      );
+      await openCustomCommandEditor(
+        interaction,
+        command.sourceGuildId
+          ? {
+              ...saved,
+              guildId,
+              sourceGuildId: current.guildId,
+              sharingScope: command.sharingScope,
+            }
+          : saved,
+      );
+    } else if (sub === "configure") {
       if (command.sourceGuildId)
-        await customCommandSharingService.forManagement(interaction.client, interaction.guild, actor, command);
+        await customCommandSharingService.forManagement(
+          interaction.client,
+          interaction.guild,
+          actor,
+          command,
+        );
       await openCustomCommandEditor(interaction, command);
     } else
       await interaction.editReply({

@@ -44,3 +44,29 @@ test("the downloaded stream is bounded independently of reported attachment size
     "too large",
   );
 });
+
+test("Markdown uploads enforce their own extension and streaming size limit", async () => {
+  const md = { ...attachment, name: "command.md" };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("**Hello**")));
+  expect(await readCommandAttachment(md as never, "markdown")).toBe(
+    "**Hello**",
+  );
+  await expect(
+    readCommandAttachment(attachment as never, "markdown"),
+  ).rejects.toThrow(".md");
+  await expect(
+    readCommandAttachment(
+      { ...md, size: L.markdownInput * 4 + 1 } as never,
+      "markdown",
+    ),
+  ).rejects.toThrow("bytes");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(new Response(new Uint8Array(L.markdownInput * 4 + 1))),
+  );
+  await expect(readCommandAttachment(md as never, "markdown")).rejects.toThrow(
+    "too large",
+  );
+});
