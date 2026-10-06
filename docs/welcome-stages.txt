@@ -1,0 +1,32 @@
+@main
+@title Welcome to {guild.name}!
+@color Blurple
+@thumbnail {user.avatar}
+Hello {user.mention}! Choose an option below.
+@button primary [View rules](Go(stage(1)))
+@button success [Server info](Go(stage(2)))
+@button danger [Close](Cancel)
+
+@stage(1)
+@title Server Rules
+@color #ed4245
+1. Be respectful.
+2. No spam or advertising.
+3. Keep discussions in the correct channels.
+@footer Thanks for keeping our community friendly!
+@button secondary [Back](Back(stage(0)))
+@button success [Continue](Go(stage(2)))
+@button danger [Close](Cancel)
+
+@stage(2)
+@title About {guild.name}
+@color #57f287
+Enjoy your stay and meet the community!
+@field Members
+@inline true
+{guild.memberCount}
+@endfield
+@button secondary [Previous](Back(stage(1)))
+@button primary [Home](Main)
+@button [Visit our website](https://example.com)
+@button danger [Close](Cancel)

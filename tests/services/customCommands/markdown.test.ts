@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { readFileSync } from "node:fs";
 vi.mock("../../../src/logger.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
@@ -7,6 +8,7 @@ import {
   serializeCommandMarkdown,
   markdownPatch,
   MARKDOWN_EXAMPLE,
+  MARKDOWN_HELP,
 } from "../../../src/services/customCommands/markdown.js";
 import { CustomCommandRenderer } from "../../../src/services/customCommands/CustomCommandRenderer.js";
 import { CustomCommandValidator } from "../../../src/services/customCommands/CustomCommandValidator.js";
@@ -15,7 +17,19 @@ import { context, record, MemoryRepository, definition } from "./fixtures.js";
 
 const validator = new CustomCommandValidator();
 test("Markdown parses text, embeds, covers, fields and working link buttons", async () => {
-  const source = MARKDOWN_EXAMPLE.replace("@thumbnail {user.avatar}\n", "");
+  const source = `:::text
+Hello {user.mention}! **Welcome to {guild.name}.**
+:::
+
+:::embed
+@title Welcome to {guild.name}
+@color #5865f2
+@cover https://example.com/cover.png
+@field Members
+{guild.memberCount}
+@endfield
+@button [Read the rules](https://example.com/rules)
+:::`;
   const patch = markdownPatch(source);
   expect(patch.responseType).toBe("MULTI");
   expect(patch.content[1]).toMatchObject({
@@ -44,6 +58,34 @@ test("Markdown parses text, embeds, covers, fields and working link buttons", as
     ],
   });
   expect(payloads[0].content).toContain("**Welcome to Centerify Community.**");
+});
+
+test("the downloadable syntax example has a working Rules page", () => {
+  const content = parseCommandMarkdown(MARKDOWN_EXAMPLE);
+  expect(content).toHaveLength(2);
+  expect(content[0].stage).toBe(0);
+  expect(content[0].buttons?.[0]).toMatchObject({
+    label: "Rules",
+    action: "go",
+    target: 1,
+  });
+  expect(content[1]).toMatchObject({
+    stage: 1,
+    embed: { title: "Server Rules" },
+  });
+  expect(MARKDOWN_HELP.length).toBeLessThanOrEqual(2000);
+  expect(MARKDOWN_HELP).toContain("at the **start of a line**");
+});
+
+test("the saved .txt welcome template has navigable Rules and Server info pages", () => {
+  const source = readFileSync("docs/welcome-stages.txt", "utf8");
+  const content = parseCommandMarkdown(source);
+  expect(content.map((response) => response.stage)).toEqual([0, 1, 2]);
+  expect(content[0].buttons).toMatchObject([
+    { label: "View rules", action: "go", target: 1 },
+    { label: "Server info", action: "go", target: 2 },
+    { label: "Close", action: "cancel" },
+  ]);
 });
 
 test("plain Markdown and code fences retain formatting; escaped directives stay literal", () => {

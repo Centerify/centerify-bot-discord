@@ -45,18 +45,27 @@ test("the downloaded stream is bounded independently of reported attachment size
   );
 });
 
-test("Markdown uploads enforce their own extension and streaming size limit", async () => {
-  const md = { ...attachment, name: "command.md" };
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("**Hello**")));
-  expect(await readCommandAttachment(md as never, "markdown")).toBe(
+test("template uploads prefer .txt, accept legacy .md, and enforce size limits", async () => {
+  const template = { ...attachment, name: "command.txt" };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(async () => new Response("**Hello**")),
+  );
+  expect(await readCommandAttachment(template as never, "markdown")).toBe(
     "**Hello**",
   );
+  expect(
+    await readCommandAttachment(
+      { ...template, name: "command.md" } as never,
+      "markdown",
+    ),
+  ).toBe("**Hello**");
   await expect(
     readCommandAttachment(attachment as never, "markdown"),
-  ).rejects.toThrow(".md");
+  ).rejects.toThrow(".txt");
   await expect(
     readCommandAttachment(
-      { ...md, size: L.markdownInput * 4 + 1 } as never,
+      { ...template, size: L.markdownInput * 4 + 1 } as never,
       "markdown",
     ),
   ).rejects.toThrow("bytes");
@@ -66,7 +75,7 @@ test("Markdown uploads enforce their own extension and streaming size limit", as
       .fn()
       .mockResolvedValue(new Response(new Uint8Array(L.markdownInput * 4 + 1))),
   );
-  await expect(readCommandAttachment(md as never, "markdown")).rejects.toThrow(
-    "too large",
-  );
+  await expect(
+    readCommandAttachment(template as never, "markdown"),
+  ).rejects.toThrow("too large");
 });

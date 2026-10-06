@@ -99,9 +99,9 @@ function fixture(
       getRole: () => null,
       getChannel: () => null,
       getAttachment: () => ({
-        name: "command.md",
+        name: "command.txt",
         size: 100,
-        url: "https://cdn.discordapp.com/attachments/123/456/command.md",
+        url: "https://cdn.discordapp.com/attachments/123/456/command.txt",
       }),
     },
     deferReply: vi.fn(async () => {

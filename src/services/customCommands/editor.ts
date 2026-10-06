@@ -182,14 +182,14 @@ export async function openCustomCommandEditor(
         if (source.length > L.modalInput) {
           await interaction.reply({
             content:
-              "This template exceeds 4,000 characters. Use Download .md, then upload the edited file with /custom markdown.",
+              "This template exceeds 4,000 characters. Use Download .txt, then upload the edited file with /custom markdown.",
             flags: MessageFlags.Ephemeral,
           });
           return;
         }
         const modal =
           action === "markdown"
-            ? editorModal(id, "Edit command Markdown", [
+            ? editorModal(id, "Edit command template", [
                 {
                   id: "markdown",
                   label: "Template (replaces all response messages)",
@@ -409,8 +409,8 @@ export async function openCustomCommandEditor(
               {
                 name:
                   action === "markdown-help"
-                    ? "command-example.md"
-                    : "command.md",
+                    ? "command-example.txt"
+                    : "command.txt",
               },
             ),
           ],

@@ -137,11 +137,11 @@ export function editorView(
   const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`${prefix}markdown`)
-      .setLabel("Edit Markdown")
+      .setLabel("Edit Template")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(`${prefix}markdown-download`)
-      .setLabel("Download .md")
+      .setLabel("Download .txt")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`${prefix}markdown-help`)
@@ -150,7 +150,7 @@ export function editorView(
   );
   return {
     ...panel(
-      `**Markdown responses**\n${command.content.length} ordered response(s) • ${command.cooldownSeconds}s ${command.cooldownScope} cooldown.\n\nWrite messages, colored embeds, covers and buttons in one template. Use @main and @stage(n) for interactive pages. **Edit Markdown** replaces all responses after validation. Use **Preview** to check the saved result.\n\nFor templates over 4,000 characters, download the source, edit it, then upload it with \`/custom markdown name:${command.name} file:…\`.`,
+      `**Response template**\n${command.content.length} ordered response(s) • ${command.cooldownSeconds}s ${command.cooldownScope} cooldown.\n\nStart with @main for the first embed; @stage(n) adds a page. Add a Rules button with @button primary [Rules](Go(stage(1))). Put every @ directive at the start of its line. **Edit Template** replaces all responses after validation. Use **Preview** to check the saved result.\n\nFor templates over 4,000 characters, download the .txt source, edit it, then upload it with \`/custom markdown name:${command.name} file:…\`.`,
     ),
     components: [navigation, controls],
     allowedMentions: { parse: [] as [] },

@@ -93,7 +93,7 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
   builder.addSubcommand((sub) =>
     sub
       .setName("markdown")
-      .setDescription("Save command responses from a Markdown template")
+      .setDescription("Save command responses from a text template")
       .addStringOption((o) =>
         o
           .setName("name")
@@ -104,7 +104,7 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
       .addAttachmentOption((o) =>
         o
           .setName("file")
-          .setDescription("Markdown template (.md or .markdown)")
+          .setDescription("Command template (.txt; legacy .md also works)")
           .setRequired(true),
       ),
   );
@@ -120,7 +120,7 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
       sub
         .setName(name)
         .setDescription(
-          `${name === "configure" ? "Open the Markdown editor for" : name === "info" ? "Show details of" : "Disable"} a custom command`,
+          `${name === "configure" ? "Open the template editor for" : name === "info" ? "Show details of" : "Disable"} a custom command`,
         )
         .addStringOption((o) =>
           o.setName("name").setDescription("Command name").setRequired(true),

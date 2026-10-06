@@ -41,7 +41,7 @@ or choose multiple roles/channels.
 
 `/custom configure name:welcome` opens a private, three-minute editor:
 
-- **Responses** offers **Edit Markdown**, **Download .md**, and **Syntax & example**.
+- **Responses** offers **Edit Template**, **Download .txt**, and **Syntax & example**.
   Write the whole response sequence as one template. Submitting parses, validates,
   and saves all responses together. Invalid submissions keep the saved definition
   intact and retain your draft in the open editor for correction.
@@ -76,50 +76,66 @@ execution acknowledgements are ephemeral; executed responses are public.
 ## Markdown response templates
 
 Only server owners and administrators may use the editor or upload templates.
-Use `/custom configure name:welcome` → **Edit Markdown** to replace the command's
-responses. Plain text uses Discord Markdown directly. For rich responses, paste:
+Use `/custom configure name:welcome` → **Edit Template** to replace the command's
+responses. The following example sends one embed with a **Rules** button. Clicking
+it opens the rules on the same message. A longer version with a **Server info** page
+is in [welcome-stages.txt](welcome-stages.txt):
 
 ```markdown
-:::text
-Hello {user.mention}! **Welcome to {guild.name}.**
-:::
-
-:::embed
-@title Welcome to {guild.name}
-@color #5865f2
-@cover https://example.com/cover.png
+@main
+@title Welcome to {guild.name}!
+@color Blurple
 @thumbnail {user.avatar}
-@author {user.displayName}
-@author-icon {user.avatar}
-@footer Enjoy your stay!
-@timestamp true
-Read the **rules** and choose a link below.
-@field Members
-@inline true
-{guild.memberCount}
-@endfield
-@button [Read the rules](https://example.com/rules)
-@button [Website](https://example.com)
-:::
+Hello {user.mention}! Choose an option below.
+@button primary [Rules](<Go(stage(1))>)
+@button danger [Close](Cancel)
+
+@stage(1)
+@title Server Rules
+@color #ed4245
+
+1. Be respectful.
+2. No spam or advertising.
+3. Keep discussions in the right channels.
+   @button secondary [Back](<Back(stage(0))>)
+   @button danger [Close](Cancel)
 ```
 
-Each `:::text` or `:::embed` block creates one response, in order; close it with
-`:::` on its own line. Up to five messages are supported. Inside an embed, ordinary
-Markdown becomes its description. Cover images map to the embed's large image.
-The parser recognizes these directives at the beginning of a line:
+Put `@main` on the first line. Each `@stage(n)` starts another embed. Stage numbers
+must be unique; use `@main` for stage zero. Put every `@` directive at the **start of
+its line**, with no spaces before it. Lines without `@` become the embed description.
+You can use up to five stages and five buttons per stage.
 
-| Directive | Meaning |
-| --- | --- |
-| `@title Text` | Embed title |
-| `@color Blurple`, `#5865f2`, or `#abc` | Discord color name (case-insensitive), six- or three-digit hex color |
-| `@cover URL`, `@thumbnail URL` | Large image and thumbnail |
-| `@url URL` | Title link |
-| `@author Text`, `@author-icon URL`, `@author-url URL` | Author name, icon and link |
-| `@footer Text`, `@footer-icon URL` | Footer text and icon |
-| `@timestamp true`, `false`, or ISO date | Current time, no timestamp, or fixed time |
-| `@field Name` … `@endfield` | Field name and multiline Markdown value |
-| `@inline true` or `false` | Inside a field: display it inline or full width |
-| `@button [Label](https://example.com)` | Link button below the message |
+### Syntax reference
+
+| Syntax                                               | What it does                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| `@main`                                              | Defines the first page                                               |
+| `@stage(1)`                                          | Defines page 1; use another number for another page                  |
+| `@button primary [Rules](Go(stage(1)))`              | Blue button that opens page 1                                        |
+| `@button secondary [Back](Back(stage(0)))`           | Gray button that opens page 0; Back names its destination explicitly |
+| `@button success [Home](Main)`                       | Green button that opens `@main`                                      |
+| `@button danger [Close](Cancel)`                     | Red button that removes the controls                                 |
+| `@button [Website](https://example.com)`             | Link button that opens an HTTPS URL                                  |
+| `@title Text`                                        | Embed title                                                          |
+| `@color Blurple`, `@color #5865f2`, or `@color #abc` | Discord color name or hex color                                      |
+| `@thumbnail URL`, `@cover URL`                       | Small thumbnail or large image                                       |
+| `@field Name` … `@endfield`                          | Field name and its multiline value                                   |
+| `@inline true` or `@inline false`                    | Field layout; place inside a field                                   |
+| `@footer Text`                                       | Footer text                                                          |
+
+Button styles are `primary` (blue), `secondary` (gray), `success` (green), and
+`danger` (red). Omit the style for an HTTPS link button. The action names are
+case-insensitive. `Cancle` is also accepted as an alias for `Cancel`.
+
+For the remaining embed options:
+
+| Directive                                             | Meaning                                   |
+| ----------------------------------------------------- | ----------------------------------------- |
+| `@url URL`                                            | Title link                                |
+| `@author Text`, `@author-icon URL`, `@author-url URL` | Author name, icon and link                |
+| `@footer-icon URL`                                    | Footer icon                               |
+| `@timestamp true`, `false`, or ISO date               | Current time, no timestamp, or fixed time |
 
 Link buttons work with both text and embed messages, with up to five per message.
 They open HTTPS URLs and do not run commands or change roles. Labels support
@@ -129,42 +145,10 @@ in labels with a backslash. The parser rejects unknown directives, duplicate emb
 properties, incomplete blocks, invalid URLs, unsupported variables and oversized
 output before saving anything.
 
-### Stages and action buttons
-
-Use `@main` for the initial embed and `@stage(n)` for another page. In this
-shorthand, each marker starts a new embed; block delimiters are unnecessary:
-
-```markdown
-@main
-@title Welcome {user.name}
-@color Blurple
-Choose a page.
-@button primary [Details](Go(stage(1)))
-@button danger [Close](Cancel)
-@stage(1)
-@title Details
-@color #3a8
-This replaces the initial embed.
-@button secondary [Back](Back(stage(0)))
-@button success [Start over](Main)
-@button [Website](https://example.com)
-```
-
-For text pages or explicit blocks, put the marker inside each `:::text` or
-`:::embed` block. Every response in a staged template must have one unique marker,
-including exactly one `@main` (stage zero). Stage numbers are nonnegative safe
-integers; use `@main`, rather than `@stage(0)`, to declare zero. Up to five stages
-are supported. Templates without markers continue to send all messages in order.
-
-Action buttons accept `primary` (blue, the default), `secondary` (gray),
-`success` (green), or `danger` (red) before the label. HTTPS buttons use Discord's
-link style and cannot be recolored. There can be five total buttons per page.
-
-- `Go(stage(n))` and `Back(stage(n))` open the specified page; Back is an explicit
-  destination, not a history stack.
-- `Main` returns to stage zero.
-- `Cancel` removes the controls and leaves the current message visible.
-  `Cancle` is accepted as an alias. Action names are case-insensitive.
+For plain text, paste ordinary Discord Markdown. For multiple messages or text
+pages, write separate `:::text` or `:::embed` blocks and close each with `:::`.
+Put `@main` or `@stage(n)` inside its own block if those messages should be
+interactive. Without stage markers, the bot sends all blocks in order.
 
 Only the member who invoked the command can navigate its message. A click replaces
 the current message, clearing previous text or embeds as needed. Controls expire
@@ -181,9 +165,9 @@ leading/trailing spaces, or a leading quote must be preserved. Downloaded templa
 add quoting and escaping automatically. Variables are still substituted in text,
 including code blocks; code is never executed.
 
-The modal accepts 4,000 characters. For larger templates, use **Download .md**, edit
-the file, then run `/custom markdown name:welcome file:<your-file.md>`. Uploads
-accept `.md` and `.markdown` files, with a 192,000-byte download limit and a
+The modal accepts 4,000 characters. For larger templates, use **Download .txt**, edit
+the file, then run `/custom markdown name:welcome file:<your-file.txt>`. Uploads
+accept `.txt` files and legacy `.md` and `.markdown` files, with a 192,000-byte download limit and a
 48,000-character source limit. Parsed definitions still obey all normal response
 limits, including the 24,000-character JSON payload limit. File downloads use the
 same Discord-host allowlist, redirect rejection, timeout and stream-size checks
@@ -299,7 +283,7 @@ seconds; other creation/join/boost dates and `datetime` use ISO 8601. Usage coun
 the stored count before this execution (and may reflect the cache snapshot).
 
 For example, create a `profile` command, then use `/custom configure name:profile`
-and **Edit Markdown** to paste an embed template with the variables above. Use
+and **Edit Template** to paste an embed template with the variables above. Use
 Preview to check the saved result privately.
 
 Dates/times use UTC. Unknown variables or unbalanced braces are validation errors.

@@ -245,6 +245,20 @@ test("variable help lists placeholders without saving", async () => {
   expect(mocks.update).not.toHaveBeenCalled();
 });
 
+test("template downloads and syntax examples use .txt with a Rules page", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.customId = "cc:session:markdown-help";
+  await f.collect(f.button);
+  const help = f.button.followUp.mock.calls[0]![0];
+  expect(help.content).toContain("Rules page");
+  expect(help.files[0].name).toBe("command-example.txt");
+  f.button.followUp.mockClear();
+  f.button.customId = "cc:session:markdown-download";
+  await f.collect(f.button);
+  expect(f.button.followUp.mock.calls[0]![0].files[0].name).toBe("command.txt");
+});
+
 test("Markdown modal saves parsed responses with the observed revision", async () => {
   const f = fixture();
   const initial = record();
@@ -322,7 +336,7 @@ test("large templates are never truncated into the modal", async () => {
   expect(f.button.showModal).not.toHaveBeenCalled();
   expect(f.button.reply).toHaveBeenCalledWith(
     expect.objectContaining({
-      content: expect.stringContaining("Download .md"),
+      content: expect.stringContaining("Download .txt"),
     }),
   );
   expect(mocks.update).not.toHaveBeenCalled();

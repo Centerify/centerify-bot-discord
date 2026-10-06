@@ -7,26 +7,39 @@ import { CUSTOM_COMMAND_LIMITS as L } from "../../lib/customCommands/constants.j
 import { CustomCommandValidationError } from "../../lib/customCommands/errors.js";
 import { CustomCommandValidator } from "./CustomCommandValidator.js";
 
-export const MARKDOWN_EXAMPLE = `:::text
-Hello {user.mention}! **Welcome to {guild.name}.**
-:::
-
-:::embed
-@title Welcome to {guild.name}
-@color #5865f2
-@cover https://example.com/cover.png
+export const MARKDOWN_EXAMPLE = `@main
+@title Welcome to {guild.name}!
+@color Blurple
 @thumbnail {user.avatar}
-@footer Enjoy your stay!
-@timestamp true
-Read the **rules** and choose a link below.
-@field Members
-{guild.memberCount}
-@endfield
-@button [Read the rules](https://example.com/rules)
-:::`;
+Hello {user.mention}! Choose an option below.
+@button primary [Rules](Go(stage(1)))
+@button danger [Close](Cancel)
 
-export const MARKDOWN_HELP =
-  "Write normal Discord Markdown, or wrap messages in :::text / :::embed blocks closed with :::. Embed options: @title, @color Blurple/#5865f2/#abc, @cover URL, @thumbnail URL, @url, @author, @author-icon, @author-url, @footer, @footer-icon, @timestamp true/false/ISO. Use @field Name, optional @inline true, field text, then @endfield. Add up to 5 buttons per message: @button [Label](https://...) or @button primary [Next](Go(stage(1))). Styles: primary, secondary, success, danger. Use @main and @stage(n) for staged embeds; actions: Go(stage(n)), Back(stage(n)), Main, Cancel (also Cancle). Variables work in text and button labels. Prefix a directive line with \\ to show it literally. Code fences preserve their contents. Each save replaces all responses; access and settings stay unchanged.";
+@stage(1)
+@title Server Rules
+@color #ed4245
+1. Be respectful.
+2. No spam or advertising.
+3. Keep discussions in the right channels.
+@button secondary [Back](Back(stage(0)))
+@button danger [Close](Cancel)`;
+
+export const MARKDOWN_HELP = `**Template syntax**
+Start with \`@main\` for the first embed. Each \`@stage(n)\` starts another embed. Put directives at the **start of a line**, without indentation. Ordinary lines become the description. The attached example has a Rules page.
+
+**Buttons** (up to five per stage)
+\`@button primary [Rules](Go(stage(1)))\` — open page 1
+\`@button secondary [Back](Back(stage(0)))\` — open page 0
+\`@button success [Home](Main)\` — return to the first page
+\`@button danger [Close](Cancel)\` — remove controls
+\`@button [Website](https://example.com)\` — open a link
+Styles: primary, secondary, success, danger. Links use the link style.
+
+**Embed options**
+\`@title Text\` · \`@color Blurple\` or \`@color #5865f2\` · \`@cover URL\` · \`@thumbnail URL\` · \`@footer Text\`
+\`@field Name\`, then the value on following lines, then \`@endfield\`. Optional \`@inline true\` goes inside the field.
+
+For plain text, use Discord Markdown. For separate text/embed messages, use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. A staged block needs its own marker. Maximum five messages or stages. Variables work in text and button labels. Saving replaces all responses; command settings stay unchanged.`;
 
 function scalar(input: string, line: number): string {
   const value = input.trim();

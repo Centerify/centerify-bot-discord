@@ -43,7 +43,7 @@ export class CustomCommand extends Command {
             sub
               .setName("edit")
               .setDescription(
-                "Edit a command; configure opens the Markdown editor",
+                "Edit a command; configure opens the template editor",
               ),
           ),
         )
