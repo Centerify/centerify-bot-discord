@@ -73,6 +73,9 @@ test("the downloadable syntax example has a working Rules page", () => {
     stage: 1,
     embed: { title: "Server Rules" },
   });
+  expect(content[1].type === "EMBED" && content[1].embed.description).toContain(
+    "<#123456789012345678>",
+  );
   expect(MARKDOWN_HELP.length).toBeLessThanOrEqual(2000);
   expect(MARKDOWN_HELP).toContain("at the **start of a line**");
 });
@@ -86,6 +89,54 @@ test("the saved .txt welcome template has navigable Rules and Server info pages"
     { label: "Server info", action: "go", target: 2 },
     { label: "Close", action: "cancel" },
   ]);
+  expect(content[1].type === "EMBED" && content[1].embed.description).toContain(
+    "<#123456789012345678>",
+  );
+});
+
+test("the syntax guide's copyable example remains valid", () => {
+  const guide = readFileSync("docs/custom-commands.md", "utf8");
+  const example = /<!-- prettier-ignore -->\n```text\n([\s\S]*?)\n```/.exec(
+    guide,
+  )?.[1];
+  expect(example).toBeDefined();
+  expect(parseCommandMarkdown(example!)).toHaveLength(2);
+});
+
+test("@channel mentions a chosen channel in text, descriptions and fields", async () => {
+  const id = "123456789012345678";
+  const text = parseCommandMarkdown(`:::text\nSee:\n@channel ${id}\n:::`);
+  expect(text).toEqual([{ type: "TEXT", text: `See:\n<#${id}>` }]);
+  const embed = parseCommandMarkdown(
+    `:::embed\n@title Rules\nRead:\n@channel <#${id}>\n@field More\n@channel ${id}\n@endfield\n:::`,
+  );
+  expect(embed).toMatchObject([
+    {
+      type: "EMBED",
+      embed: {
+        description: `Read:\n<#${id}>`,
+        fields: [{ name: "More", value: `<#${id}>` }],
+      },
+    },
+  ]);
+  expect(parseCommandMarkdown(serializeCommandMarkdown(embed))).toEqual(embed);
+  const [payload] = await new CustomCommandRenderer().render(
+    context({ command: record({ content: embed, responseType: "EMBED" }) }),
+  );
+  expect(JSON.stringify(payload.embeds?.[0])).toContain(`<#${id}>`);
+});
+
+test.each([
+  "@channel rules",
+  "@channel #rules",
+  "@channel 123",
+  "@channel <#123456789012345678",
+  "@channel 123456789012345678>",
+  "@channel 123456789012345678 extra",
+])("@channel rejects malformed IDs: %s", (source) => {
+  expect(() => parseCommandMarkdown(`:::text\n${source}\n:::`)).toThrow(
+    "Discord channel ID",
+  );
 });
 
 test("plain Markdown and code fences retain formatting; escaped directives stay literal", () => {

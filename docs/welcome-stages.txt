@@ -13,6 +13,8 @@ Hello {user.mention}! Choose an option below.
 1. Be respectful.
 2. No spam or advertising.
 3. Keep discussions in the correct channels.
+Read the full rules in:
+@channel 123456789012345678
 @footer Thanks for keeping our community friendly!
 @button secondary [Back](Back(stage(0)))
 @button success [Continue](Go(stage(2)))

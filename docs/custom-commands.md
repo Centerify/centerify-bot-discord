@@ -81,24 +81,26 @@ responses. The following example sends one embed with a **Rules** button. Clicki
 it opens the rules on the same message. A longer version with a **Server info** page
 is in [welcome-stages.txt](welcome-stages.txt):
 
-```markdown
+<!-- prettier-ignore -->
+```text
 @main
 @title Welcome to {guild.name}!
 @color Blurple
 @thumbnail {user.avatar}
 Hello {user.mention}! Choose an option below.
-@button primary [Rules](<Go(stage(1))>)
+@button primary [Rules](Go(stage(1)))
 @button danger [Close](Cancel)
 
 @stage(1)
 @title Server Rules
 @color #ed4245
-
 1. Be respectful.
 2. No spam or advertising.
 3. Keep discussions in the right channels.
-   @button secondary [Back](<Back(stage(0))>)
-   @button danger [Close](Cancel)
+Read the full rules in:
+@channel 123456789012345678
+@button secondary [Back](Back(stage(0)))
+@button danger [Close](Cancel)
 ```
 
 Put `@main` on the first line. Each `@stage(n)` starts another embed. Stage numbers
@@ -122,11 +124,20 @@ You can use up to five stages and five buttons per stage.
 | `@thumbnail URL`, `@cover URL`                       | Small thumbnail or large image                                       |
 | `@field Name` … `@endfield`                          | Field name and its multiline value                                   |
 | `@inline true` or `@inline false`                    | Field layout; place inside a field                                   |
+| `@channel CHANNEL_ID`                                | Show a clickable mention of that channel, including inside a field   |
 | `@footer Text`                                       | Footer text                                                          |
 
 Button styles are `primary` (blue), `secondary` (gray), `success` (green), and
 `danger` (red). Omit the style for an HTTPS link button. The action names are
 case-insensitive. `Cancle` is also accepted as an alias for `Cancel`.
+
+For `@channel`, replace `123456789012345678` with the real channel ID. In Discord,
+enable **Developer Mode**, right-click the channel, and choose **Copy Channel ID**
+([Discord's instructions](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID)).
+You can also paste an existing channel mention, such as
+`@channel <#123456789012345678>`. The shortcut expands to Discord's normal
+`<#CHANNEL_ID>` mention. To mention the channel where the command was run, use
+`{channel.mention}` instead.
 
 For the remaining embed options:
 

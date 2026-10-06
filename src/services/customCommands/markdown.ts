@@ -21,6 +21,8 @@ Hello {user.mention}! Choose an option below.
 1. Be respectful.
 2. No spam or advertising.
 3. Keep discussions in the right channels.
+Read the full rules in:
+@channel 123456789012345678
 @button secondary [Back](Back(stage(0)))
 @button danger [Close](Cancel)`;
 
@@ -38,6 +40,7 @@ Styles: primary, secondary, success, danger. Links use the link style.
 **Embed options**
 \`@title Text\` · \`@color Blurple\` or \`@color #5865f2\` · \`@cover URL\` · \`@thumbnail URL\` · \`@footer Text\`
 \`@field Name\`, then the value on following lines, then \`@endfield\`. Optional \`@inline true\` goes inside the field.
+\`@channel 123456789012345678\` mentions a specific channel. Replace the example ID with your channel's ID; this also works inside a field.
 
 For plain text, use Discord Markdown. For separate text/embed messages, use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. A staged block needs its own marker. Maximum five messages or stages. Variables work in text and button labels. Saving replaces all responses; command settings stay unchanged.`;
 
@@ -161,6 +164,17 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
       );
     const key = match![1],
       raw = match![2] ?? "";
+    if (key === "channel") {
+      const id =
+        /^(\d{17,20})$/.exec(raw)?.[1] ?? /^<#(\d{17,20})>$/.exec(raw)?.[1];
+      if (!id)
+        fail(
+          number,
+          "use @channel with a Discord channel ID, e.g. @channel 123456789012345678.",
+        );
+      append(`<#${id}>`);
+      continue;
+    }
     if (key === "endfield") {
       if (!field || raw)
         fail(number, "@endfield must close an open field and take no value.");
