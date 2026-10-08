@@ -1,10 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ first: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn(), where: vi.fn() }));
-vi.mock("../../src/prisma/db.js", () => ({ db: { orm: { public: { GuildConfig: {
+vi.mock("../../src/adapters/prisma/client.js", () => ({ db: { orm: { public: { GuildConfig: {
   where: mocks.where, create: mocks.create, upsert: mocks.upsert,
 } } } } }));
-import { GuildConfigService } from "../../src/services/guildConfigService.js";
-const service = new GuildConfigService();
+import { PrismaGuildConfigRepository } from "../../src/modules/guilds/infrastructure/PrismaGuildConfigRepository.js";
+const service = new PrismaGuildConfigRepository();
 const config = { id: 1, guildId: "server", xpEnabled: true };
 
 beforeEach(() => {

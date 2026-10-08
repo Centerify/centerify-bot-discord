@@ -1,13 +1,8 @@
 import { vi } from "vitest";
 import { PermissionsBitField, PermissionFlagsBits } from "discord.js";
-import type {
-  CustomCommandDefinition,
-  CustomCommandExecutionContext,
-  CustomCommandRecord,
-  CustomCommandRepository,
-  CustomCommandTransaction,
-} from "../../../src/lib/customCommands/types.js";
-import { CustomCommandValidator } from "../../../src/services/customCommands/CustomCommandValidator.js";
+import type { CustomCommandDefinition, CustomCommandRecord, CustomCommandRepository, CustomCommandTransaction } from "../../../src/modules/custom-commands/domain/types.js";
+import type { CustomCommandExecutionContext } from "../../../src/modules/custom-commands/discord/types.js";
+import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
 
 export const ROLE = "123456789012345678",
   CHANNEL = "223456789012345678",

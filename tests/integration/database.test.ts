@@ -1,3 +1,4 @@
+import { startTestApplication } from "../helpers/application.js";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { Guild } from "discord.js";
@@ -5,16 +6,17 @@ import type { Guild } from "discord.js";
 // Only the explicit database-test command opts into live writes. Every row uses
 // a unique synthetic guild ID so cleanup cannot affect Discord servers.
 const databaseUrl = process.env.TEST_DATABASE_URL;
+let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefined;
 const prefix = `integration-${randomUUID()}`;
 const guilds = ["a", "b", "duplicates", "limit", "moderation", "reports"].map((name) => `${prefix}-${name}`);
 const [guildA, guildB, duplicateGuild, limitGuild, moderationGuild, reportGuild] = guilds;
-let db: typeof import("../../src/prisma/db.js").db;
-let config: typeof import("../../src/services/guildConfigService.js").guildConfigService;
-let custom: typeof import("../../src/services/customResponseService.js").customResponseService;
-let xp: typeof import("../../src/services/xpService.js").xpService;
-let ownership: typeof import("../../src/services/guildOwnershipService.js").guildOwnershipService;
-let cases: typeof import("../../src/services/moderation/caseService.js").moderationCaseService;
-let reports: typeof import("../../src/services/moderation/reportService.js").reportService;
+let db: typeof import("../../src/adapters/prisma/client.js").db;
+let config: typeof import("../../src/modules/guilds/discord/config.js").guildConfigService;
+let custom: typeof import("../../src/modules/custom-commands/discord/legacyService.js").customResponseService;
+let xp: typeof import("../../src/modules/xp/discord/services.js").xpService;
+let ownership: typeof import("../../src/modules/guilds/discord/ownership.js").guildOwnershipService;
+let cases: typeof import("../../src/modules/moderation/discord/services.js").moderationCaseService;
+let reports: typeof import("../../src/modules/moderation/discord/services.js").reportService;
 
 function rule(guildId: string, name: string, trigger = name) {
   return {
@@ -27,13 +29,14 @@ function rule(guildId: string, name: string, trigger = name) {
 describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = databaseUrl!;
-    ({ db } = await import("../../src/prisma/db.js"));
-    ({ guildConfigService: config } = await import("../../src/services/guildConfigService.js"));
-    ({ customResponseService: custom } = await import("../../src/services/customResponseService.js"));
-    ({ xpService: xp } = await import("../../src/services/xpService.js"));
-    ({ guildOwnershipService: ownership } = await import("../../src/services/guildOwnershipService.js"));
-    ({ moderationCaseService: cases } = await import("../../src/services/moderation/caseService.js"));
-    ({ reportService: reports } = await import("../../src/services/moderation/reportService.js"));
+      testApplication = await startTestApplication();
+    ({ db } = await import("../../src/adapters/prisma/client.js"));
+    ({ guildConfigService: config } = await import("../../src/modules/guilds/discord/config.js"));
+    ({ customResponseService: custom } = await import("../../src/modules/custom-commands/discord/legacyService.js"));
+    ({ xpService: xp } = await import("../../src/modules/xp/discord/services.js"));
+    ({ guildOwnershipService: ownership } = await import("../../src/modules/guilds/discord/ownership.js"));
+    ({ moderationCaseService: cases } = await import("../../src/modules/moderation/discord/services.js"));
+    ({ reportService: reports } = await import("../../src/modules/moderation/discord/services.js"));
   });
 
   afterAll(async () => {
@@ -52,6 +55,7 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
         }
       });
     } finally {
+      await testApplication?.stop();
       await db.close();
     }
   });

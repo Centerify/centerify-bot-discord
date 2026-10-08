@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { parseSharedGuildIds, sharedXpGuildIds, xpProgress, earningRule, XP_METHOD_CHOICES, type XpConfig } from "../../src/services/xpPolicy.js";
+import { parseSharedGuildIds, sharedXpGuildIds, xpProgress, earningRule, XP_METHOD_CHOICES, type XpConfig } from "../../src/modules/xp/domain/policy.js";
 const source: XpConfig = { guildId: "a", xpEnabled: true, xpSharing: "server", xpSharedGuildIds: "b,c" };
 const target: XpConfig = { guildId: "b", xpEnabled: true, xpSharing: "selected", xpSharedGuildIds: "a" };
 

@@ -2,10 +2,10 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { Command } from "@sapphire/framework";
 
 const mocks = vi.hoisted(() => ({ unverify: vi.fn(), error: vi.fn() }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({ guildOwnershipService: { unverify: mocks.unverify } }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: mocks.error } }));
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({ guildOwnershipService: { unverify: mocks.unverify } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: mocks.error } }));
 
-import { UnverifyCommand } from "../../../src/commands/admin/unverify.js";
+import { UnverifyCommand } from "../../../src/modules/guilds/discord/index.js";
 
 function interaction(userId = "owner") {
   return {

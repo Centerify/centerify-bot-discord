@@ -1,10 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import type { GuildConfig } from "../../../src/services/guildConfigService.js";
+import type { GuildConfig } from "../../../src/modules/guilds/discord/config.js";
 const mocks = vi.hoisted(() => ({ verified: vi.fn(), apply: vi.fn(), load: vi.fn(), update: vi.fn(), build: vi.fn() }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({ requireVerifiedOwnership: mocks.verified }));
-vi.mock("../../../src/services/xpConfigurationService.js", () => ({ xpConfigurationService: { apply: mocks.apply } }));
-vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: { getOrCreate: mocks.load } }));
-import { handleXpModal } from "../../../src/services/setup/xpInteractionHandler.js";
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({ requireVerifiedOwnership: mocks.verified }));
+vi.mock("../../../src/modules/xp/discord/configuration.js", () => ({ xpConfigurationService: { apply: mocks.apply } }));
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: { getOrCreate: mocks.load } }));
+import { handleXpModal } from "../../../src/modules/settings/discord/xpInteractionHandler.js";
 const config = { guildId: "123456789012345678", xpMessageAmount: 15, xpReactionAmount: 5, xpDailyAmount: 100, xpCooldownSeconds: 60, xpSharedGuildIds: "" } as GuildConfig;
 function fixture(values: Record<string, string>) {
   const submit = { user: { id: "admin" }, member: { permissions: { has: () => true } }, guildId: config.guildId,

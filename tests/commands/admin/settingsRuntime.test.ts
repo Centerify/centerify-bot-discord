@@ -1,11 +1,11 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Command } from "@sapphire/framework";
 const mocks = vi.hoisted(() => ({ load: vi.fn(), update: vi.fn(), handle: vi.fn(), customSettings: vi.fn() }));
-vi.mock("../../../src/services/customCommands/settings.js", () => ({ openCustomCommandSettings: mocks.customSettings }));
-vi.mock("../../../src/services/setup/interactionHandler.js", () => ({ SetupInteractionHandler: class { handleComponent = mocks.handle; } }));
-vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: { getOrCreate: mocks.load, update: mocks.update } }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
-import { SettingsCommand } from "../../../src/commands/admin/settings.js";
+vi.mock("../../../src/modules/custom-commands/discord/settings.js", () => ({ openCustomCommandSettings: mocks.customSettings }));
+vi.mock("../../../src/modules/settings/discord/interactionHandler.js", () => ({ SetupInteractionHandler: class { handleComponent = mocks.handle; } }));
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: { getOrCreate: mocks.load, update: mocks.update } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
+import { SettingsCommand } from "../../../src/modules/settings/discord/index.js";
 function fixture() {
   const callbacks: Record<string, (...args: any[]) => any> = {};
   const collector = { on: vi.fn((event, callback) => { callbacks[event] = callback; }), resetTimer: vi.fn(), stop: vi.fn() };

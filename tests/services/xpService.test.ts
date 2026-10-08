@@ -3,8 +3,8 @@ import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   config: vi.fn(), query: vi.fn(), all: vi.fn(), aggregate: vi.fn(),
 }));
-vi.mock("../../src/services/guildConfigService.js", () => ({ guildConfigService: { getOrCreate: mocks.config } }));
-vi.mock("../../src/prisma/db.js", () => {
+vi.mock("../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: { getOrCreate: mocks.config } }));
+vi.mock("../../src/adapters/prisma/client.js", () => {
   const members = {
     where: vi.fn(() => members),
     groupBy: vi.fn(() => ({ aggregate: mocks.aggregate })),
@@ -20,7 +20,9 @@ vi.mock("../../src/prisma/db.js", () => {
     transaction: (fn: (tx: unknown) => unknown) => fn({ query: mocks.query }),
   } };
 });
-import { xpService } from "../../src/services/xpService.js";
+import { XpService } from "../../src/modules/xp/index.js";
+import { PrismaXpRepository } from "../../src/modules/xp/infrastructure/PrismaXpRepository.js";
+const xpService = new XpService(new PrismaXpRepository(), { getOrCreate: mocks.config });
 
 beforeEach(() => { vi.clearAllMocks(); });
 

@@ -1,7 +1,8 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ where: vi.fn(), update: vi.fn() }));
-vi.mock("../../../src/prisma/db.js", () => ({ db: { orm: { public: { MemberReport: { where: mocks.where } } } } }));
-import { reportService } from "../../../src/services/moderation/reportService.js";
+vi.mock("../../../src/adapters/prisma/client.js", () => ({ db: { orm: { public: { MemberReport: { where: mocks.where } } } } }));
+import { PrismaReportRepository } from "../../../src/modules/moderation/infrastructure/PrismaReportRepository.js";
+const reportService = new PrismaReportRepository();
 beforeEach(() => { vi.resetAllMocks(); mocks.where.mockReturnValue({ update: mocks.update }); });
 test("report decisions only update a still-pending report", async () => {
   const report = { status: "ACCEPTED", reviewedBy: "mod" };

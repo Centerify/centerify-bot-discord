@@ -6,7 +6,7 @@ import {
   hasWarningDurationEnded,
   isActiveWarning,
   warningRoleId,
-} from "../../../src/services/moderation/warningLifecycle.js";
+} from "../../../src/modules/moderation/domain/warningLifecycle.js";
 
 const timedWarning = {
   action: "WARNING",

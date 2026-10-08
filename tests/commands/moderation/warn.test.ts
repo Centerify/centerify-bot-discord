@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { getWarnRoleName } from "../../../src/services/moderation/warningRoleNames.js";
+import { readFile } from "node:fs/promises";
+import { getWarnRoleName } from "../../../src/modules/moderation/discord/warningRoleNames.js";
 import {
   assertChatInputCommand,
   assertGuildCommand,
@@ -23,12 +24,14 @@ test("warn command registers warnings with optional durations and automatic role
   assertOption(command, "String", "duration", false);
   assertOption(command, "Boolean", "global", false);
   assert.doesNotMatch(command.source, /\.setName\("role"\)/);
-  assert.match(command.source, /countWarningsForUser/);
-  assert.match(command.source, /getOrCreateWarnRole/);
-  assert.match(command.source, /scheduleWarningRoleRemoval/);
-  assertUsesService(command, "dmUser");
-  assertUsesService(command, "moderationCaseService");
-  assertUsesService(command, "getGlobalModerationTargets");
+  assert.match(command.source, /return runWarn\(interaction, warnMember\)/);
+  assertUsesService(command, "warnMember");
+  const adapter = await readFile("src/modules/moderation/discord/warn.ts", "utf8");
+  assert.match(adapter, /warnMember\.execute/);
+  assert.match(adapter, /getOrCreateWarnRole/);
+  assert.match(adapter, /scheduleWarningRoleRemoval/);
+  assert.match(adapter, /dmUser/);
+  assert.match(adapter, /getGlobalModerationTargets/);
   assert.equal(getWarnRoleName(1), "warn1");
   assert.equal(getWarnRoleName(12), "warn12");
 });

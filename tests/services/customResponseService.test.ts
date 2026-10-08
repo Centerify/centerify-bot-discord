@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 
-vi.mock("../../src/prisma/db.js", () => ({
+vi.mock("../../src/adapters/prisma/client.js", () => ({
   db: {
     orm: {
       public: {
@@ -28,9 +28,10 @@ vi.mock("../../src/prisma/db.js", () => ({
   },
 }));
 
-import { CustomResponseService, type CustomResponseKind } from "../../src/services/customResponseService.js";
+import { CustomResponseService, type CustomResponseKind } from "../../src/modules/custom-commands/application/CustomResponseService.js";
 
-const service = new CustomResponseService();
+import { PrismaLegacyResponseRepository } from "../../src/modules/custom-commands/infrastructure/PrismaLegacyResponseRepository.js";
+const service = new CustomResponseService(new PrismaLegacyResponseRepository());
 const validInput = {
   guildId: "guild-a",
   name: "rules",

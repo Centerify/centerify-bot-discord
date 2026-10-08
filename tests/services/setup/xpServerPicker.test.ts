@@ -2,10 +2,10 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { Client } from "discord.js";
 import { Collection } from "discord.js";
 const mocks = vi.hoisted(() => ({ verified: vi.fn(), apply: vi.fn() }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({ requireVerifiedOwnership: mocks.verified }));
-vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: {} }));
-vi.mock("../../../src/services/xpConfigurationService.js", () => ({ xpConfigurationService: { apply: mocks.apply } }));
-import { changePageSelection, discoverXpServers, handleXpServerPicker, pickerView } from "../../../src/services/setup/xpServerPicker.js";
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({ requireVerifiedOwnership: mocks.verified }));
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: {} }));
+vi.mock("../../../src/modules/xp/discord/configuration.js", () => ({ xpConfigurationService: { apply: mocks.apply } }));
+import { changePageSelection, discoverXpServers, handleXpServerPicker, pickerView } from "../../../src/modules/settings/discord/xpServerPicker.js";
 
 beforeEach(() => { vi.resetAllMocks(); mocks.verified.mockResolvedValue(true); });
 const choices = Array.from({ length: 30 }, (_, i) => ({ id: String(i), name: `Server ${i}` }));

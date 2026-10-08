@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { join, basename } from "node:path";
 import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 const root = join(fileURLToPath(new URL("../..", import.meta.url)));
-const commandsRoot = join(root, "src", "commands");
+const modulesRoot = join(root, "src", "modules");
 
 const expectedCommands = [
   "admin/custom.ts",
@@ -33,27 +33,17 @@ const expectedCommands = [
   "moderation/warnings.ts",
 ] as const;
 
-test("all command files live in category folders", () => {
-  for (const file of expectedCommands) {
-    const path = relative(commandsRoot, join(commandsRoot, file));
-    assert.equal(path.split(sep).length, 2, `${file} should be category/name.ts`);
+test("all Discord commands belong to module adapters", async () => {
+  for (const file of await moduleCommandFiles()) {
+    assert.match(file, /^[a-z-]+\/discord\/commands\/[^/]+\.ts$/);
+    const source = await readFile(join(modulesRoot, file), "utf8");
+    assert.doesNotMatch(source, /(?:prisma|infrastructure)\//, `${file} must use its module API for persistence`);
   }
 });
 
-test("command folders contain only command modules", async () => {
-  for (const file of expectedCommands) {
-    const source = await readFile(join(commandsRoot, file), "utf8");
-    assert.doesNotMatch(
-      source,
-      /from "\.\/utils\.js"/,
-      `${file} should import shared helpers from services, not command folders`,
-    );
-  }
-});
-
-test("dedicated tests cover every command source file", async () => {
-  const commandFiles = await listCommandFiles(commandsRoot);
-  assert.deepEqual(commandFiles, [...expectedCommands].sort());
+test("dedicated tests cover every module command", async () => {
+  const commandFiles = (await moduleCommandFiles()).map((file) => basename(file)).sort();
+  assert.deepEqual(commandFiles, expectedCommands.map((file) => basename(file)).sort());
 
   for (const file of expectedCommands) {
     const testFile = join(
@@ -82,4 +72,8 @@ async function listCommandFiles(dir: string, prefix = ""): Promise<string[]> {
   );
 
   return files.flat().sort();
+}
+
+async function moduleCommandFiles() {
+  return (await listCommandFiles(modulesRoot)).filter((file) => file.includes("/discord/commands/"));
 }

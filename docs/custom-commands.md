@@ -177,8 +177,9 @@ add quoting and escaping automatically. Variables are still substituted in text,
 including code blocks; code is never executed.
 
 The modal accepts 4,000 characters. For larger templates, use **Download .txt**, edit
-the file, then run `/custom markdown name:welcome file:<your-file.txt>`. Uploads
-accept `.txt` files and legacy `.md` and `.markdown` files, with a 192,000-byte download limit and a
+the file, then run `/custom template name:welcome file:<your-file.txt>`. Uploads
+accept regular and ephemeral Discord attachments. `/custom markdown` remains an
+alias. Files may use `.txt`, `.md` or `.markdown`, with a 192,000-byte download limit and a
 48,000-character source limit. Parsed definitions still obey all normal response
 limits, including the 24,000-character JSON payload limit. File downloads use the
 same Discord-host allowlist, redirect rejection, timeout and stream-size checks
@@ -372,7 +373,7 @@ Attachment downloads reject redirects, unknown hosts, excessive streams and time
 
 ## Implementation and deployment
 
-`src/commands/admin/custom.ts` routes Discord interactions to the domain's
+`src/modules/custom-commands/discord/commands/custom.ts` routes Discord interactions to the domain's
 management functions and the existing legacy rules. The existing message listener
 routes `!` invocations to cached domain lookup and falls back to legacy rules.
 There is no new prefix configuration system: `!` already existed in this repository.
@@ -398,7 +399,7 @@ ID. Child replacement/deletion uses `deleteAll()`, because `delete()` removes on
 row in this version. Usage counters use a parameterized atomic increment without
 changing the administrative revision timestamp.
 
-Defaults live in `src/lib/customCommands/constants.ts`: 100 commands per guild,
+Defaults live in `src/modules/custom-commands/domain/constants.ts`: 100 commands per guild,
 10 aliases, 100-character names/descriptions, 25 arguments/role/channel restrictions,
 2,000-character argument input, 24,000-character response payloads and 0–86,400s
 cooldowns. The service accepts an injected command-count limit for future edition
@@ -455,32 +456,32 @@ requires `TEST_DATABASE_URL`; it does not fall back to the deployment URL in `.e
 Files added for this feature:
 
 ```text
-src/lib/customCommands/constants.ts
-src/lib/customCommands/errors.ts
-src/lib/customCommands/types.ts
-src/services/customCommands/CustomCommandCache.ts
-src/services/customCommands/CustomCommandCooldownService.ts
-src/services/customCommands/CustomCommandExecutor.ts
-src/services/customCommands/CustomCommandGuildValidator.ts
-src/services/customCommands/CustomCommandImport.ts
-src/services/customCommands/CustomCommandPermissionService.ts
-src/services/customCommands/CustomCommandRenderer.ts
-src/services/customCommands/CustomCommandService.ts
-src/services/customCommands/CustomCommandSharingService.ts
-src/services/customCommands/CustomCommandValidator.ts
-src/services/customCommands/CustomCommandVariableResolver.ts
-src/services/customCommands/PrismaCustomCommandRepository.ts
-src/services/customCommands/PrismaCommandSharingRepository.ts
-src/services/customCommands/editor.ts
-src/services/customCommands/editorResponses.ts
-src/services/customCommands/editorView.ts
-src/services/customCommands/legacyManagement.ts
-src/services/customCommands/management.ts
-src/services/customCommands/registration.ts
-src/services/customCommands/reservedNames.ts
-src/services/customCommands/runtime.ts
-src/services/customCommands/settings.ts
-src/services/customCommands/settingsView.ts
+src/modules/custom-commands/domain/constants.ts
+src/modules/custom-commands/domain/errors.ts
+src/modules/custom-commands/domain/types.ts
+src/modules/custom-commands/application/CustomCommandCache.ts
+src/modules/custom-commands/application/CustomCommandCooldownService.ts
+src/modules/custom-commands/discord/CustomCommandExecutor.ts
+src/modules/custom-commands/discord/CustomCommandGuildValidator.ts
+src/modules/custom-commands/discord/CustomCommandImport.ts
+src/modules/custom-commands/discord/CustomCommandPermissionService.ts
+src/modules/custom-commands/discord/CustomCommandRenderer.ts
+src/modules/custom-commands/application/CustomCommandService.ts
+src/modules/custom-commands/discord/CustomCommandSharingService.ts
+src/modules/custom-commands/domain/CustomCommandValidator.ts
+src/modules/custom-commands/discord/CustomCommandVariableResolver.ts
+src/modules/custom-commands/infrastructure/PrismaCustomCommandRepository.ts
+src/modules/custom-commands/infrastructure/PrismaCommandSharingRepository.ts
+src/modules/custom-commands/discord/editor.ts
+src/modules/custom-commands/discord/editorResponses.ts
+src/modules/custom-commands/discord/editorView.ts
+src/modules/custom-commands/discord/legacyManagement.ts
+src/modules/custom-commands/discord/management.ts
+src/modules/custom-commands/discord/registration.ts
+src/modules/custom-commands/discord/reservedNames.ts
+src/modules/custom-commands/discord/runtime.ts
+src/modules/custom-commands/discord/settings.ts
+src/modules/custom-commands/discord/settingsView.ts
 migrations/app/20261001T0823_add_global_custom_commands/migration.ts
 migrations/app/20261001T0823_add_global_custom_commands/migration.json
 migrations/app/20261001T0823_add_global_custom_commands/ops.json
@@ -515,15 +516,15 @@ uncommitted custom-response work):
 ```text
 README.md
 scripts/test-database.mjs
-src/commands/admin/custom.ts
-src/commands/admin/settings.ts
-src/services/setup/renderer.ts
-src/listeners/messageCreate.ts
+src/modules/custom-commands/discord/commands/custom.ts
+src/modules/settings/discord/commands/settings.ts
+src/modules/settings/discord/renderer.ts
+src/modules/custom-commands/discord/events.ts
 src/prisma/contract.prisma
 src/prisma/contract.json
 src/prisma/contract.d.ts
-src/services/customResponseRunner.ts
-src/services/customResponseService.ts
+src/modules/custom-commands/discord/legacyRunner.ts
+src/modules/custom-commands/application/CustomResponseService.ts
 tests/commands/admin/custom.test.ts
 tests/commands/admin/customRuntime.test.ts
 tests/commands/admin/settingsRuntime.test.ts

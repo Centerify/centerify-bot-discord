@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-vi.mock("../../../src/logger.js", () => ({
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
-import { CustomCommandService } from "../../../src/services/customCommands/CustomCommandService.js";
+import { CustomCommandService } from "../../../src/modules/custom-commands/application/CustomCommandService.js";
 import { definition, MemoryRepository } from "./fixtures.js";
 let repo: MemoryRepository, service: CustomCommandService;
 beforeEach(() => {

@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import {
   MessageFlags,
+  ApplicationCommandOptionType,
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
@@ -17,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   editor: vi.fn(),
   settings: vi.fn(),
 }));
-vi.mock("../../../src/services/customCommands/runtime.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
   resolveExecutableCustomCommand: (
     _client: unknown,
     guild: { id: string },
@@ -34,28 +35,28 @@ vi.mock("../../../src/services/customCommands/runtime.js", () => ({
   customCommandExecutor: { execute: mocks.execute },
   customCommandSharingService: { listAvailable: mocks.list },
 }));
-vi.mock("../../../src/services/customCommands/editor.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/editor.js", () => ({
   openCustomCommandEditor: mocks.editor,
 }));
-vi.mock("../../../src/services/customCommands/settings.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/settings.js", () => ({
   openCustomCommandSettings: mocks.settings,
 }));
-vi.mock("../../../src/services/customResponseService.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/legacyService.js", () => ({
   customResponseService: { list: mocks.legacyList },
 }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   requireVerifiedOwnership: mocks.ownership,
 }));
-vi.mock("../../../src/logger.js", () => ({
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
-import { CustomCommand } from "../../../src/commands/admin/custom.js";
+import { CustomCommand } from "../../../src/modules/custom-commands/discord/index.js";
 import {
   commandInfo,
   commandPatch,
   showCommandList,
   handleCustomManagement,
-} from "../../../src/services/customCommands/management.js";
+} from "../../../src/modules/custom-commands/discord/management.js";
 import { definition, record, USER, CHANNEL } from "./fixtures.js";
 const command = Object.create(CustomCommand.prototype) as CustomCommand;
 function fixture(
@@ -101,7 +102,7 @@ function fixture(
       getAttachment: () => ({
         name: "command.txt",
         size: 100,
-        url: "https://cdn.discordapp.com/attachments/123/456/command.txt",
+        url: "https://cdn.discordapp.com/ephemeral-attachments/123/456/command.txt?ex=123&is=456&hm=signature",
       }),
     },
     deferReply: vi.fn(async () => {
@@ -144,6 +145,8 @@ test("registration has all management actions, public run, valid option limits a
           "disable",
           "run",
           "configure",
+          "template",
+          "markdown",
           "options",
           "clone",
           "rename",
@@ -154,6 +157,12 @@ test("registration has all management actions, public run, valid option limits a
       for (const option of data.options ?? [])
         if ("options" in option)
           expect(option.options!.length).toBeLessThanOrEqual(25);
+      for (const name of ["template", "markdown"]) {
+        const upload = data.options!.find((option) => option.name === name)!;
+        expect("options" in upload && upload.options?.find((option) => option.name === "file")).toMatchObject({
+          type: ApplicationCommandOptionType.Attachment, required: true,
+        });
+      }
       const create = data.options!.find((option) => option.name === "create")!;
       if ("options" in create)
         expect(
@@ -356,8 +365,8 @@ test("pagination respects rendered message size for long markdown names", async 
   ).toBeLessThanOrEqual(2000);
 });
 
-test("Markdown file uploads parse and save the definition before opening the editor", async () => {
-  const interaction = fixture("markdown", { name: "welcome" });
+test.each(["template", "markdown"])("%s file uploads parse and save the definition before opening the editor", async (subcommand) => {
+  const interaction = fixture(subcommand, { name: "welcome" });
   const source =
     ":::embed\n@title Uploaded\n@cover https://example.com/cover.png\n@button [Rules](https://example.com/rules)\n:::";
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(source)));

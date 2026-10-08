@@ -4,7 +4,7 @@ import {
   customSettingsView,
   customSettingsWarning,
   type CustomSettingsState,
-} from "../../../src/services/customCommands/settingsView.js";
+} from "../../../src/modules/custom-commands/discord/settingsView.js";
 import { record } from "./fixtures.js";
 function state(): CustomSettingsState {
   return {

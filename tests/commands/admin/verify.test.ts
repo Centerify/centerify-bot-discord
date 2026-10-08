@@ -1,12 +1,12 @@
 import { expect, test, vi } from "vitest";
 
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   guildOwnershipService: { verify: vi.fn() },
 }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-import { VerifyCommand } from "../../../src/commands/admin/verify.js";
-import { guildOwnershipService } from "../../../src/services/guildOwnershipService.js";
+import { VerifyCommand } from "../../../src/modules/guilds/discord/index.js";
+import { guildOwnershipService } from "../../../src/modules/guilds/discord/ownership.js";
 import type { Command } from "@sapphire/framework";
 
 test("verification refuses non-owners without claiming success", async () => {

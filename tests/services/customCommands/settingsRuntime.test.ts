@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   editor: vi.fn(),
 }));
-vi.mock("../../../src/services/customCommands/runtime.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
   customCommandService: {
     invalidate: vi.fn(),
     listCommands: mocks.list,
@@ -25,12 +25,12 @@ vi.mock("../../../src/services/customCommands/runtime.js", () => ({
     save: mocks.save,
   },
 }));
-vi.mock("../../../src/services/customCommands/editor.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/editor.js", () => ({
   openCustomCommandEditor: mocks.editor,
 }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
-import { openCustomCommandSettings } from "../../../src/services/customCommands/settings.js";
-import { CustomCommandSharingConflictError } from "../../../src/services/customCommands/CustomCommandSharingService.js";
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
+import { openCustomCommandSettings } from "../../../src/modules/custom-commands/discord/settings.js";
+import { CustomCommandSharingConflictError } from "../../../src/modules/custom-commands/discord/CustomCommandSharingService.js";
 function fixture() {
   const callbacks: Record<string, (...args: any[]) => any> = {};
   const collector = {

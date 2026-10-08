@@ -1,10 +1,10 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Client } from "discord.js";
-import type { GuildConfig } from "../../src/services/guildConfigService.js";
+import type { GuildConfig } from "../../src/modules/guilds/discord/config.js";
 const mocks = vi.hoisted(() => ({ upsert: vi.fn(), transaction: vi.fn(), verified: vi.fn() }));
-vi.mock("../../src/prisma/db.js", () => ({ db: { transaction: mocks.transaction } }));
-vi.mock("../../src/services/guildOwnershipService.js", () => ({ guildOwnershipService: { isVerified: mocks.verified } }));
-import { xpConfigurationService } from "../../src/services/xpConfigurationService.js";
+vi.mock("../../src/adapters/prisma/client.js", () => ({ db: { transaction: mocks.transaction } }));
+vi.mock("../../src/modules/guilds/discord/ownership.js", () => ({ guildOwnershipService: { isVerified: mocks.verified } }));
+import { xpConfigurationService } from "../../src/modules/xp/discord/configuration.js";
 const source = { guildId: "a", xpEnabled: true, xpMethods: "messages,daily", xpMessageAmount: 20, xpReactionAmount: 5, xpDailyAmount: 250,
   xpCooldownSeconds: 60, xpSharing: "selected", xpSharedGuildIds: "b", welcomeChannelId: "do-not-copy", setupCompleted: true } as GuildConfig;
 function client(canManage = true) {

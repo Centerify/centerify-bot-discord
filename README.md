@@ -297,3 +297,7 @@ eligible servers require verified ownership and the sharing administrator's
 current Administrator permission. Save the scope after reviewing the selection.
 See [custom-command configuration, security and deployment](docs/custom-commands.md)
 for response types, permissions, import/export, limits and migration instructions.
+
+## Architecture and extensions
+
+See [Architecture](docs/architecture.md) for module ownership, configuration and replacement boundaries, and [Creating a module](docs/creating-a-module.md) for a complete example.

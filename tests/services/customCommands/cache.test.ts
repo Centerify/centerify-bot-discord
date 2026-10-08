@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { CustomCommandCache } from "../../../src/services/customCommands/CustomCommandCache.js";
+import { CustomCommandCache } from "../../../src/modules/custom-commands/application/CustomCommandCache.js";
 test("coalesces guild-local reads, expires, evicts and handles failures", async () => {
   let now = 0;
   const cache = new CustomCommandCache<number>(100, 2, () => now);

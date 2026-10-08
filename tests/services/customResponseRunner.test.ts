@@ -8,17 +8,17 @@ const mocks = vi.hoisted(() => ({
   warn: vi.fn(),
 }));
 
-vi.mock("../../src/services/customResponseService.js", () => ({
+vi.mock("../../src/modules/custom-commands/discord/legacyService.js", () => ({
   customResponseService: { list: mocks.list, listCached: mocks.list },
 }));
-vi.mock("../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../src/modules/guilds/discord/ownership.js", () => ({
   guildOwnershipService: { isVerified: mocks.verified },
 }));
-vi.mock("../../src/logger.js", () => ({
+vi.mock("../../src/adapters/logging/runtime.js", () => ({
   logger: { error: mocks.error, warn: mocks.warn },
 }));
 
-import { runCustomCommand, runCustomEvent } from "../../src/services/customResponseRunner.js";
+import { runCustomCommand, runCustomEvent } from "../../src/modules/custom-commands/discord/legacyRunner.js";
 
 const baseRule = {
   id: 1,
