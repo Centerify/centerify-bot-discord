@@ -4,13 +4,21 @@ import { CustomCommandValidationError } from "../../lib/customCommands/errors.js
 /** Only Discord attachment URLs are fetched; redirects and oversize streams fail closed. */
 export async function readCommandAttachment(
   attachment: Attachment,
+  format: "json" | "markdown" = "json",
 ): Promise<string> {
+  const maxBytes = format === "json" ? L.importBytes : L.markdownInput * 4;
+  const extensions =
+    format === "json" ? [".json"] : [".txt", ".md", ".markdown"];
   if (
-    attachment.size > L.importBytes ||
-    !attachment.name.toLowerCase().endsWith(".json")
+    attachment.size > maxBytes ||
+    !extensions.some((extension) =>
+      attachment.name.toLowerCase().endsWith(extension),
+    )
   )
     throw new CustomCommandValidationError(
-      "Upload a JSON file no larger than 8 MB.",
+      format === "json"
+        ? "Upload a JSON file no larger than 8 MB."
+        : `Upload a .txt, .md or .markdown file no larger than ${maxBytes} bytes.`,
     );
   const url = new URL(attachment.url);
   if (
@@ -39,7 +47,7 @@ export async function readCommandAttachment(
       const next = await reader.read();
       if (next.done) break;
       bytes += next.value.byteLength;
-      if (bytes > L.importBytes)
+      if (bytes > maxBytes)
         throw new CustomCommandValidationError("Import file is too large.");
       chunks.push(next.value);
     }

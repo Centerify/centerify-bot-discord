@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   ChannelSelectMenuBuilder,
   ChannelType,
+  EmbedBuilder,
   RoleSelectMenuBuilder,
   StringSelectMenuBuilder,
 } from "discord.js";
@@ -21,6 +22,18 @@ export function editorView(
   restriction: string,
 ) {
   const prefix = `cc:${session}:`;
+  const panel = (description: string) => ({
+    content: null,
+    embeds: [
+      new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle(`Custom command editor • ${command.name}`)
+        .setDescription(description)
+        .setFooter({
+          text: "Changes save immediately • Editor expires after 3 minutes",
+        }),
+    ],
+  });
   const navigation = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`${prefix}responses`)
@@ -33,6 +46,14 @@ export function editorView(
     new ButtonBuilder()
       .setCustomId(`${prefix}settings`)
       .setLabel("Settings")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}preview`)
+      .setLabel("Preview")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}variables`)
+      .setLabel("Variables")
       .setStyle(ButtonStyle.Secondary),
   );
   if (section === "access") {
@@ -55,10 +76,10 @@ export function editorView(
         .setLabel("Clear this restriction")
         .setStyle(ButtonStyle.Danger),
     );
-    const content = `Editing **${command.name}** • ${restriction}\nCurrent: ${command[restriction as (typeof RESTRICTION_KEYS)[number]].join(", ") || "None"}\nDenied roles/channels take priority. Empty allowed lists are unrestricted.`;
+    const content = `**Access rules • ${restriction}**\nCurrent: ${command[restriction as (typeof RESTRICTION_KEYS)[number]].join(", ") || "None"}\n\nDenied roles/channels take priority. Empty allowed lists are unrestricted.`;
     if (restriction.endsWith("RoleIds"))
       return {
-        content,
+        ...panel(content),
         components: [
           navigation,
           selector,
@@ -75,7 +96,7 @@ export function editorView(
       };
     if (restriction.endsWith("ChannelIds"))
       return {
-        content,
+        ...panel(content),
         components: [
           navigation,
           selector,
@@ -98,7 +119,7 @@ export function editorView(
         allowedMentions: { parse: [] as [] },
       };
     return {
-      content,
+      ...panel(content),
       components: [
         navigation,
         selector,
@@ -113,59 +134,25 @@ export function editorView(
       allowedMentions: { parse: [] as [] },
     };
   }
-  const response = command.content[index]!;
-  const selector =
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(`${prefix}message`)
-        .setPlaceholder("Choose response message")
-        .addOptions(
-          command.content.map((entry, i) => ({
-            label: `Message ${i + 1}: ${entry.type}`,
-            value: String(i),
-            default: i === index,
-          })),
-        ),
-    );
-  const edit = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${prefix}response`)
-      .setLabel("Edit text / embed")
+      .setCustomId(`${prefix}markdown`)
+      .setLabel("Edit Template")
       .setStyle(ButtonStyle.Primary),
-  );
-  if (response.type === "EMBED")
-    edit.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${prefix}media`)
-        .setLabel("Media / timestamp")
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId(`${prefix}field`)
-        .setLabel("Add field")
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId(`${prefix}remove-field`)
-        .setLabel("Remove last field")
-        .setStyle(ButtonStyle.Secondary),
-    );
-  const messages = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${prefix}add-text`)
-      .setLabel("Add text message")
+      .setCustomId(`${prefix}markdown-download`)
+      .setLabel("Download .txt")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId(`${prefix}add-embed`)
-      .setLabel("Add embed message")
+      .setCustomId(`${prefix}markdown-help`)
+      .setLabel("Syntax & example")
       .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`${prefix}remove-message`)
-      .setLabel("Remove selected message")
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(command.content.length === 1),
   );
   return {
-    content: `Editing **${command.name}** • Message ${index + 1}/${command.content.length}\n${command.content.length} ordered response(s), ${command.cooldownSeconds}s ${command.cooldownScope} cooldown. Changes save immediately.`,
-    components: [navigation, selector, edit, messages],
+    ...panel(
+      `**Response template**\n${command.content.length} ordered response(s) • ${command.cooldownSeconds}s ${command.cooldownScope} cooldown.\n\nStart with @main for the first embed; @stage(n) adds a page. Add a Rules button with @button primary [Rules](Go(stage(1))). Put every @ directive at the start of its line. **Edit Template** replaces all responses after validation. Use **Preview** to check the saved result.\n\nFor templates over 4,000 characters, download the .txt source, edit it, then upload it with \`/custom markdown name:${command.name} file:…\`.`,
+    ),
+    components: [navigation, controls],
     allowedMentions: { parse: [] as [] },
   };
 }

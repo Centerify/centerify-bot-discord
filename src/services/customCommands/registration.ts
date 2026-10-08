@@ -92,15 +92,35 @@ export function definitionOptions(
 export function extraSubcommands(builder: SlashCommandBuilder): void {
   builder.addSubcommand((sub) =>
     sub
+      .setName("markdown")
+      .setDescription("Save command responses from a text template")
+      .addStringOption((o) =>
+        o
+          .setName("name")
+          .setDescription("Existing command name")
+          .setRequired(true)
+          .setMaxLength(L.name),
+      )
+      .addAttachmentOption((o) =>
+        o
+          .setName("file")
+          .setDescription("Command template (.txt; legacy .md also works)")
+          .setRequired(true),
+      ),
+  );
+  builder.addSubcommand((sub) =>
+    sub
       .setName("options")
-      .setDescription("Configure custom commands and share them between servers"),
+      .setDescription(
+        "Configure custom commands and share them between servers",
+      ),
   );
   for (const name of ["info", "disable", "configure"] as const)
     builder.addSubcommand((sub) =>
       sub
         .setName(name)
         .setDescription(
-          `${name === "configure" ? "Open the visual editor for" : name === "info" ? "Show details of" : "Disable"} a custom command`,
+          `${name === "configure" ? "Open the template editor for" : name === "info" ? "Show details of" : "Disable"} a custom command`,
         )
         .addStringOption((o) =>
           o.setName("name").setDescription("Command name").setRequired(true),

@@ -10,9 +10,13 @@ import { CustomCommandValidationError } from "../../lib/customCommands/errors.js
 import type {
   CustomCommandDefinition,
   EmbedTemplate,
+  ButtonTemplate,
   ResponseTemplate,
 } from "../../lib/customCommands/types.js";
-import { CustomCommandVariableResolver } from "./CustomCommandVariableResolver.js";
+import {
+  URL_VARIABLES,
+  CustomCommandVariableResolver,
+} from "./CustomCommandVariableResolver.js";
 
 export function normalizeCommandName(name: string): string {
   return name.trim().toLowerCase();
@@ -69,8 +73,10 @@ function choice<T extends string>(
     return fail(`${label} is unsupported.`);
   return value as T;
 }
-function url(value: unknown): string {
+function url(value: unknown, templates = false): string {
   const input = text(value, "URL", L.url);
+  if (templates && URL_VARIABLES.some((key) => input === `{${key}}`))
+    return input;
   try {
     const parsed = new URL(input);
     if (
@@ -79,9 +85,13 @@ function url(value: unknown): string {
       parsed.password ||
       /[{}]/.test(input)
     )
-      fail("URLs must use HTTPS without credentials or variables.");
+      fail(
+        "URLs must use HTTPS without credentials, or an approved complete image placeholder.",
+      );
   } catch {
-    fail("URLs must use HTTPS without credentials or variables.");
+    fail(
+      "URLs must use HTTPS without credentials, or an approved complete image placeholder.",
+    );
   }
   return input;
 }
@@ -212,18 +222,110 @@ export class CustomCommandValidator {
       return fail(`Provide 1–${L.messages} response messages.`);
     if (JSON.stringify(input).length > L.templateInput)
       fail("Response payload is too large.");
-    return Array.from(input).map((entry) => {
-      const data = object(entry, "Response", ["type", "text", "embed"]);
+    const responses: ResponseTemplate[] = Array.from(input).map((entry) => {
+      const data = object(entry, "Response", [
+        "type",
+        "text",
+        "embed",
+        "buttons",
+        "stage",
+      ]);
+      if (
+        data.stage !== undefined &&
+        (!Number.isSafeInteger(data.stage) || (data.stage as number) < 0)
+      )
+        fail("Stage must be a nonnegative integer.");
+      const stage =
+        data.stage === undefined ? {} : { stage: data.stage as number };
+      const buttons =
+        data.buttons === undefined
+          ? {}
+          : { buttons: this.buttons(data.buttons, templates) };
       if (data.type === "TEXT") {
         if (data.embed !== undefined)
           fail("Text responses cannot contain an embed.");
         const value = text(data.text, "Response text", L.text);
         if (templates) this.variables.validate(value);
-        return { type: "TEXT", text: value };
+        return { type: "TEXT", text: value, ...stage, ...buttons };
       }
       if (data.type !== "EMBED" || data.text !== undefined)
         return fail("Unsupported response type.");
-      return { type: "EMBED", embed: this.embed(data.embed, templates) };
+      return {
+        type: "EMBED",
+        embed: this.embed(data.embed, templates),
+        ...stage,
+        ...buttons,
+      };
+    });
+    const stages = responses
+      .filter((r) => r.stage !== undefined)
+      .map((r) => r.stage!);
+    if (
+      stages.length &&
+      (stages.length !== responses.length ||
+        !stages.includes(0) ||
+        new Set(stages).size !== stages.length)
+    )
+      fail(
+        "Stages require exactly one @main and unique @stage(n) markers on every response.",
+      );
+    for (const response of responses)
+      for (const button of response.buttons ?? [])
+        if ("action" in button) {
+          if (!stages.length) fail("Action buttons require staged responses.");
+          if (button.target !== undefined && !stages.includes(button.target))
+            fail("Button targets an unknown stage.");
+        }
+    return responses;
+  }
+  public buttons(input: unknown, templates = true): ButtonTemplate[] {
+    if (!Array.isArray(input) || input.length > L.buttons)
+      return fail(`Use at most ${L.buttons} buttons per message.`);
+    return input.map((entry) => {
+      const data = object(entry, "Button", [
+        "label",
+        "url",
+        "action",
+        "target",
+        "style",
+      ]);
+      const label = text(data.label, "Button label", L.buttonLabel);
+      if (/[\r\n]/.test(label)) fail("Button labels must be a single line.");
+      if (templates) this.variables.validate(label);
+      if (data.action !== undefined) {
+        if (data.url !== undefined)
+          fail("Action buttons cannot contain a URL.");
+        const action = choice(
+          data.action,
+          ["go", "back", "main", "cancel"] as const,
+          "Button action",
+        );
+        if (action === "go" || action === "back") {
+          if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
+            fail("Navigation requires a stage target.");
+        } else if (data.target !== undefined)
+          fail("This action cannot have a stage target.");
+        return {
+          label,
+          action,
+          ...(data.target === undefined
+            ? {}
+            : { target: data.target as number }),
+          ...(data.style === undefined
+            ? {}
+            : {
+                style: choice(
+                  data.style,
+                  ["primary", "secondary", "success", "danger"] as const,
+                  "Button style",
+                ),
+              }),
+        };
+      }
+      if (data.style !== undefined || data.target !== undefined)
+        fail("Link buttons cannot have an action style or target.");
+      const target = url(text(data.url, "Button URL", L.buttonUrl));
+      return { label, url: target };
     });
   }
   public embed(input: unknown, templates = true): EmbedTemplate {
@@ -255,7 +357,7 @@ export class CustomCommandValidator {
         "Embed description",
         L.embedDescription,
       );
-    if (data.url !== undefined) result.url = url(data.url);
+    if (data.url !== undefined) result.url = url(data.url, templates);
     if (data.color !== undefined) {
       if (
         typeof data.color !== "number" ||
@@ -274,9 +376,11 @@ export class CustomCommandValidator {
       ]);
       result.author = {
         name: checkedText(author.name, "Author name", L.embedAuthor),
-        ...(author.url !== undefined ? { url: url(author.url) } : {}),
+        ...(author.url !== undefined
+          ? { url: url(author.url, templates) }
+          : {}),
         ...(author.icon_url !== undefined
-          ? { icon_url: url(author.icon_url) }
+          ? { icon_url: url(author.icon_url, templates) }
           : {}),
       };
     }
@@ -285,14 +389,14 @@ export class CustomCommandValidator {
       result.footer = {
         text: checkedText(footer.text, "Footer", L.embedFooter),
         ...(footer.icon_url !== undefined
-          ? { icon_url: url(footer.icon_url) }
+          ? { icon_url: url(footer.icon_url, templates) }
           : {}),
       };
     }
     for (const key of ["thumbnail", "image"] as const)
       if (data[key] !== undefined) {
         const image = object(data[key], key, ["url"]);
-        result[key] = { url: url(image.url) };
+        result[key] = { url: url(image.url, templates) };
       }
     if (data.timestamp !== undefined) {
       if (typeof data.timestamp === "boolean")

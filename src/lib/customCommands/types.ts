@@ -20,8 +20,20 @@ export interface EmbedTemplate extends Omit<
 > {
   timestamp?: boolean | string;
 }
-export type ResponseTemplate =
-  { type: "TEXT"; text: string } | { type: "EMBED"; embed: EmbedTemplate };
+export interface LinkButtonTemplate {
+  label: string;
+  url: string;
+}
+export interface ActionButtonTemplate {
+  label: string;
+  action: "go" | "back" | "main" | "cancel";
+  target?: number;
+  style?: "primary" | "secondary" | "success" | "danger";
+}
+export type ButtonTemplate = LinkButtonTemplate | ActionButtonTemplate;
+export type ResponseTemplate = (
+  { type: "TEXT"; text: string } | { type: "EMBED"; embed: EmbedTemplate }
+) & { buttons?: ButtonTemplate[]; stage?: number };
 export interface CustomCommandDefinition {
   name: string;
   description: string;

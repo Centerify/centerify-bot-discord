@@ -1,3 +1,4 @@
+import { attachStageNavigation } from "./stageNavigation.js";
 import { logger } from "../../logger.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../../lib/customCommands/constants.js";
 import { CustomCommandValidationError } from "../../lib/customCommands/errors.js";
@@ -44,9 +45,14 @@ export class CustomCommandExecutor {
           "Command arguments exceed the limits.",
         );
       release = this.cooldowns.acquire(context);
-      const responses = await this.renderer.render(context);
+      const responses = await this.renderer.render(context, true);
+      const staged = context.command.content.some(
+        (response) => response.stage !== undefined,
+      );
       for (const [index, payload] of responses.entries()) {
-        await transport.send(payload, index);
+        if (staged && context.command.content[index].stage !== 0) continue;
+        const message = await transport.send(payload, staged ? 0 : index);
+        if (staged) attachStageNavigation(message, context, responses);
         sent++;
       }
       if (

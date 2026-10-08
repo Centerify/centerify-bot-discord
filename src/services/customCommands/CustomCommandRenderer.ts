@@ -1,4 +1,10 @@
-import { EmbedBuilder, type MessageCreateOptions } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  type MessageCreateOptions,
+} from "discord.js";
 import type {
   CustomCommandExecutionContext,
   EmbedTemplate,
@@ -58,6 +64,30 @@ export class CustomCommandRenderer {
             field.name = await this.interpolate(field.name, context);
             field.value = await this.interpolate(field.value, context);
           }
+        // Resolve approved complete URL placeholders; missing optional images are omitted.
+        const resolveUrl = async (value: string) =>
+          this.variables.render(value, context);
+        if (embed.url) {
+          embed.url = await resolveUrl(embed.url);
+          if (!embed.url) delete embed.url;
+        }
+        for (const key of ["image", "thumbnail"] as const) {
+          if (embed[key]) {
+            const url = await resolveUrl(embed[key]!.url);
+            if (url) embed[key] = { url };
+            else delete embed[key];
+          }
+        }
+        for (const item of [embed.author, embed.footer]) {
+          if (item?.icon_url) {
+            item.icon_url = await resolveUrl(item.icon_url);
+            if (!item.icon_url) delete item.icon_url;
+          }
+        }
+        if (embed.author?.url) {
+          embed.author.url = await resolveUrl(embed.author.url);
+          if (!embed.author.url) delete embed.author.url;
+        }
         this.validator.embed(embed, false);
         const { timestamp, ...data } = embed;
         const builder = new EmbedBuilder(data);
@@ -85,14 +115,50 @@ export class CustomCommandRenderer {
   }
   public async render(
     context: CustomCommandExecutionContext,
+    allStages = false,
   ): Promise<MessageCreateOptions[]> {
     // Render and check every message before sending the first one.
     const responses: MessageCreateOptions[] = [];
     for (const template of this.validator.responses(context.command.content)) {
+      if (!allStages && template.stage !== undefined && template.stage !== 0)
+        continue;
       const handler = this.handlers.get(template.type);
       if (!handler) throw new Error("Missing response handler.");
+      const buttons = this.validator.buttons(
+        await Promise.all(
+          (template.buttons ?? []).map(async (button) => ({
+            ...button,
+            label: await this.interpolate(button.label, context),
+          })),
+        ),
+        false,
+      );
       responses.push({
         ...(await handler.render(template, context)),
+        ...(buttons.length
+          ? {
+              components: [
+                new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  buttons.map((button, index) => {
+                    const builder = new ButtonBuilder().setLabel(button.label);
+                    if ("url" in button)
+                      return builder
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(button.url);
+                    const styles = {
+                      primary: ButtonStyle.Primary,
+                      secondary: ButtonStyle.Secondary,
+                      success: ButtonStyle.Success,
+                      danger: ButtonStyle.Danger,
+                    };
+                    return builder
+                      .setStyle(styles[button.style ?? "primary"])
+                      .setCustomId(`cc-stage:${template.stage}:${index}`);
+                  }),
+                ),
+              ],
+            }
+          : {}),
         allowedMentions: {
           parse: [],
           users: [context.userId],

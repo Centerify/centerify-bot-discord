@@ -126,3 +126,91 @@ test("media and fields are validated; malformed colors, flags and field overflow
     ),
   ).toBeDefined();
 });
+
+test("individual fields can be prefilled, replaced and deleted without losing siblings", () => {
+  const initial = record({
+    responseType: "EMBED",
+    content: [
+      {
+        type: "EMBED",
+        embed: {
+          title: "Profile",
+          fields: [
+            { name: "First", value: "One" },
+            { name: "Second", value: "Two", inline: true },
+          ],
+        },
+      },
+    ],
+  });
+  const modal = responseModal(
+    "id",
+    "edit-field-1",
+    initial.content[0],
+  ).toJSON();
+  expect(JSON.stringify(modal)).toContain('"value":"Second"');
+  const content = applyResponseModal(
+    initial,
+    0,
+    "edit-field-1",
+    submit({
+      name: "Changed",
+      value: "{user.name}",
+      inline: "false",
+      remove: "false",
+    }) as never,
+  );
+  expect(content[0]).toMatchObject({
+    embed: {
+      fields: [
+        { name: "First", value: "One" },
+        { name: "Changed", value: "{user.name}", inline: false },
+      ],
+    },
+  });
+  expect(
+    applyResponseModal(
+      initial,
+      0,
+      "edit-field-0",
+      submit({ remove: "true" }) as never,
+    )[0],
+  ).toMatchObject({ embed: { fields: [{ name: "Second" }] } });
+  expect(initial.content[0]).toMatchObject({
+    embed: { fields: [{ name: "First" }, { name: "Second" }] },
+  });
+  expect(() =>
+    responseModal("id", "edit-field-20", initial.content[0]),
+  ).toThrow("no longer exists");
+  const view = editorView(initial, "session", "responses", 0, "allowedRoleIds");
+  expect(view.components).toHaveLength(2);
+  for (const row of view.components) expect(() => row.toJSON()).not.toThrow();
+});
+
+test("embed links preserve media and require author text", () => {
+  const initial = record({
+    content: [
+      {
+        type: "EMBED",
+        embed: { title: "Title", image: { url: "{user.avatar}" } },
+      },
+    ],
+  });
+  expect(() =>
+    applyResponseModal(
+      initial,
+      0,
+      "links",
+      submit({ author_url: "https://example.com" }) as never,
+    ),
+  ).toThrow("author text");
+  const content = applyResponseModal(
+    initial,
+    0,
+    "links",
+    submit({ url: "https://example.com" }) as never,
+  );
+  expect(new CustomCommandValidator().responses(content)[0]).toMatchObject({
+    embed: { url: "https://example.com", image: { url: "{user.avatar}" } },
+  });
+});

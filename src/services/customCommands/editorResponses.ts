@@ -125,6 +125,50 @@ export function responseModal(
         max: 40,
       },
     ]);
+  if (action === "links")
+    return editorModal(id, "Embed links", [
+      { id: "url", label: "Title HTTPS link", value: embed.url, max: L.url },
+      {
+        id: "author_url",
+        label: "Author HTTPS link",
+        value: embed.author?.url,
+        max: L.url,
+      },
+    ]);
+  if (action.startsWith("edit-field-")) {
+    const field = embed.fields?.[Number(action.slice(11))];
+    if (!field)
+      throw new CustomCommandValidationError("That field no longer exists.");
+    return editorModal(id, "Edit embed field", [
+      {
+        id: "name",
+        label: "Field name",
+        value: field.name,
+        required: true,
+        max: L.embedFieldName,
+      },
+      {
+        id: "value",
+        label: "Field value",
+        value: field.value,
+        required: true,
+        paragraph: true,
+        max: L.embedFieldValue,
+      },
+      {
+        id: "inline",
+        label: "Inline: true or false",
+        value: String(field.inline ?? false),
+        max: 5,
+      },
+      {
+        id: "remove",
+        label: "Delete this field: true or false",
+        value: "false",
+        max: 5,
+      },
+    ]);
+  }
   return editorModal(id, "Add embed field", [
     { id: "name", label: "Field name", required: true, max: L.embedFieldName },
     {
@@ -198,22 +242,47 @@ export function applyResponseModal(
         : timestamp === "false" || !timestamp
           ? false
           : timestamp;
+  } else if (action === "links") {
+    const url = value("url"),
+      authorUrl = value("author_url");
+    if (url) embed.url = url;
+    else delete embed.url;
+    if (authorUrl && !embed.author)
+      throw new CustomCommandValidationError(
+        "Set author text before its link.",
+      );
+    if (embed.author) {
+      if (authorUrl) embed.author.url = authorUrl;
+      else delete embed.author.url;
+    }
   } else {
-    if ((embed.fields?.length ?? 0) >= L.embedFields)
+    const editing = action.startsWith("edit-field-");
+    const fieldIndex = editing ? Number(action.slice(11)) : -1;
+    if (editing && !embed.fields?.[fieldIndex])
+      throw new CustomCommandValidationError("That field no longer exists.");
+    if (editing) {
+      const remove = value("remove");
+      if (!["true", "false", ""].includes(remove))
+        throw new CustomCommandValidationError("Delete must be true or false.");
+      if (remove === "true") {
+        embed.fields!.splice(fieldIndex, 1);
+        return content;
+      }
+    }
+    if (!editing && (embed.fields?.length ?? 0) >= L.embedFields)
       throw new CustomCommandValidationError(
         `Embeds support at most ${L.embedFields} fields.`,
       );
     const inline = value("inline");
     if (!["true", "false", ""].includes(inline))
       throw new CustomCommandValidationError("Inline must be true or false.");
-    embed.fields = [
-      ...(embed.fields ?? []),
-      {
-        name: value("name"),
-        value: modal.fields.getTextInputValue("value"),
-        inline: inline === "true",
-      },
-    ];
+    const field = {
+      name: value("name"),
+      value: modal.fields.getTextInputValue("value"),
+      inline: inline === "true",
+    };
+    if (editing) embed.fields![fieldIndex] = field;
+    else embed.fields = [...(embed.fields ?? []), field];
   }
   return content;
 }

@@ -44,3 +44,38 @@ test("the downloaded stream is bounded independently of reported attachment size
     "too large",
   );
 });
+
+test("template uploads prefer .txt, accept legacy .md, and enforce size limits", async () => {
+  const template = { ...attachment, name: "command.txt" };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(async () => new Response("**Hello**")),
+  );
+  expect(await readCommandAttachment(template as never, "markdown")).toBe(
+    "**Hello**",
+  );
+  expect(
+    await readCommandAttachment(
+      { ...template, name: "command.md" } as never,
+      "markdown",
+    ),
+  ).toBe("**Hello**");
+  await expect(
+    readCommandAttachment(attachment as never, "markdown"),
+  ).rejects.toThrow(".txt");
+  await expect(
+    readCommandAttachment(
+      { ...template, size: L.markdownInput * 4 + 1 } as never,
+      "markdown",
+    ),
+  ).rejects.toThrow("bytes");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(new Response(new Uint8Array(L.markdownInput * 4 + 1))),
+  );
+  await expect(
+    readCommandAttachment(template as never, "markdown"),
+  ).rejects.toThrow("too large");
+});

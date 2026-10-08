@@ -98,6 +98,11 @@ function fixture(
       getInteger: (key: string) => values[key] ?? null,
       getRole: () => null,
       getChannel: () => null,
+      getAttachment: () => ({
+        name: "command.txt",
+        size: 100,
+        url: "https://cdn.discordapp.com/attachments/123/456/command.txt",
+      }),
     },
     deferReply: vi.fn(async () => {
       interaction.deferred = true;
@@ -160,7 +165,9 @@ test("registration has all management actions, public run, valid option limits a
 test("options opens sharing settings only for verified administrators", async () => {
   const interaction = fixture("options");
   await command.chatInputRun(interaction as never);
-  expect(interaction.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+  expect(interaction.deferReply).toHaveBeenCalledWith({
+    flags: MessageFlags.Ephemeral,
+  });
   expect(mocks.settings).toHaveBeenCalledExactlyOnceWith(interaction);
   mocks.settings.mockClear();
   await command.chatInputRun(fixture("options", {}, false) as never);
@@ -268,8 +275,12 @@ test("list displays shared commands and each command's individual scope", async 
   ]);
   const interaction = fixture("list");
   await showCommandList(interaction as never, []);
-  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Global • Shared from source");
-  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Specific servers");
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain(
+    "Global • Shared from source",
+  );
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain(
+    "Specific servers",
+  );
 });
 test("info fields honor Discord limits even with long aliases and permissions", () => {
   const c = record({
@@ -343,4 +354,66 @@ test("pagination respects rendered message size for long markdown names", async 
   expect(
     interaction.editReply.mock.calls[0]![0].content.length,
   ).toBeLessThanOrEqual(2000);
+});
+
+test("Markdown file uploads parse and save the definition before opening the editor", async () => {
+  const interaction = fixture("markdown", { name: "welcome" });
+  const source =
+    ":::embed\n@title Uploaded\n@cover https://example.com/cover.png\n@button [Rules](https://example.com/rules)\n:::";
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(source)));
+  try {
+    await command.chatInputRun(interaction as never);
+    expect(mocks.update).toHaveBeenCalledWith(
+      "guild-a",
+      USER,
+      "welcome",
+      expect.objectContaining({
+        responseType: "EMBED",
+        content: [
+          expect.objectContaining({
+            embed: {
+              title: "Uploaded",
+              image: { url: "https://example.com/cover.png" },
+            },
+            buttons: [{ label: "Rules", url: "https://example.com/rules" }],
+          }),
+        ],
+      }),
+      "updated",
+      record().updatedAt,
+    );
+    expect(mocks.editor).toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("ordinary members cannot upload Markdown to change commands", async () => {
+  const interaction = fixture("markdown", { name: "welcome" }, false);
+  await command.chatInputRun(interaction as never);
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(interaction.reply).toHaveBeenCalledWith(
+    expect.objectContaining({
+      content: expect.stringContaining("administrator"),
+    }),
+  );
+});
+
+test("invalid uploaded Markdown never replaces a saved definition", async () => {
+  const interaction = fixture("markdown", { name: "welcome" });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(":::embed\n@bad invalid\n:::")),
+  );
+  try {
+    await command.chatInputRun(interaction as never);
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("Markdown line 2"),
+      }),
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
