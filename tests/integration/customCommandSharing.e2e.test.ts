@@ -209,6 +209,43 @@ async function click(
     expect(payload.embeds?.[0]?.toJSON().title).toBe("Duplicate commands found");
   return item;
 }
+
+async function editTemplate(
+  editor: Awaited<ReturnType<typeof withMember>>,
+  template: string,
+) {
+  const control = controls(editor).find((item) =>
+    item.custom_id?.endsWith(":markdown"),
+  );
+  expect(control, "Edit Template should be rendered").toBeDefined();
+  const modal = await withMember(editor.root.guild);
+  const button = {
+    ...modal.root,
+    customId: control.custom_id,
+    isButton: () => true,
+    showModal: vi.fn(),
+    awaitModalSubmit: vi.fn(
+      async ({ filter }: { filter: (item: unknown) => boolean }) => {
+        const submitted = {
+          ...modal.root,
+          customId: button.showModal.mock.calls[0]![0].toJSON().custom_id,
+          fields: {
+            getTextInputValue: (key: string) => {
+              expect(key).toBe("markdown");
+              return template;
+            },
+          },
+        };
+        expect(filter(submitted)).toBe(true);
+        return submitted;
+      },
+    ),
+  };
+  await editor.callbacks.get("collect")!(button);
+  expect(button.showModal).toHaveBeenCalledOnce();
+  expect(modal.root.editReply).toHaveBeenCalledWith("Custom command updated.");
+}
+
 async function settings(guild: Guild) {
   const f = await withMember(guild);
   await Object.create(SettingsCommand.prototype).chatInputRun(f.root);
@@ -328,33 +365,8 @@ describe.skipIf(!url)(
       );
       const panel = await settings(source);
       const editor = await click(panel, "customize");
-      const responseControl = controls(editor).find((item) =>
-        item.custom_id?.endsWith(":markdown"),
-      );
-      expect(responseControl, JSON.stringify(editor.root.editReply.mock.calls)).toBeDefined();
-      const modal = await withMember(source);
       const text = "Hello {user.name} in {guild.name}: {args}";
-      const button = {
-        ...modal.root,
-        customId: responseControl.custom_id,
-        isButton: () => true,
-        showModal: vi.fn(),
-        awaitModalSubmit: vi.fn(
-          async ({ filter }: { filter: (item: unknown) => boolean }) => {
-            const submitted = {
-              ...modal.root,
-              customId: button.showModal.mock.calls[0]![0].toJSON().custom_id,
-              fields: { getTextInputValue: () => text },
-            };
-            expect(filter(submitted)).toBe(true);
-            return submitted;
-          },
-        ),
-      };
-      await editor.callbacks.get("collect")!(button);
-      expect(modal.root.editReply).toHaveBeenCalledWith(
-        "Custom command updated.",
-      );
+      await editTemplate(editor, text);
       await click(panel, "refresh");
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
@@ -489,15 +501,10 @@ describe.skipIf(!url)(
       expect(controls(panel).find((item) => item.custom_id?.endsWith(":customize-command")).options)
         .toContainEqual(expect.objectContaining({ value: String(definition.id) }));
       const editor = await click(panel, "customize");
-      const templateControl = controls(editor).find((item) => item.custom_id?.endsWith(":markdown"));
-      const modal = await withMember(selected);
-      const button = {
-        ...modal.root, customId: templateControl.custom_id, isButton: () => true, showModal: vi.fn(),
-        awaitModalSubmit: vi.fn(async () => ({
-          ...modal.root, fields: { getTextInputValue: () => ":::text\nOriginal\n:::\n:::text\nAdded from destination\n:::" },
-        })),
-      };
-      await editor.callbacks.get("collect")!(button);
+      await editTemplate(
+        editor,
+        ":::text\nOriginal\n:::\n:::text\nAdded from destination\n:::",
+      );
       expect((await runtime.customCommandService.getCommand(source.id, "shared-edit"))?.content).toHaveLength(2);
       expect((await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit"))?.content).toHaveLength(2);
       expect(await db.orm.public.CustomCommand.where({ guildId: selected.id }).all()).toEqual([]);
