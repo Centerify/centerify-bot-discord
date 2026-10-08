@@ -10,5 +10,5 @@ test("info command registers bot information output", async () => {
     name: "info",
     description: "See the bot's info",
   });
-  assert.match(command.source, /repositoryInfo/);
+  assert.match(command.source, /getRepositoryInfo/);
 });

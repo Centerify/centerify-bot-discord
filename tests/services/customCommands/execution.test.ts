@@ -1,11 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
-vi.mock("../../../src/logger.js", () => ({
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
-import { CustomCommandPermissionService } from "../../../src/services/customCommands/CustomCommandPermissionService.js";
-import { CustomCommandCooldownService } from "../../../src/services/customCommands/CustomCommandCooldownService.js";
-import { CustomCommandExecutor } from "../../../src/services/customCommands/CustomCommandExecutor.js";
+import { CustomCommandPermissionService } from "../../../src/modules/custom-commands/discord/CustomCommandPermissionService.js";
+import { CustomCommandCooldownService } from "../../../src/modules/custom-commands/application/CustomCommandCooldownService.js";
+import { CustomCommandExecutor } from "../../../src/modules/custom-commands/discord/CustomCommandExecutor.js";
 import {
   CHANNEL,
   context,

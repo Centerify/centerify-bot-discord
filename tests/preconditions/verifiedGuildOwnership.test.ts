@@ -2,12 +2,12 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { MessageFlags, type ChatInputCommandInteraction } from "discord.js";
 
 const mocks = vi.hoisted(() => ({ check: vi.fn() }));
-vi.mock("../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../src/modules/guilds/discord/ownership.js", () => ({
   guildOwnershipService: {},
   OWNERSHIP_REQUIRED_MESSAGE: "Verification required",
   requireVerifiedOwnership: mocks.check,
 }));
-import { VerifiedGuildOwnershipPrecondition } from "../../src/preconditions/verifiedGuildOwnership.js";
+import { VerifiedGuildOwnershipPrecondition } from "../../src/modules/guilds/discord/index.js";
 
 const precondition = Object.create(VerifiedGuildOwnershipPrecondition.prototype) as VerifiedGuildOwnershipPrecondition;
 beforeEach(() => vi.resetAllMocks());

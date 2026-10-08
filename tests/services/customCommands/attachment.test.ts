@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { readCommandAttachment } from "../../../src/services/customCommands/CustomCommandImport.js";
-import { CUSTOM_COMMAND_LIMITS as L } from "../../../src/lib/customCommands/constants.js";
+import { readCommandAttachment } from "../../../src/modules/custom-commands/discord/CustomCommandImport.js";
+import { CUSTOM_COMMAND_LIMITS as L } from "../../../src/modules/custom-commands/domain/constants.js";
 const attachment = {
   name: "commands.json",
   size: 100,
@@ -78,4 +78,13 @@ test("template uploads prefer .txt, accept legacy .md, and enforce size limits",
   await expect(
     readCommandAttachment(template as never, "markdown"),
   ).rejects.toThrow("too large");
+});
+
+test.each(["cdn.discordapp.com", "media.discordapp.net"])("accepts signed ephemeral uploads from %s without stripping their signature", async (host) => {
+  const fetch = vi.fn().mockImplementation(async () => new Response("uploaded content"));
+  vi.stubGlobal("fetch", fetch);
+  const url = `https://${host}/ephemeral-attachments/123/456/command.txt?ex=123&is=456&hm=signature`;
+  expect(await readCommandAttachment({ ...attachment, name: "command.txt", url } as never, "markdown")).toBe("uploaded content");
+  expect(fetch.mock.calls[0]![0].href).toBe(url);
+  expect(await readCommandAttachment({ ...attachment, url: url.replace("command.txt", "commands.json") } as never)).toBe("uploaded content");
 });

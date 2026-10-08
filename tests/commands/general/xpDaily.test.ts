@@ -2,9 +2,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { MessageFlags } from "discord.js";
 import type { Command } from "@sapphire/framework";
 const mocks = vi.hoisted(() => ({ earn: vi.fn(), totals: vi.fn(), error: vi.fn() }));
-vi.mock("../../../src/services/xpService.js", () => ({ xpService: { earn: mocks.earn, totals: mocks.totals } }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: mocks.error } }));
-import { XpCommand } from "../../../src/commands/general/xp.js";
+vi.mock("../../../src/modules/xp/discord/services.js", () => ({ xpService: { earn: mocks.earn, totals: mocks.totals } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: mocks.error } }));
+import { XpCommand } from "../../../src/modules/xp/discord/index.js";
 const command = Object.create(XpCommand.prototype) as XpCommand;
 const interaction = () => ({
   inCachedGuild: () => true, guildId: "server", user: { id: "member" },

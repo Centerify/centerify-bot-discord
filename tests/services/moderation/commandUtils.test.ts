@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toAuditLogReason } from "../../../src/services/moderation/commandUtils.js";
+import { toAuditLogReason } from "../../../src/modules/moderation/discord/commandUtils.js";
 
 describe("toAuditLogReason", () => {
   it("trims short audit-log reasons", () => {

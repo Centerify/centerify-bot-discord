@@ -2,20 +2,20 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { MessageFlags } from "discord.js";
 
 const mocks = vi.hoisted(() => ({ check: vi.fn(), list: vi.fn(), create: vi.fn() }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   requireVerifiedOwnership: mocks.check,
   guildOwnershipService: {},
   OWNERSHIP_REQUIRED_MESSAGE: "Verification required",
 }));
-vi.mock("../../../src/services/customResponseService.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/legacyService.js", () => ({
   customResponseService: { list: mocks.list, create: mocks.create },
 }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-vi.mock("../../../src/services/customCommands/runtime.js", () => ({ customCommandService: { listCommands: async () => [] }, customCommandSharingService: { listAvailable: async () => [] } }));
+vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({ customCommandService: { listCommands: async () => [] }, customCommandSharingService: { listAvailable: async () => [] } }));
 
-import { CustomCommand } from "../../../src/commands/admin/custom.js";
-import { VerifiedGuildOwnershipPrecondition } from "../../../src/preconditions/verifiedGuildOwnership.js";
+import { CustomCommand } from "../../../src/modules/custom-commands/discord/index.js";
+import { VerifiedGuildOwnershipPrecondition } from "../../../src/modules/guilds/discord/index.js";
 
 const command = Object.create(CustomCommand.prototype) as CustomCommand;
 const precondition = Object.create(VerifiedGuildOwnershipPrecondition.prototype) as VerifiedGuildOwnershipPrecondition;

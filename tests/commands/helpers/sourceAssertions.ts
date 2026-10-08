@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(fileURLToPath(new URL("../../..", import.meta.url)));
-const commandsRoot = join(root, "src", "commands");
+const modulesRoot = join(root, "src", "modules");
 
 export type CommandCategory = "admin" | "general" | "moderation";
 
@@ -17,11 +17,12 @@ export async function readCommandSource(
   category: CommandCategory,
   name: string,
 ): Promise<CommandSource> {
-  const file = `${category}/${name}.ts`;
-  return {
-    file,
-    source: await readFile(join(commandsRoot, file), "utf8"),
-  };
+  for (const module of await readdir(modulesRoot)) {
+    const file = join(modulesRoot, module, "discord", "commands", `${name}.ts`);
+    try { return { file, source: await readFile(file, "utf8") }; }
+    catch (error) { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; }
+  }
+  throw new Error(`No module owns command ${category}/${name}`);
 }
 
 export function assertSapphireCommand({ file, source }: CommandSource, className: string) {

@@ -1,13 +1,13 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import type { GuildConfig } from "../../../src/services/guildConfigService.js";
+import type { GuildConfig } from "../../../src/modules/guilds/discord/config.js";
 const mocks = vi.hoisted(() => ({ verified: vi.fn(), update: vi.fn(), build: vi.fn() }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({ requireVerifiedOwnership: mocks.verified }));
-vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: {} }));
-vi.mock("../../../src/prisma/db.js", () => ({ db: {} }));
-import { SetupInteractionHandler } from "../../../src/services/setup/interactionHandler.js";
-import type { SetupRenderer } from "../../../src/services/setup/renderer.js";
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({ requireVerifiedOwnership: mocks.verified }));
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: {} }));
+vi.mock("../../../src/adapters/prisma/client.js", () => ({ db: {} }));
+import { SetupInteractionHandler } from "../../../src/modules/settings/discord/interactionHandler.js";
+import type { SetupRenderer } from "../../../src/modules/settings/discord/renderer.js";
 const config = { xpEnabled: true, xpMethods: "messages" } as GuildConfig;
-const handler = new SetupInteractionHandler({ buildScreen: mocks.build } as unknown as SetupRenderer, mocks.update);
+const handler = new SetupInteractionHandler({ buildScreen: mocks.build, isAvailable: () => true } as unknown as SetupRenderer, mocks.update);
 function request(action: string, values: string[] = [], button = false) {
   return { customId: `setup:session:${action}`, values, user: { id: "admin" }, member: { permissions: { has: () => true } },
     guild: {}, guildId: "server", isStringSelectMenu: () => !button, isButton: () => button,

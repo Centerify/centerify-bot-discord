@@ -1,9 +1,11 @@
+import { startTestApplication } from "../helpers/application.js";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { definition } from "../services/customCommands/fixtures.js";
-import type { CustomCommandService } from "../../src/services/customCommands/CustomCommandService.js";
-import type { PrismaCustomCommandRepository } from "../../src/services/customCommands/PrismaCustomCommandRepository.js";
+import type { CustomCommandService } from "../../src/modules/custom-commands/application/CustomCommandService.js";
+import type { PrismaCustomCommandRepository } from "../../src/modules/custom-commands/infrastructure/PrismaCustomCommandRepository.js";
 const url = process.env.TEST_DATABASE_URL;
+let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefined;
 const prefix = `custom-integration-${randomUUID()}`;
 const guilds = [
   "a",
@@ -16,21 +18,22 @@ const guilds = [
   "sharing",
 ].map((suffix) => `${prefix}-${suffix}`);
 const [a, b, races, namespace, legacy, limit, rollback, sharing] = guilds;
-let db: typeof import("../../src/prisma/db.js").db;
+let db: typeof import("../../src/adapters/prisma/client.js").db;
 let service: CustomCommandService, repository: PrismaCustomCommandRepository;
-let sharingRepository: import("../../src/services/customCommands/PrismaCommandSharingRepository.js").PrismaCommandSharingRepository;
+let sharingRepository: import("../../src/modules/custom-commands/infrastructure/PrismaCommandSharingRepository.js").PrismaCommandSharingRepository;
 describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = url!;
-    ({ db } = await import("../../src/prisma/db.js"));
+      testApplication = await startTestApplication();
+    ({ db } = await import("../../src/adapters/prisma/client.js"));
     const { PrismaCustomCommandRepository } =
-      await import("../../src/services/customCommands/PrismaCustomCommandRepository.js");
+      await import("../../src/modules/custom-commands/infrastructure/PrismaCustomCommandRepository.js");
     const { CustomCommandService } =
-      await import("../../src/services/customCommands/CustomCommandService.js");
+      await import("../../src/modules/custom-commands/application/CustomCommandService.js");
     repository = new PrismaCustomCommandRepository();
     service = new CustomCommandService(repository);
     const { PrismaCommandSharingRepository } =
-      await import("../../src/services/customCommands/PrismaCommandSharingRepository.js");
+      await import("../../src/modules/custom-commands/infrastructure/PrismaCommandSharingRepository.js");
     sharingRepository = new PrismaCommandSharingRepository();
   });
   afterAll(async () => {
@@ -47,6 +50,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
         }
       });
     } finally {
+      await testApplication?.stop();
       await db.close();
     }
   });
@@ -158,7 +162,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
   });
   test("legacy and modern systems serialize namespace claims on the same lock", async () => {
     const { customResponseService } =
-      await import("../../src/services/customResponseService.js");
+      await import("../../src/modules/custom-commands/discord/legacyService.js");
     const legacyInput = {
       guildId: legacy,
       name: "old",
@@ -187,7 +191,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
   });
   test("guild limit survives parallel creations", async () => {
     const { CustomCommandService } =
-      await import("../../src/services/customCommands/CustomCommandService.js");
+      await import("../../src/modules/custom-commands/application/CustomCommandService.js");
     const limited = new CustomCommandService(
       repository,
       undefined,

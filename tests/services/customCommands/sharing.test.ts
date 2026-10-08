@@ -5,7 +5,7 @@ import {
   CustomCommandSharingConflictError,
   type CommandSharing,
   type SharingRepository,
-} from "../../../src/services/customCommands/CustomCommandSharingService.js";
+} from "../../../src/modules/custom-commands/discord/CustomCommandSharingService.js";
 import { record } from "./fixtures.js";
 const repository: SharingRepository = {
   available: vi.fn(),

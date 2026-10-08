@@ -2,10 +2,10 @@ import { describe, expect, test } from "vitest";
 import {
   CustomCommandVariableResolver,
   parseArguments,
-} from "../../../src/services/customCommands/CustomCommandVariableResolver.js";
-import { CustomCommandValidator } from "../../../src/services/customCommands/CustomCommandValidator.js";
-import { CustomCommandRenderer } from "../../../src/services/customCommands/CustomCommandRenderer.js";
-import { CUSTOM_COMMAND_LIMITS as L } from "../../../src/lib/customCommands/constants.js";
+} from "../../../src/modules/custom-commands/discord/CustomCommandVariableResolver.js";
+import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
+import { CustomCommandRenderer } from "../../../src/modules/custom-commands/discord/CustomCommandRenderer.js";
+import { CUSTOM_COMMAND_LIMITS as L } from "../../../src/modules/custom-commands/domain/constants.js";
 import {
   CHANNEL,
   context,

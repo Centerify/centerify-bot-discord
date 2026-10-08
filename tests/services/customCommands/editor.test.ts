@@ -3,9 +3,9 @@ import {
   applyResponseModal,
   editorModal,
   responseModal,
-} from "../../../src/services/customCommands/editorResponses.js";
-import { editorView } from "../../../src/services/customCommands/editorView.js";
-import { CustomCommandValidator } from "../../../src/services/customCommands/CustomCommandValidator.js";
+} from "../../../src/modules/custom-commands/discord/editorResponses.js";
+import { editorView } from "../../../src/modules/custom-commands/discord/editorView.js";
+import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
 import { record } from "./fixtures.js";
 function submit(values: Record<string, string>) {
   return { fields: { getTextInputValue: (key: string) => values[key] ?? "" } };

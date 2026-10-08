@@ -1,14 +1,14 @@
-import { expect, test, vi } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import type { Command } from "@sapphire/framework";
-vi.mock("../../../src/prisma/db.js", () => ({ db: {} }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
-import { BanCommand } from "../../../src/commands/moderation/ban.js";
-import { KickCommand } from "../../../src/commands/moderation/kick.js";
-import { TimeoutCommand } from "../../../src/commands/moderation/timeout.js";
-import { WarnCommand } from "../../../src/commands/moderation/warn.js";
-import { UnwarnCommand } from "../../../src/commands/moderation/unwarn.js";
-import { UnbanCommand } from "../../../src/commands/moderation/unban.js";
-import { NoteCommand } from "../../../src/commands/moderation/note.js";
+vi.mock("../../../src/adapters/prisma/client.js", () => ({ db: {} }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
+import { BanCommand } from "../../../src/modules/moderation/discord/index.js";
+import { KickCommand } from "../../../src/modules/moderation/discord/index.js";
+import { TimeoutCommand } from "../../../src/modules/moderation/discord/index.js";
+import { WarnCommand } from "../../../src/modules/moderation/discord/index.js";
+import { UnwarnCommand } from "../../../src/modules/moderation/discord/index.js";
+import { UnbanCommand } from "../../../src/modules/moderation/discord/index.js";
+import { NoteCommand } from "../../../src/modules/moderation/discord/index.js";
 const commands = [BanCommand, KickCommand, TimeoutCommand, WarnCommand, UnwarnCommand, UnbanCommand, NoteCommand];
 
 for (const command of commands) {

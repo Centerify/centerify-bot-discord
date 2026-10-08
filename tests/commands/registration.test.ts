@@ -1,19 +1,15 @@
 import { expect, test, vi } from "vitest";
-import { readdir } from "node:fs/promises";
+import type { Command } from "@sapphire/framework";
 import { SlashCommandBuilder } from "discord.js";
-vi.mock("../../src/prisma/db.js", () => ({ db: {} }));
+import { currentApplication } from "../../src/adapters/discord/context.js";
+import { discordModuleToken } from "../../src/adapters/discord/modules.js";
+vi.mock("../../src/adapters/prisma/client.js", () => ({ db: {} }));
 
-test("all command builders serialize valid unique names and stay within option limits", async () => {
-  const root = new URL("../../src/commands/", import.meta.url);
+test("module command contributions serialize valid unique names and stay within option limits", () => {
   const names: string[] = [];
-  for (const category of await readdir(root)) {
-    const directory = new URL(`${category}/`, root);
-    for (const file of await readdir(directory)) {
-      if (!file.endsWith(".ts")) continue;
-      const exports = await import(new URL(file, directory).href);
-      const command = Object.values(exports).find((value: any) => typeof value === "function" && value.prototype?.registerApplicationCommands) as any;
-      expect(command, `${category}/${file}`).toBeDefined();
-      command.prototype.registerApplicationCommands({ registerChatInputCommand: (build: (builder: SlashCommandBuilder) => void) => {
+  for (const { value: { definition } } of currentApplication().extensions(discordModuleToken)) {
+    for (const command of Object.values(definition.commands ?? {})) {
+      const registry = { registerChatInputCommand(build: (builder: SlashCommandBuilder) => void) {
         const builder = new SlashCommandBuilder();
         build(builder);
         const data = builder.toJSON();
@@ -21,13 +17,11 @@ test("all command builders serialize valid unique names and stay within option l
         const options = data.options?.map((option) => option.name) ?? [];
         expect(new Set(options).size).toBe(options.length);
         names.push(data.name);
-      } });
+      } };
+      command.prototype.registerApplicationCommands?.(registry as unknown as Command.Registry);
     }
   }
   expect(new Set(names).size).toBe(names.length);
-  expect(names).toContain("setup");
-  expect(names).toContain("settings");
-  expect(names).toContain("unverify");
-  expect(names).not.toContain("welcome");
-  expect(names).not.toContain("logging");
+  expect(names).toHaveLength(23);
+  expect(names).toEqual(expect.arrayContaining(["setup", "settings", "unverify"]));
 });

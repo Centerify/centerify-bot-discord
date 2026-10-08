@@ -1,9 +1,9 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ load: vi.fn(), handle: vi.fn() }));
-vi.mock("../../../src/services/guildConfigService.js", () => ({ guildConfigService: { getOrCreate: mocks.load } }));
-vi.mock("../../../src/services/setup/interactionHandler.js", () => ({ SetupInteractionHandler: class {} }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
-import { SetupCommand } from "../../../src/commands/admin/setup.js";
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: { getOrCreate: mocks.load } }));
+vi.mock("../../../src/modules/settings/discord/interactionHandler.js", () => ({ SetupInteractionHandler: class {} }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
+import { SetupCommand } from "../../../src/modules/settings/discord/index.js";
 function fixture() {
   const handlers: Record<string, (...args: any[]) => any> = {};
   const collector = { on: (event: string, callback: any) => { handlers[event] = callback; }, stop: vi.fn(), resetTimer: vi.fn() };

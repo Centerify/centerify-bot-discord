@@ -1,12 +1,12 @@
 import { EventEmitter } from "node:events";
 import { expect, test, vi } from "vitest";
-vi.mock("../../../src/logger.js", () => ({
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
-import { CustomCommandExecutor } from "../../../src/services/customCommands/CustomCommandExecutor.js";
-import { CustomCommandRenderer } from "../../../src/services/customCommands/CustomCommandRenderer.js";
-import { attachStageNavigation } from "../../../src/services/customCommands/stageNavigation.js";
-import { markdownPatch } from "../../../src/services/customCommands/markdown.js";
+import { CustomCommandExecutor } from "../../../src/modules/custom-commands/discord/CustomCommandExecutor.js";
+import { CustomCommandRenderer } from "../../../src/modules/custom-commands/discord/CustomCommandRenderer.js";
+import { attachStageNavigation } from "../../../src/modules/custom-commands/discord/stageNavigation.js";
+import { markdownPatch } from "../../../src/modules/custom-commands/discord/markdown.js";
 import { context, record, MemoryRepository, USER } from "./fixtures.js";
 
 const source = `:::text

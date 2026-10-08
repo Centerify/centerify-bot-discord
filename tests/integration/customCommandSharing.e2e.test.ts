@@ -1,3 +1,8 @@
+import { dispatchDiscordEvent } from "../../src/adapters/discord/modules.js";
+import { bindApplication } from "../../src/adapters/discord/context.js";
+import { loggerToken } from "../../src/core/index.js";
+let unbindTestClient: (() => void) | undefined;
+import { startTestApplication } from "../helpers/application.js";
 import { randomUUID } from "node:crypto";
 import {
   afterAll,
@@ -25,18 +30,18 @@ import {
 // Only Discord delivery is simulated. Commands, Settings, the editor, ownership,
 // validation, resolution, execution, cooldowns and PostgreSQL use production code.
 const url = process.env.TEST_DATABASE_URL;
+let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefined;
 const prefix = `sharing-e2e-${randomUUID()}`;
 const ADMIN = "323456789012345678",
   USER = "423456789012345678";
 const ids = ["source", "selected", "excluded", "future"].map(
   (name) => `${prefix}-${name}`,
 );
-let db: typeof import("../../src/prisma/db.js").db;
-let ownership: typeof import("../../src/services/guildOwnershipService.js").guildOwnershipService;
-let runtime: typeof import("../../src/services/customCommands/runtime.js");
-let SettingsCommand: typeof import("../../src/commands/admin/settings.js").SettingsCommand;
-let CustomCommand: typeof import("../../src/commands/admin/custom.js").CustomCommand;
-let MessageCreateListener: typeof import("../../src/listeners/messageCreate.js").MessageCreateListener;
+let db: typeof import("../../src/adapters/prisma/client.js").db;
+let ownership: typeof import("../../src/modules/guilds/discord/ownership.js").guildOwnershipService;
+let runtime: typeof import("../../src/modules/custom-commands/discord/runtime.js");
+let SettingsCommand: typeof import("../../src/modules/settings/discord/index.js").SettingsCommand;
+let CustomCommand: typeof import("../../src/modules/custom-commands/discord/index.js").CustomCommand;
 let previousClient: PropertyDescriptor | undefined;
 let errorLog: ReturnType<typeof vi.spyOn> | undefined;
 const guilds = new Collection<string, Guild>();
@@ -188,7 +193,7 @@ async function click(
   const control = controls(f).find((item) =>
     item.custom_id?.endsWith(`:${action}`),
   );
-  expect(control, `Control ${action} should be rendered`).toBeDefined();
+  expect(control, `Control ${action} should be rendered: ${JSON.stringify(f.root.editReply.mock.calls)}`).toBeDefined();
   const item = await withMember(f.root.guild);
   const component = {
     ...item.root,
@@ -264,7 +269,7 @@ async function prefixMessage(guild: Guild, content: string) {
     reply: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
   };
-  await Object.create(MessageCreateListener.prototype).run(
+  await dispatchDiscordEvent(testApplication!.application, "messageCreate",
     message as unknown as Message,
   );
   return message;
@@ -277,24 +282,24 @@ describe.skipIf(!url)(
   () => {
     beforeAll(async () => {
       process.env.DATABASE_URL = url!;
+      testApplication = await startTestApplication();
       previousClient = Object.getOwnPropertyDescriptor(container, "client");
       Object.defineProperty(container, "client", {
         configurable: true,
         value: client,
       });
-      ({ db } = await import("../../src/prisma/db.js"));
+      unbindTestClient = bindApplication(client as unknown as import("discord.js").Client, testApplication.application);
+      ({ db } = await import("../../src/adapters/prisma/client.js"));
       ({ guildOwnershipService: ownership } =
-        await import("../../src/services/guildOwnershipService.js"));
-      runtime = await import("../../src/services/customCommands/runtime.js");
+        await import("../../src/modules/guilds/discord/ownership.js"));
+      runtime = await import("../../src/modules/custom-commands/discord/runtime.js");
       ({ SettingsCommand } =
-        await import("../../src/commands/admin/settings.js"));
-      ({ CustomCommand } = await import("../../src/commands/admin/custom.js"));
-      ({ MessageCreateListener } =
-        await import("../../src/listeners/messageCreate.js"));
+        await import("../../src/modules/settings/discord/index.js"));
+      ({ CustomCommand } = await import("../../src/modules/custom-commands/discord/index.js"));
     });
     beforeEach(async () => {
-      const { logger } = await import("../../src/logger.js");
-      errorLog = vi.spyOn(logger, "error");
+      const { logger } = await import("../../src/adapters/logging/runtime.js");
+      errorLog = vi.spyOn(testApplication!.application.resolve(loggerToken), "error");
       guilds.clear();
       for (const [index, id] of ids.slice(0, 3).entries()) {
         runtime.customCommandService.invalidate(id);
@@ -335,6 +340,8 @@ describe.skipIf(!url)(
     });
     afterAll(async () => {
       try {
+        unbindTestClient?.();
+        await testApplication?.stop();
         if (db) await db.close();
       } finally {
         if (previousClient)

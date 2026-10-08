@@ -2,15 +2,17 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { Guild, RepliableInteraction } from "discord.js";
 
 const mocks = vi.hoisted(() => ({ first: vi.fn(), upsert: vi.fn(), where: vi.fn(), delete: vi.fn() }));
-vi.mock("../../src/prisma/db.js", () => ({
+vi.mock("../../src/adapters/prisma/client.js", () => ({
   db: { orm: { public: { GuildOwnership: {
     where: mocks.where, upsert: mocks.upsert,
   } } } },
 }));
-vi.mock("../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
+vi.mock("../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-import { GuildOwnershipService, OWNERSHIP_REQUIRED_MESSAGE, requireVerifiedOwnership } from "../../src/services/guildOwnershipService.js";
-const service = new GuildOwnershipService();
+import { GuildOwnershipService, OWNERSHIP_REQUIRED_MESSAGE, requireVerifiedOwnership } from "../../src/modules/guilds/discord/ownership.js";
+import { VerifyGuildOwnership } from "../../src/modules/guilds/index.js";
+import { PrismaOwnershipRepository } from "../../src/modules/guilds/infrastructure/PrismaOwnershipRepository.js";
+const service = new GuildOwnershipService(new VerifyGuildOwnership(new PrismaOwnershipRepository()));
 const fetchGuild = vi.fn();
 const guild = { id: "guild", ownerId: "old-owner", fetch: fetchGuild } as unknown as Guild;
 

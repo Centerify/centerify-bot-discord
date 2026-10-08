@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Client } from "discord.js";
-import { gatewayOptions } from "../dist/src/clientOptions.js";
+import { gatewayOptions } from "../dist/src/adapters/discord/clientOptions.js";
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {

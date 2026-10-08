@@ -5,20 +5,21 @@ const mocks = vi.hoisted(() => ({
   ownership: vi.fn(),
   shared: vi.fn(),
 }));
-vi.mock("../../../src/services/customCommands/runtime.js", () => ({
+vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
   customCommandService: { updateCommand: mocks.update },
   customCommandSharingService: { forManagement: mocks.shared },
 }));
-vi.mock("../../../src/services/guildOwnershipService.js", () => ({
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   requireVerifiedOwnership: mocks.ownership,
 }));
-vi.mock("../../../src/logger.js", () => ({ logger: { error: vi.fn() } }));
-import { openCustomCommandEditor } from "../../../src/services/customCommands/editor.js";
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
+import { openCustomCommandEditor } from "../../../src/modules/custom-commands/discord/editor.js";
 import { record, USER } from "./fixtures.js";
 function fixture() {
   let collect!: (interaction: unknown) => Promise<void>;
   const collector = {
     ended: false,
+    stop() { collector.ended = true; },
     on: (event: string, listener: (interaction: unknown) => Promise<void>) => {
       if (event === "collect") collect = listener;
     },

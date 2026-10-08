@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import { readFileSync } from "node:fs";
-vi.mock("../../../src/logger.js", () => ({
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
 import {
@@ -9,10 +9,10 @@ import {
   markdownPatch,
   MARKDOWN_EXAMPLE,
   MARKDOWN_HELP,
-} from "../../../src/services/customCommands/markdown.js";
-import { CustomCommandRenderer } from "../../../src/services/customCommands/CustomCommandRenderer.js";
-import { CustomCommandValidator } from "../../../src/services/customCommands/CustomCommandValidator.js";
-import { CustomCommandService } from "../../../src/services/customCommands/CustomCommandService.js";
+} from "../../../src/modules/custom-commands/discord/markdown.js";
+import { CustomCommandRenderer } from "../../../src/modules/custom-commands/discord/CustomCommandRenderer.js";
+import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
+import { CustomCommandService } from "../../../src/modules/custom-commands/application/CustomCommandService.js";
 import { context, record, MemoryRepository, definition } from "./fixtures.js";
 
 const validator = new CustomCommandValidator();
