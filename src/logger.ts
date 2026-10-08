@@ -14,6 +14,7 @@ export const logger = pino({
       "*.authorization",
       "*.headers.authorization",
       "err.config.headers.Authorization",
+      "err.url",
     ],
     censor: "[redacted]",
   },

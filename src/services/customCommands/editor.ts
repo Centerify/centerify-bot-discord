@@ -21,7 +21,7 @@ import type {
   CustomCommandDefinition,
   CustomCommandRecord,
 } from "../../lib/customCommands/types.js";
-import { customCommandService } from "./runtime.js";
+import { customCommandService, customCommandSharingService } from "./runtime.js";
 import {
   applyResponseModal,
   editorModal,
@@ -54,9 +54,23 @@ async function authorize(
 export async function openCustomCommandEditor(
   root: ChatInputCommandInteraction<"cached"> | ButtonInteraction<"cached">,
   initial: CustomCommandRecord,
+  onSaved?: (command: CustomCommandRecord) => Promise<void>,
 ): Promise<void> {
   const session = randomUUID();
   let command = initial;
+  const update = async (patch: Partial<CustomCommandDefinition>) => {
+    if (!command.sourceGuildId)
+      return customCommandService.updateCommand(root.guildId, root.user.id, command.name, patch, "updated", command.updatedAt);
+    const current = await customCommandSharingService.forManagement(root.client, root.guild, root.user.id, command);
+    if (["allowedRoleIds", "deniedRoleIds", "allowedChannelIds", "deniedChannelIds"].some(
+      (key) => (patch[key as keyof CustomCommandDefinition] as string[] | undefined)?.length,
+    ))
+      throw new CustomCommandValidationError("Role and channel restrictions belong to one server. Use Discord permission requirements for shared commands.");
+    const saved = await customCommandService.updateCommand(
+      current.guildId, root.user.id, current.name, patch, "updated", command.updatedAt,
+    );
+    return { ...saved, guildId: root.guildId, sourceGuildId: current.guildId, sharingScope: command.sharingScope };
+  };
   let section: EditorSection = "responses",
     index = 0,
     restriction: (typeof RESTRICTION_KEYS)[number] = "allowedRoleIds",
@@ -198,15 +212,9 @@ export async function openCustomCommandEditor(
             content: applyResponseModal(command, index, action, submitted),
           };
         try {
-          command = await customCommandService.updateCommand(
-            root.guildId,
-            root.user.id,
-            command.name,
-            patch,
-            "updated",
-            command.updatedAt,
-          );
+          command = await update(patch);
           await submitted.editReply("Custom command updated.");
+          await onSaved?.(command);
           await root.editReply({
             ...render(),
             ...(collector.ended ? { components: [] } : {}),
@@ -276,14 +284,8 @@ export async function openCustomCommandEditor(
             responseType: content.length > 1 ? "MULTI" : content[0]!.type,
           };
         }
-        command = await customCommandService.updateCommand(
-          root.guildId,
-          root.user.id,
-          command.name,
-          patch,
-          "updated",
-          command.updatedAt,
-        );
+        command = await update(patch);
+        await onSaved?.(command);
       }
       if (!command.content[index]) index = 0;
       await root.editReply({

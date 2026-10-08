@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   ownership: vi.fn(),
   legacyList: vi.fn(),
   editor: vi.fn(),
+  settings: vi.fn(),
 }));
 vi.mock("../../../src/services/customCommands/runtime.js", () => ({
   resolveExecutableCustomCommand: (
@@ -31,9 +32,13 @@ vi.mock("../../../src/services/customCommands/runtime.js", () => ({
     listCommands: mocks.list,
   },
   customCommandExecutor: { execute: mocks.execute },
+  customCommandSharingService: { listAvailable: mocks.list },
 }));
 vi.mock("../../../src/services/customCommands/editor.js", () => ({
   openCustomCommandEditor: mocks.editor,
+}));
+vi.mock("../../../src/services/customCommands/settings.js", () => ({
+  openCustomCommandSettings: mocks.settings,
 }));
 vi.mock("../../../src/services/customResponseService.js", () => ({
   customResponseService: { list: mocks.legacyList },
@@ -134,6 +139,7 @@ test("registration has all management actions, public run, valid option limits a
           "disable",
           "run",
           "configure",
+          "options",
           "clone",
           "rename",
           "import",
@@ -150,6 +156,32 @@ test("registration has all management actions, public run, valid option limits a
         ).not.toBe(true);
     },
   } as never);
+});
+test("options opens sharing settings only for verified administrators", async () => {
+  const interaction = fixture("options");
+  await command.chatInputRun(interaction as never);
+  expect(interaction.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+  expect(mocks.settings).toHaveBeenCalledExactlyOnceWith(interaction);
+  mocks.settings.mockClear();
+  await command.chatInputRun(fixture("options", {}, false) as never);
+  expect(mocks.settings).not.toHaveBeenCalled();
+  mocks.ownership.mockResolvedValue(false);
+  await command.chatInputRun(fixture("options") as never);
+  expect(mocks.settings).not.toHaveBeenCalled();
+});
+
+test("slash execution sends the response before its completion acknowledgement", async () => {
+  const interaction = fixture("run", { command: "welcome" });
+  mocks.execute.mockImplementation(async (_context, transport) => {
+    await transport.send({ content: "Hello" }, 0);
+    expect(interaction.editReply).not.toHaveBeenCalled();
+    expect(interaction.channel.send).toHaveBeenCalledWith({ content: "Hello" });
+  });
+  mocks.find.mockResolvedValue(record({ replyToInvocation: false }));
+  await command.chatInputRun(interaction as never);
+  expect(interaction.editReply).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ content: "Executed `welcome`." }),
+  );
 });
 test("ordinary members can run through canonical executor; management is denied server-side", async () => {
   const run = fixture("run", { command: "welcome", args: "John Doe" }, false);
@@ -228,6 +260,16 @@ test("a list offers explicit pagination without truncating commands", async () =
   expect(output.content).not.toContain("name-20");
   expect(output.content).toContain("Page 2/3");
   expect(output.allowedMentions).toEqual({ parse: [] });
+});
+test("list displays shared commands and each command's individual scope", async () => {
+  mocks.list.mockResolvedValue([
+    record({ sourceGuildId: "source", sharingScope: "all" }),
+    record({ id: 2, name: "specific", sharingScope: "selected" }),
+  ]);
+  const interaction = fixture("list");
+  await showCommandList(interaction as never, []);
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Global • Shared from source");
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Specific servers");
 });
 test("info fields honor Discord limits even with long aliases and permissions", () => {
   const c = record({

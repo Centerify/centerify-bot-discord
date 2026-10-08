@@ -120,7 +120,8 @@ function interaction(guild: Guild, actor = ADMIN) {
     replied: false,
     inCachedGuild: () => true,
     reply: vi.fn().mockResolvedValue(undefined),
-    followUp: vi.fn().mockResolvedValue(undefined),
+    followUp: vi.fn().mockResolvedValue(message),
+    webhook: { editMessage: vi.fn().mockResolvedValue(undefined) },
     deferReply: vi.fn(async function (this: { deferred: boolean }) {
       this.deferred = true;
     }),
@@ -170,7 +171,7 @@ async function custom(
   return f;
 }
 function controls(f: Awaited<ReturnType<typeof withMember>>) {
-  const payload = f.root.editReply.mock.calls.at(-1)![0];
+  const payload = (f.root.editReply.mock.calls.at(-1) ?? f.root.followUp.mock.calls.at(-1))![0];
   const flatten = (items: any[]): any[] =>
     items.flatMap((item) => [item, ...flatten(item.components ?? [])]);
   return flatten(
@@ -199,7 +200,8 @@ async function click(
     isRoleSelectMenu: () => false,
   };
   await f.callbacks.get("collect")!(component);
-  expect(item.root.followUp).not.toHaveBeenCalled();
+  for (const [payload] of item.root.followUp.mock.calls as unknown as [any][])
+    expect(payload.embeds?.[0]?.toJSON().title).toBe("Duplicate commands found");
   return item;
 }
 async function settings(guild: Guild) {
@@ -424,21 +426,17 @@ describe.skipIf(!url)(
       const panel = await settings(source);
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
-      await click(panel, "save");
+      const warning = await click(panel, "save");
       expect(await runtime.customCommandSharingService.get(command)).toBeNull();
-      expect(
-        controls(panel).some((item) =>
-          item.content?.includes("Duplicate commands found"),
-        ),
-      ).toBe(true);
-      await click(panel, "cancel");
+      const cancel = controls(warning).find((item) => item.label === "Cancel").custom_id.split(":").at(-1);
+      await click(warning, cancel);
       expect(await runtime.customCommandSharingService.get(command)).toBeNull();
-      await click(panel, "save");
-      const proceed = controls(panel)
-        .find((item) => item.label === "Proceed")
+      const nextWarning = await click(panel, "save");
+      const proceed = controls(nextWarning)
+        .find((item) => item.label === "Keep Existing")
         .custom_id.split(":")
         .at(-1);
-      await click(panel, proceed);
+      await click(nextWarning, proceed);
       expect(
         await runtime.customCommandSharingService.get(command),
       ).toMatchObject({ scope: "selected", selectedGuildIds: selected.id });
@@ -452,6 +450,52 @@ describe.skipIf(!url)(
         await runtime.customCommandService.listCommands(selected.id),
       ).toHaveLength(1);
       await click(panel, "close");
+    }, 15_000);
+    test("Replace Existing removes the local definition and aliases and runs the global command", async () => {
+      const source = guilds.get(ids[0]!)!, selected = guilds.get(ids[1]!)!;
+      await custom(source, "create", { name: "greet", aliases: "hello", response: "Shared" });
+      await custom(selected, "create", { name: "hello", aliases: "oldalias", response: "Local" });
+      // Populate the local execution cache before replacement.
+      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(expect.objectContaining({ content: "Local" }));
+      const panel = await settings(source);
+      await click(panel, "scope", ["selected"]);
+      await click(panel, "servers", [selected.id]);
+      const warning = await click(panel, "save");
+      const replace = controls(warning).find((item) => item.label === "Replace Existing");
+      expect(replace.disabled).toBe(false);
+      await click(warning, replace.custom_id.split(":").at(-1));
+      expect(await runtime.customCommandService.listCommands(selected.id)).toHaveLength(0);
+      expect(await db.orm.public.CustomCommandName.where({ guildId: selected.id }).all()).toHaveLength(0);
+      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(expect.objectContaining({ content: "Shared" }));
+      expect((await prefixMessage(selected, "!oldalias")).reply).not.toHaveBeenCalled();
+      await click(panel, "close");
+    }, 15_000);
+    test("destination list and options expose the shared definition for editing and individual scope changes", async () => {
+      const source = guilds.get(ids[0]!)!, selected = guilds.get(ids[1]!)!, other = guilds.get(ids[2]!)!;
+      await custom(source, "create", { name: "shared-edit", response: "Original" });
+      await custom(source, "create", { name: "unrelated", response: "Local only" });
+      const definition = (await runtime.customCommandService.listCommands(source.id)).find((row) => row.name === "shared-edit")!;
+      await runtime.customCommandSharingService.save(client, ADMIN, definition, "selected", [selected.id]);
+      const listed = await custom(selected, "list", {});
+      expect(listed.root.editReply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("shared-edit") }));
+      const panel = await custom(selected, "options", {});
+      expect(controls(panel).find((item) => item.custom_id?.endsWith(":customize-command")).options)
+        .toContainEqual(expect.objectContaining({ value: String(definition.id) }));
+      const editor = await click(panel, "customize");
+      await click(editor, "add-text");
+      expect((await runtime.customCommandService.getCommand(source.id, "shared-edit"))?.content).toHaveLength(2);
+      expect((await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit"))?.content).toHaveLength(2);
+      expect(await db.orm.public.CustomCommand.where({ guildId: selected.id }).all()).toEqual([]);
+      await click(panel, "only-command");
+      await click(panel, "scope", ["all"]);
+      await click(panel, "save");
+      expect(await runtime.resolveExecutableCustomCommand(client, other, "shared-edit")).toMatchObject({ id: definition.id });
+      expect(await runtime.resolveExecutableCustomCommand(client, other, "unrelated")).toBeNull();
+      await click(panel, "scope", ["selected"]);
+      await click(panel, "servers", [selected.id]);
+      await click(panel, "save");
+      expect(await runtime.resolveExecutableCustomCommand(client, other, "shared-edit")).toBeNull();
+      expect(await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit")).not.toBeNull();
     }, 15_000);
     test("all-server scope includes later installations, shares cooldowns, and stops after ownership changes", async () => {
       const source = guilds.get(ids[0]!)!,

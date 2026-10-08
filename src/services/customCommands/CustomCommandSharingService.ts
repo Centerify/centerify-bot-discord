@@ -9,6 +9,8 @@ export interface SharingConflict {
   guildId: string;
   guildName: string;
   names: string[];
+  replacements?: { id: number; updatedAt: string }[];
+  replaceable?: boolean;
 }
 export class CustomCommandSharingConflictError extends CustomCommandValidationError {
   public constructor(
@@ -28,11 +30,13 @@ export interface CommandSharing {
   selectedGuildIds: string;
 }
 export interface SharingRepository {
+  available(guildId: string): Promise<CommandSharing[]>;
   get(guildId: string, commandId: number): Promise<CommandSharing | null>;
   candidates(name: string): Promise<CommandSharing[]>;
   save(
     command: CustomCommandRecord,
     sharing: CommandSharing | null,
+    replacements?: SharingConflict[],
   ): Promise<void>;
   hasLegacyName(guildId: string, name: string): Promise<boolean>;
 }
@@ -57,14 +61,14 @@ export class CustomCommandSharingService {
   public async canManage(guild: Guild, actorId: string): Promise<boolean> {
     try {
       const current = await guild.fetch();
-      const member = await current.members.fetch({
-        user: actorId,
-        force: true,
-      });
+      const [member, verified] = await Promise.all([
+        current.members.fetch({ user: actorId, force: true }),
+        this.isVerified(current),
+      ]);
       return (
         (current.ownerId === actorId ||
           member.permissions.has(PermissionFlagsBits.Administrator)) &&
-        (await this.isVerified(current))
+        verified
       );
     } catch {
       return false;
@@ -98,7 +102,69 @@ export class CustomCommandSharingService {
   }
 
   public get(command: CustomCommandRecord) {
-    return this.repository.get(command.guildId, command.id);
+    return this.repository.get(command.sourceGuildId ?? command.guildId, command.id);
+  }
+
+  private includes(sharing: CommandSharing, targetId: string): boolean {
+    return sharing.scope === "all" ||
+      (sharing.scope === "selected" && sharing.selectedGuildIds.split(",").includes(targetId));
+  }
+
+  /** Include disabled and conflicting commands so administrators can repair them. */
+  public async listAvailable(client: Client, target: Guild): Promise<CustomCommandRecord[]> {
+    const [local, grants] = await Promise.all([
+      this.commands.listCommands(target.id),
+      this.repository.available(target.id),
+    ]);
+    const result = local.map((command) => ({ ...command,
+      sharingScope: grants.find((grant) => grant.guildId === target.id && grant.commandId === command.id)?.scope ?? "server" as const,
+    }));
+    const access = new Map<string, Promise<boolean>>();
+    const canManage = (guild: Guild, actor: string) => {
+      const key = `${guild.id}:${actor}`;
+      if (!access.has(key)) access.set(key, this.canManage(guild, actor));
+      return access.get(key)!;
+    };
+    const records = new Map<string, Promise<CustomCommandRecord[]>>();
+    for (const grant of grants) {
+      if (grant.guildId === target.id || !this.includes(grant, target.id)) continue;
+      const source = client.guilds.cache.get(grant.guildId);
+      if (!source) continue;
+      const allowed = await Promise.all([canManage(source, grant.actorId), canManage(target, grant.actorId)]);
+      if (!allowed.every(Boolean)) continue;
+      if (!records.has(source.id)) {
+        this.commands.invalidate(source.id);
+        records.set(source.id, this.commands.listCommands(source.id));
+      }
+      const command = (await records.get(source.id)!).find((row) => row.id === grant.commandId);
+      if (command) result.push({ ...command, guildId: target.id, sourceGuildId: source.id, sharingScope: grant.scope });
+    }
+    return result;
+  }
+
+  /** Recheck the grant and the editor's access on every shared mutation. */
+  public async forManagement(client: Client, target: Guild, actorId: string, command: CustomCommandRecord) {
+    const sourceId = command.sourceGuildId ?? command.guildId;
+    const source = client.guilds.cache.get(sourceId);
+    if (!source || command.guildId !== target.id)
+      throw new CustomCommandValidationError("This shared command is no longer available. Refresh settings.");
+    const allowed = await Promise.all([
+      this.canManage(source, actorId), this.canManage(target, actorId),
+    ]);
+    if (!allowed.every(Boolean))
+      throw new CustomCommandValidationError("Administrator permission and verified ownership are required in both the original and current servers to edit a shared command.");
+    if (sourceId !== target.id) {
+      const grant = await this.repository.get(sourceId, command.id);
+      if (!grant || !this.includes(grant, target.id) ||
+          !(await this.canManage(source, grant.actorId)) ||
+          !(await this.canManage(target, grant.actorId)))
+        throw new CustomCommandValidationError("This command is no longer shared with this server. Refresh settings.");
+    }
+    this.commands.invalidate(sourceId);
+    const current = (await this.commands.listCommands(sourceId)).find((row) => row.id === command.id);
+    if (!current)
+      throw new CustomCommandValidationError("This command was removed. Refresh settings.");
+    return current;
   }
 
   private async conflicts(
@@ -138,43 +204,46 @@ export class CustomCommandSharingService {
         throw new CustomCommandValidationError(
           "Refresh the server list before saving.",
         );
-      const localNames = new Set(
-        (await load(target.id)).flatMap((row) => [row.name, ...row.aliases]),
-      );
+      const locals = await load(target.id);
+      const localNames = new Set(locals.flatMap((row) => [row.name, ...row.aliases]));
+      const replacements = locals.filter((row) => [row.name, ...row.aliases].some((name) => names.includes(name)));
+      let replaceable = true;
+      for (const local of replacements) {
+        if (await this.repository.get(target.id, local.id)) replaceable = false;
+      }
       const duplicateNames: string[] = [];
       for (const name of names) {
-        let duplicate =
-          localNames.has(name) ||
-          (await this.repository.hasLegacyName(target.id, name));
-        if (!duplicate) {
-          for (const sharing of candidates.get(name)!) {
-            if (
-              (sharing.guildId === command.guildId &&
-                sharing.commandId === command.id) ||
-              sharing.guildId === target.id ||
-              (sharing.scope !== "all" && sharing.scope !== "selected") ||
-              (sharing.scope === "selected" &&
-                !sharing.selectedGuildIds.split(",").includes(target.id))
-            )
-              continue;
-            const source = client.guilds.cache.get(sharing.guildId);
-            if (
-              !source ||
-              !(await canManage(source, sharing.actorId)) ||
-              !(await canManage(guild, sharing.actorId))
-            )
-              continue;
-            const shared = (await load(source.id)).find(
-              (row) => row.id === sharing.commandId,
-            );
-            if (
-              shared?.enabled &&
-              !hasServerRestrictions(shared) &&
-              [shared.name, ...shared.aliases].includes(name)
-            ) {
-              duplicate = true;
-              break;
-            }
+        const legacy = await this.repository.hasLegacyName(target.id, name);
+        if (legacy) replaceable = false;
+        let duplicate = localNames.has(name) || legacy;
+        for (const sharing of candidates.get(name)!) {
+          if (
+            (sharing.guildId === command.guildId &&
+              sharing.commandId === command.id) ||
+            sharing.guildId === target.id ||
+            (sharing.scope !== "all" && sharing.scope !== "selected") ||
+            (sharing.scope === "selected" &&
+              !sharing.selectedGuildIds.split(",").includes(target.id))
+          )
+            continue;
+          const source = client.guilds.cache.get(sharing.guildId);
+          if (
+            !source ||
+            !(await canManage(source, sharing.actorId)) ||
+            !(await canManage(guild, sharing.actorId))
+          )
+            continue;
+          const shared = (await load(source.id)).find(
+            (row) => row.id === sharing.commandId,
+          );
+          if (
+            shared?.enabled &&
+            !hasServerRestrictions(shared) &&
+            [shared.name, ...shared.aliases].includes(name)
+          ) {
+            duplicate = true;
+            replaceable = false;
+            break;
           }
         }
         if (duplicate) duplicateNames.push(name);
@@ -184,6 +253,8 @@ export class CustomCommandSharingService {
           guildId: target.id,
           guildName: target.name,
           names: duplicateNames,
+          replacements: replacements.map(({ id, updatedAt }) => ({ id, updatedAt })),
+          replaceable,
         });
     }
     return conflicts.sort((a, b) => a.guildId.localeCompare(b.guildId));
@@ -196,9 +267,21 @@ export class CustomCommandSharingService {
     scope: CommandScope,
     selected: string[],
     confirmation?: string,
+    resolution: "keep" | "replace" = "keep",
   ) {
+    let replacements: SharingConflict[] | undefined;
+    if (!["keep", "replace"].includes(resolution))
+      throw new CustomCommandValidationError("Choose Keep Existing or Replace Existing.");
     if (!["server", "all", "selected"].includes(scope))
       throw new CustomCommandValidationError("Choose a valid command scope.");
+    if (command.sourceGuildId) {
+      const target = client.guilds.cache.get(command.guildId);
+      if (!target) throw new CustomCommandValidationError("Refresh settings before saving.");
+      const current = await this.forManagement(client, target, actorId, command);
+      if (current.updatedAt !== command.updatedAt)
+        throw new CustomCommandValidationError("This command changed. Refresh settings before saving its scope.");
+      command = current;
+    }
     const source = client.guilds.cache.get(command.guildId);
     if (!source || !(await this.canManage(source, actorId)))
       throw new CustomCommandValidationError(
@@ -235,15 +318,17 @@ export class CustomCommandSharingService {
               command: [command.guildId, command.id, command.updatedAt],
               scope,
               selected: scope === "selected" ? [...ids].sort() : [],
-              conflicts: conflicts.map(({ guildId, names }) => ({
-                guildId,
-                names,
-              })),
+              conflicts,
             }),
           )
           .digest("hex");
         if (confirmation !== fingerprint)
           throw new CustomCommandSharingConflictError(conflicts, fingerprint);
+        if (resolution === "replace") {
+          if (conflicts.some((conflict) => !conflict.replaceable))
+            throw new CustomCommandValidationError("Only server custom commands can be replaced here. Rename or remove conflicting legacy or shared commands, or remove their sharing scope first.");
+          replacements = conflicts;
+        }
       }
     }
     await this.repository.save(
@@ -257,7 +342,9 @@ export class CustomCommandSharingService {
             scope,
             selectedGuildIds: scope === "selected" ? ids.join(",") : "",
           },
+      ...(replacements ? [replacements] : []),
     );
+    for (const conflict of replacements ?? []) this.commands.invalidate(conflict.guildId);
   }
 
   /** Local names win. Multiple shared matches fail closed instead of picking an arbitrary source. */
@@ -267,15 +354,12 @@ export class CustomCommandSharingService {
     name: string,
   ): Promise<CustomCommandRecord | null> {
     name = name.trim().toLowerCase();
-    if (
-      this.commands.isReserved(name) ||
-      (await this.repository.hasLegacyName(target.id, name))
-    )
-      return null;
-    const candidates = await this.repository.candidates(
-      name.trim().toLowerCase(),
-    );
-    if (candidates.length > 100) return null;
+    if (this.commands.isReserved(name)) return null;
+    const [hasLegacyName, candidates] = await Promise.all([
+      this.repository.hasLegacyName(target.id, name),
+      this.repository.candidates(name),
+    ]);
+    if (hasLegacyName || candidates.length > 100) return null;
     let found: CustomCommandRecord | null = null;
     for (const sharing of candidates) {
       if (
@@ -289,12 +373,12 @@ export class CustomCommandSharingService {
       )
         continue;
       const source = client.guilds.cache.get(sharing.guildId);
-      if (
-        !source ||
-        !(await this.canManage(source, sharing.actorId)) ||
-        !(await this.canManage(target, sharing.actorId))
-      )
-        continue;
+      if (!source) continue;
+      const [sourceAccess, targetAccess] = await Promise.all([
+        this.canManage(source, sharing.actorId),
+        this.canManage(target, sharing.actorId),
+      ]);
+      if (!sourceAccess || !targetAccess) continue;
       this.commands.invalidate(sharing.guildId);
       // Lookup canonical names and aliases through the source's current namespace.
       const command = (await this.commands.listCommands(sharing.guildId)).find(

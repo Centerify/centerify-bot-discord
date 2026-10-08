@@ -266,6 +266,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
       selectedGuildIds: "",
     };
     await sharingRepository.save(command, global);
+    expect(await sharingRepository.available(b)).toContainEqual(global);
     expect(await sharingRepository.get(sharing, command.id)).toEqual(global);
     expect(await sharingRepository.candidates("shared-alias")).toEqual([
       global,
@@ -276,6 +277,9 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
       selectedGuildIds: b,
     };
     await sharingRepository.save(command, selected);
+    expect(await sharingRepository.available(b)).toContainEqual(selected);
+    expect(await sharingRepository.available(a)).not.toContainEqual(selected);
+    expect(await sharingRepository.available(sharing)).toContainEqual(selected);
     expect(await sharingRepository.candidates("shared-rule")).toEqual([
       selected,
     ]);

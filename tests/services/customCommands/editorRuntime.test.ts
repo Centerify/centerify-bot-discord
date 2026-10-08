@@ -1,8 +1,9 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import { MessageFlags } from "discord.js";
-const mocks = vi.hoisted(() => ({ update: vi.fn(), ownership: vi.fn() }));
+const mocks = vi.hoisted(() => ({ update: vi.fn(), ownership: vi.fn(), shared: vi.fn() }));
 vi.mock("../../../src/services/customCommands/runtime.js", () => ({
   customCommandService: { updateCommand: mocks.update },
+  customCommandSharingService: { forManagement: mocks.shared },
 }));
 vi.mock("../../../src/services/guildOwnershipService.js", () => ({
   requireVerifiedOwnership: mocks.ownership,
@@ -60,6 +61,24 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.ownership.mockResolvedValue(true);
   mocks.update.mockResolvedValue(record());
+});
+test("editing a shared command writes to its original server and preserves shared identity", async () => {
+  const f = fixture();
+  const original = record({ guildId: "source" });
+  mocks.shared.mockResolvedValue(original);
+  mocks.update.mockResolvedValue(original);
+  const saved = vi.fn();
+  await openCustomCommandEditor(f.root as never, record({ sourceGuildId: "source" }), saved);
+  f.button.customId = "cc:session:add-text";
+  await f.collect(f.button);
+  expect(mocks.shared).toHaveBeenCalledOnce();
+  expect(mocks.update).toHaveBeenCalledWith("source", USER, original.name, expect.any(Object), "updated", original.updatedAt);
+  expect(saved).toHaveBeenCalledWith(expect.objectContaining({ guildId: "guild-a", sourceGuildId: "source" }));
+  mocks.update.mockClear();
+  f.button.followUp.mockResolvedValue(undefined);
+  mocks.shared.mockRejectedValue(new Error("Sharing revoked"));
+  await f.collect(f.button);
+  expect(mocks.update).not.toHaveBeenCalled();
 });
 test("foreign users cannot use an editor and current permissions are rechecked on saves", async () => {
   const f = fixture();
@@ -123,7 +142,8 @@ test("a modal validation error completes the modal reply without writing", async
 test("modal saves use the observed revision and never revive expired controls", async () => {
   const f = fixture();
   const command = record();
-  await openCustomCommandEditor(f.root as never, command);
+  const onSaved = vi.fn();
+  await openCustomCommandEditor(f.root as never, command, onSaved);
   const submission = {
     user: { id: USER },
     guildId: f.guild.id,
@@ -148,7 +168,18 @@ test("modal saves use the observed revision and never revive expired controls", 
     "updated",
     command.updatedAt,
   );
+  expect(onSaved).toHaveBeenCalledWith(record());
   expect(f.root.editReply).toHaveBeenLastCalledWith(
     expect.objectContaining({ components: [] }),
   );
+});
+
+test("component saves notify settings with the updated command", async () => {
+  const f = fixture();
+  const onSaved = vi.fn();
+  await openCustomCommandEditor(f.root as never, record(), onSaved);
+  f.button.customId = "cc:session:clear";
+  await f.collect(f.button);
+  expect(mocks.update).toHaveBeenCalledOnce();
+  expect(onSaved).toHaveBeenCalledWith(record());
 });
