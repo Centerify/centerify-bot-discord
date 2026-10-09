@@ -19,15 +19,37 @@ export interface LinkButtonTemplate {
   label: string;
   url: string;
 }
-export type ComponentAction =
+export type NavigationAction =
   | { action: "go" | "back"; target: number }
-  | { action: "main" | "cancel" }
-  | { action: "addrole" | "removerole" | "togglerole"; roleId: string };
+  | { action: "main" | "cancel" };
+export interface EffectOptions {
+  /** Override the private acknowledgement with a variable-enabled template. */
+  successMessage?: string;
+  /** Roles repeat by default; other effects run once per control by default. */
+  repeatable?: boolean;
+}
+export type RoleAction = { action: "addrole" | "removerole" | "togglerole"; roleId: string; userId?: string } & EffectOptions;
+export type EffectAction = (
+  | RoleAction
+  | { action: "warn"; userId: string; reason: string; durationMs?: number }
+  | { action: "unwarn"; userId: string; reason: string; caseNumber?: number }
+  | { action: "note" | "kick" | "unban" | "removetimeout"; userId: string; reason: string }
+  | { action: "timeout"; userId: string; reason: string; durationMs: number }
+  | { action: "ban"; userId: string; reason: string; deleteMessageSeconds?: number }
+  | { action: "setnickname"; userId: string; nickname: string }
+  | { action: "reply"; text: string }
+  | { action: "sendmessage"; text: string; channelId?: string }
+) & EffectOptions;
+export type SequenceAction = { action: "sequence"; actions: EffectAction[] } & EffectOptions;
+export type ComponentAction = NavigationAction | EffectAction | SequenceAction;
 export type ActionButtonTemplate = ComponentAction & {
   label: string;
   style?: "primary" | "secondary" | "success" | "danger";
 };
-export type SelectOptionTemplate = ComponentAction & { label: string; description?: string };
+export type SelectOptionTemplate = ComponentAction & {
+  label: string;
+  description?: string;
+};
 export interface SelectTemplate {
   placeholder: string;
   options: SelectOptionTemplate[];

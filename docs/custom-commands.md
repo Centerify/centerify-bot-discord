@@ -185,6 +185,126 @@ Role changes do not consume additional cooldowns or record additional command us
 Controls expire after 15 minutes. Commands containing role actions are local to
 their original server; remove those actions before sharing across servers.
 
+### Custom actions and workflows
+
+Buttons and dropdown options can also run moderation, member and message actions.
+Use an ID or a complete variable such as `{args.0}` for a target. Member arguments
+may contain IDs or Discord mentions. Quote IDs and text in action calls:
+
+| Action call                                            | Result                                                                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `SetWarn("{args.0}", "Reason", "1h")` or `Warn(...)`   | Create a warning, assign its warning role and schedule expiry; omit duration for a permanent warning |
+| `AddNote("{args.0}", "Private note")` or `Note(...)`   | Add a private moderator note                                                                         |
+| `Unwarn("{args.0}", "Reason", 7)` or `RemoveWarn(...)` | Revoke warning case 7 and clean up its role; omit case number for the newest active warning          |
+| `Timeout("{args.0}", "10m", "Reason")`                 | Timeout a member                                                                                     |
+| `RemoveTimeout("{args.0}", "Reason")`                  | Clear a member's timeout and record the removal                                                      |
+| `Kick("{args.0}", "Reason")`                           | Kick a member and create a moderation case                                                           |
+| `Ban("{args.0}", "Reason", 3600)`                      | Ban a member, deleting the last 3,600 seconds of messages; omit deletion for none                    |
+| `Unban("{args.0}", "Reason")`                          | Remove an existing ban and create a moderation case                                                  |
+| `SetNickname("{args.0}", "New nickname")`              | Set a nickname; an empty string clears it                                                            |
+| `Reply("Hello {user.name}")`                           | Return a private reply                                                                               |
+| `SendMessage("{channel.id}", "Hello {user.mention}")`  | Send a public message to an accessible channel                                                       |
+| `AddRole("123456789012345678", "{args.0}")`            | Add a configured role to a target member; RemoveRole and ToggleRole accept the same optional target  |
+
+For example, invoke `!review @Member` or `/custom run command:review args:@Member`
+after saving this template:
+
+```text
+@main
+@title Member review
+Choose an action for the member supplied in the first argument.
+@button danger [Warn](SetWarn("{args.0}", "Please follow the rules", "1h"))
+@button secondary [Add note](AddNote("{args.0}", "Reviewed by {user.name}"))
+@select More actions
+@option [Timeout 10 minutes](Timeout("{args.0}", "10m", "Repeated disruption"))
+@option [Clear timeout](RemoveTimeout("{args.0}", "Review completed"))
+@endselect
+```
+
+`Action({...})` exposes the complete structured configuration, including custom
+private acknowledgement text and repeatability:
+
+```text
+Review a member.
+@button [Save note](Action({"action":"note","userId":"{args.0}","reason":"Reviewed by {user.name}","successMessage":"Review saved for {args.0}.","repeatable":false}))
+```
+
+`Actions([...])` runs 1–10 actions in order. Use a `sequence` object to also configure
+the whole workflow's acknowledgement and repeatability:
+
+```text
+Review a member.
+@button danger [Note and warn](Action({"action":"sequence","actions":[{"action":"note","userId":"{args.0}","reason":"Staff review completed"},{"action":"warn","userId":"{args.0}","reason":"Please follow the rules","durationMs":3600000}],"successMessage":"Review completed.","repeatable":false}))
+```
+
+The same calls work in `@option [Label](Action(...))`. Nested sequences and
+navigation inside sequences are rejected. Add a separate navigation button/option
+to move between pages.
+
+Structured actions use these fields:
+
+| Action name                                                | Fields                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `addrole`, `removerole`, `togglerole`                      | Required static `roleId`; optional `userId`, defaulting to the invoking member |
+| `warn` (`setwarn` alias)                                   | `userId`, `reason`; optional `durationMs`                                      |
+| `unwarn` (`removewarn` alias)                              | `userId`, `reason`; optional `caseNumber`                                      |
+| `note` (`addnote` alias), `kick`, `unban`, `removetimeout` | `userId`, `reason`                                                             |
+| `timeout`                                                  | `userId`, `reason`, `durationMs`                                               |
+| `ban`                                                      | `userId`, `reason`; optional `deleteMessageSeconds`                            |
+| `setnickname`                                              | `userId`, `nickname`                                                           |
+| `reply`                                                    | `text`                                                                         |
+| `sendmessage`                                              | `text`; optional `channelId`, defaulting to the invocation channel             |
+| `sequence`                                                 | `actions`, an array of individual effect actions                               |
+
+Every effect action and sequence accepts optional `successMessage` and `repeatable`.
+All fields are validated; unknown fields are rejected. Reasons/notes allow up to
+1,000 characters, nicknames 32, and message/acknowledgement text 2,000. Duration is
+1 minute through 28 days; structured JSON uses milliseconds. Ban deletion is
+0–604,800 seconds. Text variables expand once and are checked again after expansion.
+Member/channel targets may be complete variable placeholders; role IDs remain
+fixed configuration. Literal member/channel IDs are checked against the server
+when saving. Notes and unban can refer to former members.
+
+Each click reloads the current command and clicking member. Built-in permissions
+apply even if the template's configured access rules are empty:
+
+| Actions                       | Clicking member                               | Bot                                                      |
+| ----------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| Warn/unwarn                   | Moderate Members                              | Manage Roles and valid hierarchy                         |
+| Add note                      | Moderate Members                              | No extra moderation permission                           |
+| Timeout/remove timeout        | Moderate Members                              | Moderate Members and valid hierarchy                     |
+| Kick                          | Kick Members                                  | Kick Members and valid hierarchy                         |
+| Ban/unban                     | Ban Members                                   | Ban Members; a current member must be below both parties |
+| Change another member's roles | Manage Roles and valid hierarchy              | Manage Roles and valid hierarchy                         |
+| Change nickname               | Manage Nicknames, or Change Nickname for self | Manage Nicknames and valid hierarchy                     |
+| Send message                  | View/send access in the destination           | View/send access in the destination                      |
+
+Notes remain private moderation records, available through `/note list`. Warnings
+use the existing case, warning-role and expiry lifecycle, and unwarn preserves a
+role still used by another active warning. Moderation actions cannot target the
+server owner, the bot itself or the clicking moderator. Notes and self-nickname
+changes follow their own permissions. Preview renders controls without executing
+effects; provide sample arguments for templates with a target variable.
+
+Every sequence expands and validates all steps and checks access before beginning.
+Permissions and membership are refreshed between steps. If a later Discord or
+database operation fails, completed effects remain and the private reply reports
+how many steps finished. Warning cases are retained if role assignment fails,
+matching the existing warning policy.
+
+Role actions are repeatable by default; other effects and sequences run once per
+button or dropdown option during that message's session. Set `repeatable: true`
+to allow repeats. An attempted effect consumes a nonrepeatable control even if
+its outcome is uncertain, preventing an accidental duplicate warning or message.
+Validation failures and failed interaction acknowledgements consume nothing.
+Run the command again to start a new session. Actions do not add invocation usage
+or reserve another command cooldown, and controls expire after 15 minutes.
+
+Templates with variable targets can be shared; sharing eligibility is rechecked
+for effect clicks. Remove role actions and fixed member/channel targets before
+sharing across servers. All effects stay within the invocation server. Template
+data cannot execute JavaScript, shell commands, SQL or arbitrary Discord commands.
+
 For `@channel`, replace `123456789012345678` with the real channel ID. In Discord,
 enable **Developer Mode**, right-click the channel, and choose **Copy Channel ID**
 ([Discord's instructions](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID)).
@@ -311,7 +431,7 @@ are not executed; rename one or narrow its scope. Removing a command automatical
 removes its sharing reference. Clones and exports retain local-only scope by default.
 
 Role and channel IDs belong to one Discord server. Clear all allowed/denied role
-and channel restrictions and role actions in Customize before sharing a command.
+and channel restrictions, role actions and fixed action targets in Customize before sharing a command.
 Discord permission requirements such as ManageMessages work across servers. If server-specific
 restrictions are added later, remote execution stops until they are cleared.
 

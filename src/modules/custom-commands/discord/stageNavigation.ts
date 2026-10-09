@@ -9,7 +9,11 @@ import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { logger } from "../../../adapters/logging/runtime.js";
 import type { ComponentAction, CustomCommandRecord } from "../domain/types.js";
 import { CustomCommandError } from "../domain/errors.js";
-import { executeRoleAction } from "./roleActions.js";
+import {
+  ComponentActionExecutor,
+  ComponentActionExecutionError,
+} from "./ComponentActionExecutor.js";
+import { isEffectAction } from "../domain/components.js";
 
 /** A collector belongs to one delivered message; it never executes arbitrary commands. */
 export function attachStageNavigation(
@@ -20,6 +24,7 @@ export function attachStageNavigation(
     responseIndex?: number;
     preview?: boolean;
     loadCommand?: () => Promise<CustomCommandRecord | undefined>;
+    actionExecutor?: Pick<ComponentActionExecutor, "execute">;
   } = {},
 ): void {
   if (
@@ -35,6 +40,9 @@ export function attachStageNavigation(
   if (current < 0) current = 0;
   let busy = false;
   let closed = false;
+  const consumed = new Set<string>();
+  const actionExecutor =
+    options.actionExecutor ?? new ComponentActionExecutor();
   const collector = message.createMessageComponentCollector({
     time: 15 * 60_000,
     filter: (interaction) =>
@@ -76,12 +84,24 @@ export function attachStageNavigation(
         await interaction.deferUpdate();
         return;
       }
+      const controlKey = `${interaction.customId}:${match?.[1] === "cc-select" && interaction.isStringSelectMenu() ? interaction.values[0] : ""}`;
+      if (consumed.has(controlKey)) {
+        await interaction.reply({
+          content:
+            "This action has already been used. Run the command again to use it again.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
       busy = true;
       try {
-        if ("roleId" in action) {
+        if (isEffectAction(action)) {
           if (options.preview) {
             await interaction.reply({
-              content: "Preview only — roles are not changed.",
+              content:
+                "roleId" in action
+                  ? "Preview only — roles are not changed."
+                  : "Preview only — no actions are executed.",
               flags: MessageFlags.Ephemeral,
             });
             return;
@@ -91,22 +111,38 @@ export function attachStageNavigation(
           try {
             if (!options.loadCommand)
               throw new Error("Missing command authorization.");
-            const content = await executeRoleAction(
+            const repeatable = action.repeatable ?? "roleId" in action;
+            const content = await actionExecutor.execute(
               context,
               action,
               options.loadCommand,
               () => !closed,
+              () => {
+                if (!repeatable) consumed.add(controlKey);
+              },
             );
             await interaction.editReply({
               content,
               allowedMentions: { parse: [] },
             });
           } catch (error) {
+            logger.warn(
+              {
+                commandId: context.command.id,
+                action: action.action,
+                completed:
+                  error instanceof ComponentActionExecutionError
+                    ? error.completed
+                    : 0,
+                errorType: error instanceof Error ? error.name : "Unknown",
+              },
+              "custom_command.action_failed",
+            );
             await interaction.editReply({
               content:
                 error instanceof CustomCommandError
                   ? error.message
-                  : "I could not change that role. Please try again.",
+                  : "I could not complete that action. Please try again.",
               allowedMentions: { parse: [] },
             });
           }

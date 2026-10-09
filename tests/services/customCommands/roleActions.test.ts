@@ -307,7 +307,7 @@ test("failed acknowledgement applies no role; Discord errors are private and ret
   await s.collect(failed);
   expect(failed.editReply).toHaveBeenCalledWith(
     expect.objectContaining({
-      content: expect.stringContaining("could not change"),
+      content: expect.stringContaining("could not finish"),
     }),
   );
   await s.collect(s.interaction("cc-stage:0:0"));

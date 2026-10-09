@@ -1,6 +1,6 @@
 import { trackCollector } from "../../../adapters/discord/resources.js";
 import { attachStageNavigation } from "./stageNavigation.js";
-import { responseActions, responseRoleIds } from "../domain/components.js";
+import { responseActions, hasServerActionReferences } from "../domain/components.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -106,10 +106,10 @@ export async function openCustomCommandEditor(
           (patch[key as keyof CustomCommandDefinition] as string[] | undefined)
             ?.length,
       ) ||
-      (patch.content !== undefined && responseRoleIds(patch.content).length > 0)
+      (patch.content !== undefined && hasServerActionReferences(patch.content))
     )
       throw new CustomCommandValidationError(
-        "Role and channel restrictions and role actions belong to one server. Use Discord permission requirements for shared commands.",
+        "Role and channel restrictions, role actions and fixed action targets require a local command. Use target variables and Discord permission requirements for shared commands.",
       );
     const saved = await customCommandService.updateCommand(
       current.guildId,

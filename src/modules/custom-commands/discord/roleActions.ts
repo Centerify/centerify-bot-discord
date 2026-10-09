@@ -1,16 +1,37 @@
-import { PermissionFlagsBits } from "discord.js";
-import type { ComponentAction, CustomCommandRecord } from "../domain/types.js";
+import { PermissionFlagsBits, type GuildMember } from "discord.js";
+import type { RoleAction, CustomCommandRecord } from "../domain/types.js";
 import type { CustomCommandExecutionContext } from "./types.js";
 import { CustomCommandPermissionError } from "../domain/errors.js";
-import { CustomCommandPermissionService } from "./CustomCommandPermissionService.js";
+import { authorizeComponentAction } from "./actionAuthorization.js";
+import { validateMemberAction } from "../../moderation/discord/index.js";
+import { renderComponentAction } from "./actionTemplates.js";
 
 /** Only administrator-configured roles can be changed, using single-role endpoints. */
 export async function executeRoleAction(
   context: CustomCommandExecutionContext,
-  action: Extract<ComponentAction, { roleId: string }>,
+  action: RoleAction,
   loadCommand: () => Promise<CustomCommandRecord | undefined>,
   isActive: () => boolean,
 ): Promise<string> {
+  const { context: current, me } = await authorizeComponentAction(
+    context,
+    loadCommand,
+  );
+  const rendered = (await renderComponentAction(action, current)) as RoleAction;
+  const apply = await prepareRoleAction(current, me, rendered);
+  if (!isActive())
+    throw new CustomCommandPermissionError(
+      "These controls have expired. Run the command again.",
+    );
+  const result = await apply();
+  return rendered.successMessage ?? result;
+}
+
+export async function prepareRoleAction(
+  context: CustomCommandExecutionContext,
+  me: GuildMember,
+  action: RoleAction,
+): Promise<() => Promise<string>> {
   function deny(message: string): never {
     throw new CustomCommandPermissionError(message);
   }
@@ -19,27 +40,23 @@ export async function executeRoleAction(
     context.guildId
   )
     deny("Role actions can only run in their original server.");
-  const command = await loadCommand();
-  if (
-    !command ||
-    command.id !== context.command.id ||
-    command.updatedAt !== context.command.updatedAt ||
-    JSON.stringify(command.content) !== JSON.stringify(context.command.content)
-  )
-    deny(
-      "This command has changed or was deleted. Run it again to use its controls.",
-    );
-  const [member, me, role] = await Promise.all([
-    context.guild.members.fetch({ user: context.userId, force: true }),
-    context.guild.members.fetchMe({ force: true }),
+  const targetId = action.userId ?? context.userId;
+  const [member, role] = await Promise.all([
+    targetId === context.userId
+      ? Promise.resolve(context.member)
+      : context.guild.members.fetch({ user: targetId, force: true }),
     context.guild.roles.fetch(action.roleId, { force: true }),
   ]);
-  new CustomCommandPermissionService().check({
-    ...context,
-    command,
-    member,
-    source: "button",
-  });
+  if (targetId !== context.userId) {
+    if (!context.member.permissions.has(PermissionFlagsBits.ManageRoles))
+      deny("You need Manage Roles to change another member's roles.");
+    const error = validateMemberAction({
+      guild: context.guild,
+      moderator: context.member,
+      target: member,
+    });
+    if (error) deny(error);
+  }
   if (
     !role ||
     role.guild.id !== context.guildId ||
@@ -54,13 +71,20 @@ export async function executeRoleAction(
     deny("I need Manage Roles and a role above the selected role.");
   if (!member.manageable)
     deny("I cannot manage your roles with my current role hierarchy.");
-  if (!isActive()) deny("These controls have expired. Run the command again.");
-  const hasRole = member.roles.cache.has(action.roleId);
-  const remove =
-    action.action === "removerole" ||
-    (action.action === "togglerole" && hasRole);
-  const reason = `Custom command ${command.name} (${command.id}), requested by ${context.userId}`;
-  if (remove && hasRole) await member.roles.remove(action.roleId, reason);
-  else if (!remove && !hasRole) await member.roles.add(action.roleId, reason);
-  return remove ? "Role removed." : "Role added.";
+  if (
+    targetId !== context.userId &&
+    context.member.id !== context.guild.ownerId &&
+    context.member.roles.highest.comparePositionTo(role) <= 0
+  )
+    deny("That role is not below your highest role.");
+  return async () => {
+    const hasRole = member.roles.cache.has(action.roleId);
+    const remove =
+      action.action === "removerole" ||
+      (action.action === "togglerole" && hasRole);
+    const reason = `Custom command ${context.command.name} (${context.command.id}), requested by ${context.userId}`;
+    if (remove && hasRole) await member.roles.remove(action.roleId, reason);
+    else if (!remove && !hasRole) await member.roles.add(action.roleId, reason);
+    return remove ? "Role removed." : "Role added.";
+  };
 }

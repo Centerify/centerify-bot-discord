@@ -17,8 +17,9 @@ import type {
   ResponseTemplate,
   ComponentAction,
   SelectTemplate,
+  EffectAction,
 } from "./types.js";
-import { responseActions } from "./components.js";
+import { responseActions, isEffectAction } from "./components.js";
 import { URL_VARIABLES, templateSyntax } from "./variables.js";
 
 export function normalizeCommandName(name: string): string {
@@ -112,6 +113,19 @@ const definitionKeys = [
   "deleteInvocation",
   "replyToInvocation",
 ];
+export const COMPONENT_ACTION_FIELDS = [
+  "userId",
+  "reason",
+  "durationMs",
+  "caseNumber",
+  "deleteMessageSeconds",
+  "nickname",
+  "text",
+  "channelId",
+  "actions",
+  "successMessage",
+  "repeatable",
+] as const;
 export class CustomCommandValidator {
   public constructor(public readonly variables = templateSyntax) {}
   public name(input: unknown): string {
@@ -283,16 +297,28 @@ export class CustomCommandValidator {
       );
     for (const response of responses)
       for (const action of responseActions(response)) {
-        if (!("roleId" in action) && !stages.length)
+        if (!isEffectAction(action) && !stages.length)
           fail("Navigation actions require staged responses.");
         if ("target" in action && !stages.includes(action.target))
           fail("Action targets an unknown stage.");
       }
     return responses;
   }
-  public action(data: Record<string, unknown>): ComponentAction {
+  public action(
+    data: Record<string, unknown>,
+    templates = true,
+    nested = false,
+  ): ComponentAction {
+    const aliases: Record<string, string> = {
+      setrole: "addrole",
+      setwarn: "warn",
+      addnote: "note",
+      removewarn: "unwarn",
+    };
+    const name =
+      typeof data.action === "string" ? data.action.toLowerCase() : data.action;
     const action = choice(
-      data.action,
+      typeof name === "string" ? (aliases[name] ?? name) : name,
       [
         "go",
         "back",
@@ -301,9 +327,92 @@ export class CustomCommandValidator {
         "addrole",
         "removerole",
         "togglerole",
+        "warn",
+        "unwarn",
+        "note",
+        "timeout",
+        "removetimeout",
+        "kick",
+        "ban",
+        "unban",
+        "setnickname",
+        "reply",
+        "sendmessage",
+        "sequence",
       ] as const,
       "Component action",
     );
+    const effect = !["go", "back", "main", "cancel"].includes(action);
+    if (nested && (!effect || action === "sequence"))
+      fail(
+        "Sequences contain only individual effect actions; navigation and nested sequences are unsupported.",
+      );
+    const fields: Record<typeof action, string[]> = {
+      go: ["target"],
+      back: ["target"],
+      main: [],
+      cancel: [],
+      addrole: ["roleId", "userId"],
+      removerole: ["roleId", "userId"],
+      togglerole: ["roleId", "userId"],
+      warn: ["userId", "reason", "durationMs"],
+      unwarn: ["userId", "reason", "caseNumber"],
+      note: ["userId", "reason"],
+      timeout: ["userId", "reason", "durationMs"],
+      removetimeout: ["userId", "reason"],
+      kick: ["userId", "reason"],
+      ban: ["userId", "reason", "deleteMessageSeconds"],
+      unban: ["userId", "reason"],
+      setnickname: ["userId", "nickname"],
+      reply: ["text"],
+      sendmessage: ["text", "channelId"],
+      sequence: ["actions"],
+    };
+    const allowed = [
+      "action",
+      "label",
+      "description",
+      "style",
+      ...fields[action],
+      ...(effect ? ["successMessage", "repeatable"] : []),
+    ];
+    if (Object.keys(data).some((key) => !allowed.includes(key)))
+      fail(`Unsupported fields for ${action} action.`);
+    const checkedText = (
+      value: unknown,
+      label: string,
+      max: number,
+      empty = false,
+    ) => {
+      const result = text(value, label, max, empty);
+      if (templates) this.variables.validate(result);
+      return result;
+    };
+    const id = (value: unknown, label: string): string => {
+      const result = text(value, label, 100);
+      if (/^\d{17,20}$/.test(result)) return result;
+      if (templates && /^\{[^{}]+\}$/.test(result)) {
+        this.variables.validate(result);
+        return result;
+      }
+      return fail(
+        `${label} requires a Discord ID or a complete variable placeholder.`,
+      );
+    };
+    const options = {
+      ...(data.successMessage === undefined
+        ? {}
+        : {
+            successMessage: checkedText(
+              data.successMessage,
+              "Success message",
+              L.text,
+            ),
+          }),
+      ...(data.repeatable === undefined
+        ? {}
+        : { repeatable: boolean(data.repeatable, "Repeatable") }),
+    };
     if (action === "go" || action === "back") {
       if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
         fail("Navigation requires a stage target.");
@@ -318,9 +427,130 @@ export class CustomCommandValidator {
         fail("This action cannot contain a role ID.");
       return { action };
     }
-    if (typeof data.roleId !== "string" || !/^\d{17,20}$/.test(data.roleId))
-      return fail("Role actions require a Discord role ID.");
-    return { action, roleId: data.roleId };
+    if (action === "sequence") {
+      if (
+        !Array.isArray(data.actions) ||
+        !data.actions.length ||
+        data.actions.length > L.actionSteps
+      )
+        return fail(`Provide 1–${L.actionSteps} sequence actions.`);
+      return {
+        action,
+        actions: data.actions.map(
+          (entry) =>
+            this.action(
+              object(entry, "Sequence step", [
+                "action",
+                "roleId",
+                ...COMPONENT_ACTION_FIELDS,
+              ]),
+              templates,
+              true,
+            ) as EffectAction,
+        ),
+        ...options,
+      };
+    }
+    if (
+      action === "addrole" ||
+      action === "removerole" ||
+      action === "togglerole"
+    ) {
+      if (typeof data.roleId !== "string" || !/^\d{17,20}$/.test(data.roleId))
+        return fail("Role actions require a Discord role ID.");
+      return {
+        action,
+        roleId: data.roleId,
+        ...(data.userId === undefined
+          ? {}
+          : { userId: id(data.userId, "Target member") }),
+        ...options,
+      };
+    }
+    if (action === "reply" || action === "sendmessage") {
+      return {
+        action,
+        text: checkedText(data.text, "Action message", L.text),
+        ...(data.channelId === undefined
+          ? {}
+          : { channelId: id(data.channelId, "Target channel") }),
+        ...options,
+      };
+    }
+    const userId = id(data.userId, "Target member");
+    if (action === "setnickname")
+      return {
+        action,
+        userId,
+        nickname: checkedText(data.nickname, "Nickname", L.nickname, true),
+        ...options,
+      };
+    const reason = checkedText(data.reason, "Action reason", L.actionReason);
+    if (action === "warn" || action === "timeout") {
+      if (data.durationMs !== undefined || action === "timeout") {
+        if (
+          !Number.isSafeInteger(data.durationMs) ||
+          (data.durationMs as number) < 60_000 ||
+          (data.durationMs as number) > L.timeoutMs
+        )
+          fail(
+            "Duration must be between 1 minute and 28 days in milliseconds.",
+          );
+      }
+      if (action === "timeout")
+        return {
+          action,
+          userId,
+          reason,
+          durationMs: data.durationMs as number,
+          ...options,
+        };
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.durationMs === undefined
+          ? {}
+          : { durationMs: data.durationMs as number }),
+        ...options,
+      };
+    }
+    if (action === "unwarn") {
+      if (
+        data.caseNumber !== undefined &&
+        (!Number.isSafeInteger(data.caseNumber) ||
+          (data.caseNumber as number) < 1)
+      )
+        fail("Case number must be a positive integer.");
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.caseNumber === undefined
+          ? {}
+          : { caseNumber: data.caseNumber as number }),
+        ...options,
+      };
+    }
+    if (action === "ban") {
+      if (
+        data.deleteMessageSeconds !== undefined &&
+        (!Number.isSafeInteger(data.deleteMessageSeconds) ||
+          (data.deleteMessageSeconds as number) < 0 ||
+          (data.deleteMessageSeconds as number) > 7 * 24 * 60 * 60)
+      )
+        fail("Ban message deletion must be between 0 and 604800 seconds.");
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.deleteMessageSeconds === undefined
+          ? {}
+          : { deleteMessageSeconds: data.deleteMessageSeconds as number }),
+        ...options,
+      };
+    }
+    return { action, userId, reason, ...options };
   }
   public selects(input: unknown, templates = true): SelectTemplate[] {
     if (!Array.isArray(input) || input.length > L.componentRows)
@@ -348,6 +578,7 @@ export class CustomCommandValidator {
           "action",
           "target",
           "roleId",
+          ...COMPONENT_ACTION_FIELDS,
         ]);
         const label = text(option.label, "Select option label", L.selectLabel);
         const description =
@@ -365,7 +596,7 @@ export class CustomCommandValidator {
           if (templates) this.variables.validate(value);
         }
         return {
-          ...this.action(option),
+          ...this.action(option, templates),
           label,
           ...(description === undefined ? {} : { description }),
         };
@@ -384,6 +615,7 @@ export class CustomCommandValidator {
         "target",
         "style",
         "roleId",
+        ...COMPONENT_ACTION_FIELDS,
       ]);
       const label = text(data.label, "Button label", L.buttonLabel);
       if (/[\r\n]/.test(label)) fail("Button labels must be a single line.");
@@ -393,7 +625,7 @@ export class CustomCommandValidator {
           fail("Action buttons cannot contain a URL.");
         return {
           label,
-          ...this.action(data),
+          ...this.action(data, templates),
           ...(data.style === undefined
             ? {}
             : {
@@ -405,11 +637,7 @@ export class CustomCommandValidator {
               }),
         };
       }
-      if (
-        data.style !== undefined ||
-        data.target !== undefined ||
-        data.roleId !== undefined
-      )
+      if (Object.keys(data).some((key) => key !== "label" && key !== "url"))
         fail("Link buttons cannot have an action style or target.");
       const target = url(text(data.url, "Button URL", L.buttonUrl));
       return { label, url: target };

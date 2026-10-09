@@ -10,6 +10,7 @@ import type { EmbedTemplate, ResponseTemplate } from "../domain/types.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
 import { CustomCommandVariableResolver } from "./CustomCommandVariableResolver.js";
+import { renderComponentAction } from "./actionTemplates.js";
 
 export interface CustomCommandResponseHandler {
   type: string;
@@ -128,6 +129,9 @@ export class CustomCommandRenderer {
         await Promise.all(
           (template.buttons ?? []).map(async (button) => ({
             ...button,
+            ...("action" in button
+              ? await renderComponentAction(button, context, this.variables)
+              : {}),
             label: await this.interpolate(button.label, context),
           })),
         ),
@@ -140,6 +144,11 @@ export class CustomCommandRenderer {
             options: await Promise.all(
               select.options.map(async (option) => ({
                 ...option,
+                ...(await renderComponentAction(
+                  option,
+                  context,
+                  this.variables,
+                )),
                 label: await this.interpolate(option.label, context),
                 ...(option.description === undefined
                   ? {}

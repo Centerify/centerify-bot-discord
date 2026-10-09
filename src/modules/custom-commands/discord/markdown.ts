@@ -7,7 +7,12 @@ import type {
 } from "../domain/types.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
-import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
+import {
+  CustomCommandValidator,
+  object,
+  COMPONENT_ACTION_FIELDS,
+} from "../domain/CustomCommandValidator.js";
+import { parseDuration } from "../../moderation/discord/index.js";
 
 export const MARKDOWN_EXAMPLE = `@main
 @title Welcome to {guild.name}!
@@ -29,7 +34,7 @@ Read the full rules in:
 @button danger [Close](Cancel)`;
 
 export const MARKDOWN_HELP = `**Template syntax**
-Start with \`@main\` for the first embed. Each \`@stage(n)\` starts another embed. Put directives at the **start of a line**, without indentation. Ordinary lines become the description. The example has a Rules page.
+Start with \`@main\`; \`@stage(n)\` starts another embed. Directives belong at the **start of a line**, without indentation. Ordinary lines become the description. The example has a Rules page.
 
 **Buttons** (up to five per stage)
 \`@button primary [Rules](Go(stage(1)))\` — open page 1
@@ -37,17 +42,22 @@ Start with \`@main\` for the first embed. Each \`@stage(n)\` starts another embe
 \`@button success [Home](Main)\` — return to the first page
 \`@button danger [Close](Cancel)\` — remove controls
 \`@button [Website](https://example.com)\` — open a link
-Styles: primary, secondary, success, danger. Links use the link style.
+Styles: primary, secondary, success, danger.
 \`@button success [Join](SetRole(ROLE_ID))\` — add a role
 Also: \`AddRole(ID)\`, \`RemoveRole(ID)\`, \`ToggleRole(ID)\`.
-**Dropdowns**: \`@select Choose a page\`, then \`@option [Rules](Go(stage(1)))\`, then \`@endselect\`. Options accept the same actions as buttons. Role actions affect the invoking member; preview never changes roles.
+**Dropdowns**: \`@select Choose\`, then \`@option [Rules](Go(stage(1)))\`, then \`@endselect\`.
+
+**Custom actions**
+\`@button [Warn](SetWarn("{args.0}", "Reason", "1h"))\`
+\`@button [Note](AddNote("{args.0}", "Note"))\`
+Also: Unwarn, Timeout, RemoveTimeout, Kick, Ban, Unban, SetNickname, Reply, SendMessage. Quote IDs and text. \`Action({...})\` configures all fields; \`Actions([...])\` runs up to ten steps. Options use the same actions. Preview executes no effects.
 
 **Embed options**
 \`@title Text\` · \`@color Blurple\` or \`@color #5865f2\` · \`@cover URL\` · \`@thumbnail URL\` · \`@footer Text\`
-\`@field Name\`, then the value on following lines, then \`@endfield\`. Optional \`@inline true\` goes inside the field.
-\`@channel 123456789012345678\` mentions a specific channel. Replace the example ID with your channel's ID; this also works inside a field.
+\`@field Name\`, then its value, then \`@endfield\`; optional \`@inline true\` goes inside.
+\`@channel CHANNEL_ID\` mentions a channel.
 
-For plain text, use Discord Markdown. Separate messages use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. Maximum five messages or stages. Variables work in text and labels.`;
+Separate messages use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. Maximum five messages or stages. Variables work in labels, action targets and text.`;
 
 function parseAction(value: string): ComponentAction | undefined {
   const navigation = /^(go|back)\(stage\((\d+)\)\)$/i.exec(value);
@@ -70,13 +80,81 @@ function parseAction(value: string): ComponentAction | undefined {
           : (role[1].toLowerCase() as "addrole" | "removerole" | "togglerole"),
       roleId: role[2],
     };
+  const call =
+    /^(action|actions|setwarn|warn|unwarn|removewarn|addnote|note|timeout|removetimeout|kick|ban|unban|setnickname|reply|sendmessage|setrole|addrole|removerole|togglerole)\(([\s\S]*)\)$/i.exec(
+      value,
+    );
+  if (call) {
+    const name = call[1].toLowerCase();
+    let data: Record<string, unknown>;
+    try {
+      if (name === "action")
+        data = object(JSON.parse(call[2]), "Action", [
+          "action",
+          "target",
+          "roleId",
+          ...COMPONENT_ACTION_FIELDS,
+        ]);
+      else if (name === "actions")
+        data = { action: "sequence", actions: JSON.parse(call[2]) };
+      else {
+        const args: unknown[] = JSON.parse(`[${call[2]}]`);
+        const fields: Record<string, string[]> = {
+          setrole: ["roleId", "userId"],
+          addrole: ["roleId", "userId"],
+          removerole: ["roleId", "userId"],
+          togglerole: ["roleId", "userId"],
+          setwarn: ["userId", "reason", "durationMs"],
+          warn: ["userId", "reason", "durationMs"],
+          unwarn: ["userId", "reason", "caseNumber"],
+          removewarn: ["userId", "reason", "caseNumber"],
+          addnote: ["userId", "reason"],
+          note: ["userId", "reason"],
+          timeout: ["userId", "durationMs", "reason"],
+          removetimeout: ["userId", "reason"],
+          kick: ["userId", "reason"],
+          ban: ["userId", "reason", "deleteMessageSeconds"],
+          unban: ["userId", "reason"],
+          setnickname: ["userId", "nickname"],
+          reply: ["text"],
+          sendmessage: ["channelId", "text"],
+        };
+        if (args.length > fields[name].length)
+          throw new CustomCommandValidationError(
+            `Too many arguments for ${name}.`,
+          );
+        data = { action: name };
+        args.forEach((arg, index) => {
+          const field = fields[name][index];
+          data[field] =
+            field === "durationMs" && typeof arg === "string"
+              ? (parseDuration(arg) ?? 0)
+              : arg;
+        });
+      }
+    } catch (error) {
+      if (error instanceof CustomCommandValidationError) throw error;
+      throw new CustomCommandValidationError(
+        "Action arguments must use JSON strings, numbers or structured action objects. Quote IDs and text.",
+      );
+    }
+    return new CustomCommandValidator().action(data);
+  }
   return undefined;
 }
 
 function serializeAction(action: ComponentAction): string {
-  if ("roleId" in action) return `${action.action}(${action.roleId})`;
+  if (
+    "roleId" in action &&
+    action.userId === undefined &&
+    action.successMessage === undefined &&
+    action.repeatable === undefined
+  )
+    return `${action.action}(${action.roleId})`;
   if ("target" in action) return `${action.action}(stage(${action.target}))`;
-  return action.action;
+  if (action.action === "main" || action.action === "cancel")
+    return action.action;
+  return `Action(${JSON.stringify(new CustomCommandValidator().action({ ...action }))})`;
 }
 
 function scalar(input: string, line: number): string {
