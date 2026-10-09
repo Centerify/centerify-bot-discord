@@ -235,6 +235,16 @@ Choose an action for the member supplied in the first argument.
 @endselect
 ```
 
+The complete [member-review-template.txt](member-review-template.txt) also includes
+role tools, nickname controls and a combined note-and-warning workflow. Replace its
+example role ID before saving. Invoke it as `!review @Member` or
+`/custom run command:review args:@Member`, using a real mention or member ID.
+Templates using `{args.0}` as a member target require that argument: running only
+`!review` produces a usage reply and sends no panel. The failed invocation does
+not consume its cooldown or usage count. Invalid member/channel arguments produce
+guidance without echoing their values; access denials remain quiet on prefix
+messages.
+
 `Action({...})` exposes the complete structured configuration, including custom
 private acknowledgement text and repeatability:
 

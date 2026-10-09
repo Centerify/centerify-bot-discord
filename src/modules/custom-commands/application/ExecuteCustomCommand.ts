@@ -1,18 +1,37 @@
 import { silentLogger, type Logger } from "../../../core/index.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
-import { CustomCommandValidationError } from "../domain/errors.js";
-import type { CommandExecutionIdentity, CustomCommandRepository } from "../domain/types.js";
+import {
+  CustomCommandArgumentError,
+  CustomCommandValidationError,
+} from "../domain/errors.js";
+import type {
+  CommandExecutionIdentity,
+  CustomCommandRepository,
+} from "../domain/types.js";
 import { responseActions } from "../domain/components.js";
 import type { CustomCommandCooldownStore } from "./CustomCommandCooldownService.js";
-export interface ExecutionContext extends CommandExecutionIdentity { args: string[]; source: "message" | "slash" | "button" | "internal" }
-export interface ExecutionTransport<Payload> { send(payload: Payload, index: number): Promise<unknown>; deleteInvocation?(): Promise<unknown> }
+export interface ExecutionContext extends CommandExecutionIdentity {
+  args: string[];
+  source: "message" | "slash" | "button" | "internal";
+}
+export interface ExecutionTransport<Payload> {
+  send(payload: Payload, index: number): Promise<unknown>;
+  deleteInvocation?(): Promise<unknown>;
+}
 export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
   public constructor(
     private readonly repository: Pick<CustomCommandRepository, "recordUsage">,
-    private readonly renderer: { render(context: Context, interactive: boolean): Promise<Payload[]> },
+    private readonly renderer: {
+      render(context: Context, interactive: boolean): Promise<Payload[]>;
+    },
     private readonly permissions: { check(context: Context): void },
     private readonly cooldowns: CustomCommandCooldownStore,
-    private readonly attachNavigation: (message: unknown, context: Context, responses: Payload[], responseIndex: number) => void,
+    private readonly attachNavigation: (
+      message: unknown,
+      context: Context,
+      responses: Payload[],
+      responseIndex: number,
+    ) => void,
     private readonly logger: Logger = silentLogger,
   ) {}
   public async execute(
@@ -59,7 +78,10 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
         await transport
           .deleteInvocation()
           .catch(() =>
-            this.logger.warn(metadata, "custom_command.invocation_delete_failed"),
+            this.logger.warn(
+              metadata,
+              "custom_command.invocation_delete_failed",
+            ),
           );
       }
       // A metrics outage must not turn an already delivered response into a failure.
@@ -68,7 +90,9 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
           context.command.sourceGuildId ?? context.guildId,
           context.command.id,
         )
-        .catch(() => this.logger.warn(metadata, "custom_command.metrics_failed"));
+        .catch(() =>
+          this.logger.warn(metadata, "custom_command.metrics_failed"),
+        );
       this.logger.info(
         { ...metadata, durationMs: Date.now() - started },
         "custom_command.executed",
@@ -80,6 +104,9 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
           ...metadata,
           durationMs: Date.now() - started,
           errorType: error instanceof Error ? error.name : "Unknown",
+          ...(error instanceof CustomCommandArgumentError
+            ? { validationMessage: error.message }
+            : {}),
           sent,
         },
         "custom_command.failed",

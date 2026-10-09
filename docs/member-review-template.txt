@@ -1,0 +1,37 @@
+@main
+@title Member review | {guild.name}
+@color Blurple
+@thumbnail {user.avatar}
+Target: {args.0}
+Moderator: {user.mention}
+Run !{command.name} @Member to open this panel. Warnings last one hour.
+@button danger [Warn for 1 hour](SetWarn("{args.0}", "Please follow the server rules", "1h"))
+@button secondary [Add review note](Action({"action":"note","userId":"{args.0}","reason":"Reviewed by {user.name}; follow-up required.","successMessage":"Private moderator note saved.","repeatable":false}))
+@button primary [Note and warn](Action({"action":"sequence","actions":[{"action":"note","userId":"{args.0}","reason":"Warning review completed by {user.name}."},{"action":"warn","userId":"{args.0}","reason":"Please follow the server rules","durationMs":3600000}],"successMessage":"Review note and one-hour warning saved.","repeatable":false}))
+@button success [Role tools](Go(stage(1)))
+@button danger [Close](Cancel)
+@select More moderation actions
+@option [Timeout for 10 minutes](Timeout("{args.0}", "10m", "Repeated disruption"))
+@option-description Temporarily prevent the member from participating
+@option [Clear timeout](RemoveTimeout("{args.0}", "Review completed"))
+@option [Remove newest warning](Unwarn("{args.0}", "Warning resolved after review"))
+@option [Show help](Reply("Use !{command.name} @Member or /custom run command:{command.name} args:@Member. Role tools require a configured server role. Notes are private; actions require your moderation permissions."))
+@endselect
+@footer Edit reasons, durations, labels, colors and success messages to match your server.
+
+@stage(1)
+@title Member role tools
+@color #57f287
+Target: {args.0}
+These controls use role ID 123456789012345678. Replace it with a real server role ID before saving.
+@button success [Add role](SetRole("123456789012345678", "{args.0}"))
+@button danger [Remove role](RemoveRole("123456789012345678", "{args.0}"))
+@button secondary [Toggle role](ToggleRole("123456789012345678", "{args.0}"))
+@button primary [Back](Back(stage(0)))
+@button danger [Close](Cancel)
+@dropdown Member tools
+@option [Set nickname to Reviewed](SetNickname("{args.0}", "Reviewed"))
+@option [Reset nickname](SetNickname("{args.0}", ""))
+@option [Post review update](SendMessage("{channel.id}", "{args.0}: a staff review has been completed by {user.mention}."))
+@option-description Posts a public update in this channel
+@endselect

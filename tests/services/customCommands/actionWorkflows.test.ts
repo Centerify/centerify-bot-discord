@@ -7,6 +7,9 @@ import {
   type GuildMember,
 } from "discord.js";
 import { expect, test, vi } from "vitest";
+import { silentLogger } from "../../../src/core/index.js";
+import { CustomCommandArgumentError } from "../../../src/modules/custom-commands/domain/errors.js";
+import { renderComponentAction } from "../../../src/modules/custom-commands/discord/actionTemplates.js";
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
@@ -705,6 +708,78 @@ test("the guide's review, structured action and sequence examples remain valid",
   for (const example of examples)
     expect(parseCommandMarkdown(example[1])).toHaveLength(1);
 });
+
+test("the member-review template gives usage guidance for missing targets and accepts a corrected invocation immediately", async () => {
+  const s = setup();
+  s.ctx.command = record({
+    name: "kos",
+    cooldownSeconds: 60,
+    ...markdownPatch(readFileSync("docs/member-review-template.txt", "utf8")),
+  });
+  Object.assign(s.ctx.member.user, {
+    displayAvatarURL: () => "https://example.com/avatar.png",
+  });
+  const repository = new MemoryRepository();
+  const warn = vi.fn();
+  const executor = new CustomCommandExecutor(
+    repository,
+    undefined,
+    undefined,
+    undefined,
+    { ...silentLogger, warn },
+    s.executor,
+  );
+  const send = vi.fn().mockResolvedValue(s.message);
+  s.ctx.args = [];
+  await expect(executor.execute(s.ctx, { send })).rejects.toThrow(
+    "Usage: !kos @Member",
+  );
+  expect(send).not.toHaveBeenCalled();
+  expect(repository.recordUsage).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      errorType: "CustomCommandArgumentError",
+      validationMessage: expect.stringContaining(
+        "Missing member argument {args.0}",
+      ),
+      sent: 0,
+    }),
+    "custom_command.failed",
+  );
+  s.ctx.args = [`<@${TARGET}>`];
+  await executor.execute(s.ctx, { send });
+  expect(send).toHaveBeenCalledOnce();
+  expect(repository.recordUsage).toHaveBeenCalledOnce();
+  expect(s.createCase).not.toHaveBeenCalled();
+});
+
+test.each([
+  ["userId", "{args.0}", "@Member"],
+  ["userId", "{args.first}", "@Member"],
+  ["channelId", "{args.0}", "#channel"],
+] as const)(
+  "invalid %s argument %s gives guidance without echoing argument values",
+  async (field, variable, example) => {
+    const action =
+      field === "userId"
+        ? { action: "note" as const, userId: variable, reason: "Private note" }
+        : {
+            action: "sendmessage" as const,
+            channelId: variable,
+            text: "Update",
+          };
+    const c = context({ args: ["private-invalid-value"] });
+    try {
+      await renderComponentAction(action, c);
+      expect.fail("Expected invalid target rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CustomCommandArgumentError);
+      expect((error as Error).message).toContain(`Usage: !welcome ${example}`);
+      expect((error as Error).message).not.toContain("private-invalid-value");
+      expect((error as Error).message).not.toContain("Private note");
+    }
+  },
+);
 
 test("failed acknowledgement and unauthorized clicks preserve the control; partial attempts consume it", async () => {
   const s = setup();

@@ -6,7 +6,10 @@ import {
   CUSTOM_COMMAND_PREFIX as PREFIX,
   CUSTOM_COMMAND_LIMITS as L,
 } from "../domain/constants.js";
-import { CustomCommandError } from "../domain/errors.js";
+import {
+  CustomCommandArgumentError,
+  CustomCommandError,
+} from "../domain/errors.js";
 import { parseArguments } from "./CustomCommandVariableResolver.js";
 
 import type { Client, Guild } from "discord.js";
@@ -88,6 +91,12 @@ export async function runDomainCustomCommand(
     );
   } catch (error) {
     if (!(error instanceof CustomCommandError)) throw error;
+    if (error instanceof CustomCommandArgumentError) {
+      await message.reply({
+        content: error.message,
+        allowedMentions: { parse: [], repliedUser: false },
+      });
+    }
     // Expected access denials are quiet on prefix messages, as in existing commands.
   }
   return true;
