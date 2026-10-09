@@ -73,6 +73,20 @@ administrative access. Management still requires server-side Administrator acces
 availability; they never replace server-side checks. Administrative replies and
 execution acknowledgements are ephemeral; executed responses are public.
 
+`/custom`, `/settings` and `/setup` defer privately before ownership checks.
+Discord requires the initial response within three seconds; an expired interaction
+cannot be revived by retrying it
+([Discord interaction documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#followup-messages)).
+If Discord rejects acknowledgement with `10062` (unknown interaction) or `40060`
+(already acknowledged), the precondition stops without running the command or
+sending another response. Invoke the command again. The warning logs the command,
+interaction/guild IDs, `interactionAgeMs` at the start of acknowledgement (from
+Discord's creation timestamp) and `acknowledgementDurationMs`, without the token.
+For repeated failures, use those timings to investigate event delivery/process
+delays versus the acknowledgement request; check for another bot instance when
+Discord reports an acknowledgement elsewhere. This handling cannot restore an
+interaction that Discord has already invalidated.
+
 ## Markdown response templates
 
 Only server owners and administrators may use the editor or upload templates.
