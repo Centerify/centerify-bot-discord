@@ -10,7 +10,11 @@ import type { MessageCreateOptions } from "discord.js";
 export class CustomCommandExecutor {
   private readonly useCase: ExecuteCustomCommand<CustomCommandExecutionContext, MessageCreateOptions>;
   constructor(repository: CustomCommandRepository, renderer = new CustomCommandRenderer(), permissions = new CustomCommandPermissionService(), cooldowns: CustomCommandCooldownStore = new CustomCommandCooldownService(), logger: Logger = silentLogger) {
-    this.useCase = new ExecuteCustomCommand(repository, renderer, permissions, cooldowns, attachStageNavigation, logger);
+    this.useCase = new ExecuteCustomCommand(repository, renderer, permissions, cooldowns,
+      (message, context, payloads, responseIndex) => attachStageNavigation(message, context, payloads, {
+        responseIndex,
+        loadCommand: async () => (await repository.list(context.command.sourceGuildId ?? context.guildId)).find((command) => command.id === context.command.id),
+      }), logger);
   }
   execute(context: CustomCommandExecutionContext, transport: CustomCommandTransport) {
     return this.useCase.execute(context, transport);

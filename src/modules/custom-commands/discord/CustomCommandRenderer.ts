@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  StringSelectMenuBuilder,
   type MessageCreateOptions,
 } from "discord.js";
 import type { EmbedTemplate, ResponseTemplate } from "../domain/types.js";
@@ -116,7 +117,9 @@ export class CustomCommandRenderer {
   ): Promise<MessageCreateOptions[]> {
     // Render and check every message before sending the first one.
     const responses: MessageCreateOptions[] = [];
-    for (const template of this.validator.responses(context.command.content)) {
+    for (const [responseIndex, template] of this.validator
+      .responses(context.command.content)
+      .entries()) {
       if (!allStages && template.stage !== undefined && template.stage !== 0)
         continue;
       const handler = this.handlers.get(template.type);
@@ -130,28 +133,80 @@ export class CustomCommandRenderer {
         ),
         false,
       );
+      const selects = this.validator.selects(
+        await Promise.all(
+          (template.selects ?? []).map(async (select) => ({
+            placeholder: await this.interpolate(select.placeholder, context),
+            options: await Promise.all(
+              select.options.map(async (option) => ({
+                ...option,
+                label: await this.interpolate(option.label, context),
+                ...(option.description === undefined
+                  ? {}
+                  : {
+                      description: await this.interpolate(
+                        option.description,
+                        context,
+                      ),
+                    }),
+              })),
+            ),
+          })),
+        ),
+        false,
+      );
       responses.push({
         ...(await handler.render(template, context)),
-        ...(buttons.length
+        ...(buttons.length || selects.length
           ? {
               components: [
-                new ActionRowBuilder<ButtonBuilder>().addComponents(
-                  buttons.map((button, index) => {
-                    const builder = new ButtonBuilder().setLabel(button.label);
-                    if ("url" in button)
-                      return builder
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(button.url);
-                    const styles = {
-                      primary: ButtonStyle.Primary,
-                      secondary: ButtonStyle.Secondary,
-                      success: ButtonStyle.Success,
-                      danger: ButtonStyle.Danger,
-                    };
-                    return builder
-                      .setStyle(styles[button.style ?? "primary"])
-                      .setCustomId(`cc-stage:${template.stage}:${index}`);
-                  }),
+                ...(buttons.length
+                  ? [
+                      new ActionRowBuilder<ButtonBuilder>().addComponents(
+                        buttons.map((button, index) => {
+                          const builder = new ButtonBuilder().setLabel(
+                            button.label,
+                          );
+                          if ("url" in button)
+                            return builder
+                              .setStyle(ButtonStyle.Link)
+                              .setURL(button.url);
+                          const styles = {
+                            primary: ButtonStyle.Primary,
+                            secondary: ButtonStyle.Secondary,
+                            success: ButtonStyle.Success,
+                            danger: ButtonStyle.Danger,
+                          };
+                          return builder
+                            .setStyle(styles[button.style ?? "primary"])
+                            .setCustomId(
+                              template.stage === undefined
+                                ? `cc-response:${responseIndex}:${index}`
+                                : `cc-stage:${template.stage}:${index}`,
+                            );
+                        }),
+                      ),
+                    ]
+                  : []),
+                ...selects.map((select, index) =>
+                  new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+                    new StringSelectMenuBuilder()
+                      .setCustomId(
+                        `cc-select:${template.stage ?? responseIndex}:${index}`,
+                      )
+                      .setPlaceholder(select.placeholder)
+                      .setMinValues(1)
+                      .setMaxValues(1)
+                      .addOptions(
+                        select.options.map((option, optionIndex) => ({
+                          label: option.label,
+                          value: String(optionIndex),
+                          ...(option.description === undefined
+                            ? {}
+                            : { description: option.description }),
+                        })),
+                      ),
+                  ),
                 ),
               ],
             }

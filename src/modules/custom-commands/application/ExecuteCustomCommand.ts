@@ -2,6 +2,7 @@ import { silentLogger, type Logger } from "../../../core/index.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
 import type { CommandExecutionIdentity, CustomCommandRepository } from "../domain/types.js";
+import { responseActions } from "../domain/components.js";
 import type { CustomCommandCooldownStore } from "./CustomCommandCooldownService.js";
 export interface ExecutionContext extends CommandExecutionIdentity { args: string[]; source: "message" | "slash" | "button" | "internal" }
 export interface ExecutionTransport<Payload> { send(payload: Payload, index: number): Promise<unknown>; deleteInvocation?(): Promise<unknown> }
@@ -11,7 +12,7 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
     private readonly renderer: { render(context: Context, interactive: boolean): Promise<Payload[]> },
     private readonly permissions: { check(context: Context): void },
     private readonly cooldowns: CustomCommandCooldownStore,
-    private readonly attachNavigation: (message: unknown, context: Context, responses: Payload[]) => void,
+    private readonly attachNavigation: (message: unknown, context: Context, responses: Payload[], responseIndex: number) => void,
     private readonly logger: Logger = silentLogger,
   ) {}
   public async execute(
@@ -46,7 +47,8 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
       for (const [index, payload] of responses.entries()) {
         if (staged && context.command.content[index].stage !== 0) continue;
         const message = await transport.send(payload, staged ? 0 : index);
-        if (staged) this.attachNavigation(message, context, responses);
+        if (staged || responseActions(context.command.content[index]).length)
+          this.attachNavigation(message, context, responses, index);
         sent++;
       }
       if (

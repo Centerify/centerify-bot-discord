@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { responseRoleIds } from "../domain/components.js";
 export interface SharingGuild { id: string; name: string }
 export interface SharingDirectory {
   get(id: string): SharingGuild | undefined;
@@ -50,7 +51,7 @@ export const hasServerRestrictions = (command: CustomCommandRecord) =>
     command.deniedRoleIds,
     command.allowedChannelIds,
     command.deniedChannelIds,
-  ].some((ids) => ids.length > 0);
+  ].some((ids) => ids.length > 0) || responseRoleIds(command.content).length > 0;
 
 export class CommandSharingService {
   public constructor(
@@ -280,7 +281,7 @@ export class CommandSharingService {
       );
     if (scope !== "server" && hasServerRestrictions(command))
       throw new CustomCommandValidationError(
-        "Clear server-specific role and channel restrictions in Customize before sharing. Discord permission requirements work across servers.",
+        "Clear server-specific role and channel restrictions and role actions in Customize before sharing. Discord permission requirements work across servers.",
       );
     const ids = [...new Set(selected)].filter((id) => id !== command.guildId);
     if (scope === "selected") {

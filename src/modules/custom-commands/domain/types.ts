@@ -19,16 +19,23 @@ export interface LinkButtonTemplate {
   label: string;
   url: string;
 }
-export interface ActionButtonTemplate {
+export type ComponentAction =
+  | { action: "go" | "back"; target: number }
+  | { action: "main" | "cancel" }
+  | { action: "addrole" | "removerole" | "togglerole"; roleId: string };
+export type ActionButtonTemplate = ComponentAction & {
   label: string;
-  action: "go" | "back" | "main" | "cancel";
-  target?: number;
   style?: "primary" | "secondary" | "success" | "danger";
+};
+export type SelectOptionTemplate = ComponentAction & { label: string; description?: string };
+export interface SelectTemplate {
+  placeholder: string;
+  options: SelectOptionTemplate[];
 }
 export type ButtonTemplate = LinkButtonTemplate | ActionButtonTemplate;
 export type ResponseTemplate = (
   { type: "TEXT"; text: string } | { type: "EMBED"; embed: EmbedTemplate }
-) & { buttons?: ButtonTemplate[]; stage?: number };
+) & { buttons?: ButtonTemplate[]; selects?: SelectTemplate[]; stage?: number };
 export interface CustomCommandDefinition {
   name: string;
   description: string;

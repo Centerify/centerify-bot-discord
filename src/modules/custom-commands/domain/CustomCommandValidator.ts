@@ -1,4 +1,7 @@
-import { PERMISSION_NAMES, type PermissionName as PermissionsString } from "./permissions.js";
+import {
+  PERMISSION_NAMES,
+  type PermissionName as PermissionsString,
+} from "./permissions.js";
 import {
   CUSTOM_COMMAND_LIMITS as L,
   COOLDOWN_SCOPES,
@@ -12,7 +15,10 @@ import type {
   EmbedTemplate,
   ButtonTemplate,
   ResponseTemplate,
+  ComponentAction,
+  SelectTemplate,
 } from "./types.js";
+import { responseActions } from "./components.js";
 import { URL_VARIABLES, templateSyntax } from "./variables.js";
 
 export function normalizeCommandName(name: string): string {
@@ -107,9 +113,7 @@ const definitionKeys = [
   "replyToInvocation",
 ];
 export class CustomCommandValidator {
-  public constructor(
-    public readonly variables = templateSyntax,
-  ) {}
+  public constructor(public readonly variables = templateSyntax) {}
   public name(input: unknown): string {
     const name = normalizeCommandName(text(input, "Name", L.name));
     if (!/^[\p{L}\p{N}_-][\p{L}\p{N}\p{M}_-]*$/u.test(name))
@@ -225,6 +229,7 @@ export class CustomCommandValidator {
         "text",
         "embed",
         "buttons",
+        "selects",
         "stage",
       ]);
       if (
@@ -238,12 +243,21 @@ export class CustomCommandValidator {
         data.buttons === undefined
           ? {}
           : { buttons: this.buttons(data.buttons, templates) };
+      const selects =
+        data.selects === undefined
+          ? {}
+          : { selects: this.selects(data.selects, templates) };
+      if (
+        (buttons.buttons?.length ? 1 : 0) + (selects.selects?.length ?? 0) >
+        L.componentRows
+      )
+        fail(`Use at most ${L.componentRows} component rows per message.`);
       if (data.type === "TEXT") {
         if (data.embed !== undefined)
           fail("Text responses cannot contain an embed.");
         const value = text(data.text, "Response text", L.text);
         if (templates) this.variables.validate(value);
-        return { type: "TEXT", text: value, ...stage, ...buttons };
+        return { type: "TEXT", text: value, ...stage, ...buttons, ...selects };
       }
       if (data.type !== "EMBED" || data.text !== undefined)
         return fail("Unsupported response type.");
@@ -252,6 +266,7 @@ export class CustomCommandValidator {
         embed: this.embed(data.embed, templates),
         ...stage,
         ...buttons,
+        ...selects,
       };
     });
     const stages = responses
@@ -267,13 +282,96 @@ export class CustomCommandValidator {
         "Stages require exactly one @main and unique @stage(n) markers on every response.",
       );
     for (const response of responses)
-      for (const button of response.buttons ?? [])
-        if ("action" in button) {
-          if (!stages.length) fail("Action buttons require staged responses.");
-          if (button.target !== undefined && !stages.includes(button.target))
-            fail("Button targets an unknown stage.");
-        }
+      for (const action of responseActions(response)) {
+        if (!("roleId" in action) && !stages.length)
+          fail("Navigation actions require staged responses.");
+        if ("target" in action && !stages.includes(action.target))
+          fail("Action targets an unknown stage.");
+      }
     return responses;
+  }
+  public action(data: Record<string, unknown>): ComponentAction {
+    const action = choice(
+      data.action,
+      [
+        "go",
+        "back",
+        "main",
+        "cancel",
+        "addrole",
+        "removerole",
+        "togglerole",
+      ] as const,
+      "Component action",
+    );
+    if (action === "go" || action === "back") {
+      if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
+        fail("Navigation requires a stage target.");
+      if (data.roleId !== undefined)
+        fail("Navigation cannot contain a role ID.");
+      return { action, target: data.target as number };
+    }
+    if (data.target !== undefined)
+      fail("This action cannot have a stage target.");
+    if (action === "main" || action === "cancel") {
+      if (data.roleId !== undefined)
+        fail("This action cannot contain a role ID.");
+      return { action };
+    }
+    if (typeof data.roleId !== "string" || !/^\d{17,20}$/.test(data.roleId))
+      return fail("Role actions require a Discord role ID.");
+    return { action, roleId: data.roleId };
+  }
+  public selects(input: unknown, templates = true): SelectTemplate[] {
+    if (!Array.isArray(input) || input.length > L.componentRows)
+      return fail(`Use at most ${L.componentRows} selects per message.`);
+    return input.map((entry) => {
+      const data = object(entry, "Select", ["placeholder", "options"]);
+      const placeholder = text(
+        data.placeholder,
+        "Select placeholder",
+        L.selectPlaceholder,
+      );
+      if (/[\r\n]/.test(placeholder))
+        fail("Select placeholders must be a single line.");
+      if (templates) this.variables.validate(placeholder);
+      if (
+        !Array.isArray(data.options) ||
+        !data.options.length ||
+        data.options.length > L.selectOptions
+      )
+        return fail(`Provide 1–${L.selectOptions} select options.`);
+      const options = data.options.map((entry) => {
+        const option = object(entry, "Select option", [
+          "label",
+          "description",
+          "action",
+          "target",
+          "roleId",
+        ]);
+        const label = text(option.label, "Select option label", L.selectLabel);
+        const description =
+          option.description === undefined
+            ? undefined
+            : text(
+                option.description,
+                "Select option description",
+                L.selectLabel,
+              );
+        for (const value of [label, description]) {
+          if (value === undefined) continue;
+          if (/[\r\n]/.test(value))
+            fail("Select labels and descriptions must be a single line.");
+          if (templates) this.variables.validate(value);
+        }
+        return {
+          ...this.action(option),
+          label,
+          ...(description === undefined ? {} : { description }),
+        };
+      });
+      return { placeholder, options };
+    });
   }
   public buttons(input: unknown, templates = true): ButtonTemplate[] {
     if (!Array.isArray(input) || input.length > L.buttons)
@@ -285,6 +383,7 @@ export class CustomCommandValidator {
         "action",
         "target",
         "style",
+        "roleId",
       ]);
       const label = text(data.label, "Button label", L.buttonLabel);
       if (/[\r\n]/.test(label)) fail("Button labels must be a single line.");
@@ -292,22 +391,9 @@ export class CustomCommandValidator {
       if (data.action !== undefined) {
         if (data.url !== undefined)
           fail("Action buttons cannot contain a URL.");
-        const action = choice(
-          data.action,
-          ["go", "back", "main", "cancel"] as const,
-          "Button action",
-        );
-        if (action === "go" || action === "back") {
-          if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
-            fail("Navigation requires a stage target.");
-        } else if (data.target !== undefined)
-          fail("This action cannot have a stage target.");
         return {
           label,
-          action,
-          ...(data.target === undefined
-            ? {}
-            : { target: data.target as number }),
+          ...this.action(data),
           ...(data.style === undefined
             ? {}
             : {
@@ -319,7 +405,11 @@ export class CustomCommandValidator {
               }),
         };
       }
-      if (data.style !== undefined || data.target !== undefined)
+      if (
+        data.style !== undefined ||
+        data.target !== undefined ||
+        data.roleId !== undefined
+      )
         fail("Link buttons cannot have an action style or target.");
       const target = url(text(data.url, "Button URL", L.buttonUrl));
       return { label, url: target };

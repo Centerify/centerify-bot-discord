@@ -106,7 +106,8 @@ Read the full rules in:
 Put `@main` on the first line. Each `@stage(n)` starts another embed. Stage numbers
 must be unique; use `@main` for stage zero. Put every `@` directive at the **start of
 its line**, with no spaces before it. Lines without `@` become the embed description.
-You can use up to five stages and five buttons per stage.
+You can use up to five stages and five buttons per stage. Buttons use one component
+row; each dropdown uses another. Each message may have at most five component rows.
 
 ### Syntax reference
 
@@ -130,6 +131,59 @@ You can use up to five stages and five buttons per stage.
 Button styles are `primary` (blue), `secondary` (gray), `success` (green), and
 `danger` (red). Omit the style for an HTTPS link button. The action names are
 case-insensitive. `Cancle` is also accepted as an alias for `Cancel`.
+
+### Role buttons and dropdowns
+
+Role actions change the member who ran the command:
+
+| Action                                   | Meaning                                             |
+| ---------------------------------------- | --------------------------------------------------- |
+| `SetRole(ROLE_ID)` or `AddRole(ROLE_ID)` | Add the configured role, preserving other roles     |
+| `RemoveRole(ROLE_ID)`                    | Remove the configured role                          |
+| `ToggleRole(ROLE_ID)`                    | Add the role when absent, or remove it when present |
+
+Replace `ROLE_ID` with a real role ID from your server. For example:
+
+```text
+@main
+@title Choose your access
+Use a button or choose an option below.
+@button success [Join](SetRole(123456789012345678))
+@button danger [Leave](RemoveRole(123456789012345678))
+@select Choose an action
+@option [Toggle membership](ToggleRole(123456789012345678))
+@option-description Join or leave the group
+@option [Read rules](Go(stage(1)))
+@endselect
+
+@stage(1)
+@title Rules
+Be respectful.
+@select Navigate
+@option [Home](Main)
+@option [Close](Cancel)
+@endselect
+```
+
+`@dropdown` is an alias for `@select`. Close each dropdown with `@endselect`.
+Each dropdown has 1–25 options and lets the member select one action at a time.
+Options support all button actions, including navigation and roles. HTTPS links
+use link buttons. Optional `@option-description` follows its option. Placeholders
+allow up to 150 characters; option labels and descriptions allow up to 100 each.
+Variables work in these fields and are checked again after expansion. Role IDs
+are fixed configuration values; arguments and variables cannot choose roles.
+Role buttons and dropdowns also work in ordinary, unstaged text/embed messages.
+Navigation actions require stages.
+
+Only the invoking member can use these controls. Role actions acknowledge privately,
+reload the saved command and member, and recheck command access, the bot's Manage
+Roles permission and role hierarchy. The bot must be above both the selected role
+and the member it manages. Managed roles and @everyone cannot be configured.
+Deleted or edited commands require a fresh invocation before changing roles.
+Preview allows navigation and reports role actions without changing any roles.
+Role changes do not consume additional cooldowns or record additional command usage.
+Controls expire after 15 minutes. Commands containing role actions are local to
+their original server; remove those actions before sharing across servers.
 
 For `@channel`, replace `123456789012345678` with the real channel ID. In Discord,
 enable **Developer Mode**, right-click the channel, and choose **Copy Channel ID**
@@ -161,8 +215,8 @@ pages, write separate `:::text` or `:::embed` blocks and close each with `:::`.
 Put `@main` or `@stage(n)` inside its own block if those messages should be
 interactive. Without stage markers, the bot sends all blocks in order.
 
-Only the member who invoked the command can navigate its message. A click replaces
-the current message, clearing previous text or embeds as needed. Controls expire
+Only the member who invoked the command can navigate its message. A navigation click
+replaces the current message, clearing previous text or embeds as needed. Controls expire
 after 15 minutes or a bot restart; timeout removes the buttons. Navigation reuses
 the rendered snapshot from invocation, including variables and timestamps, and
 does not consume cooldowns or increase usage. Private previews support the same
@@ -257,8 +311,8 @@ are not executed; rename one or narrow its scope. Removing a command automatical
 removes its sharing reference. Clones and exports retain local-only scope by default.
 
 Role and channel IDs belong to one Discord server. Clear all allowed/denied role
-and channel restrictions in Customize before sharing a command. Discord permission
-requirements such as ManageMessages work across servers. If server-specific
+and channel restrictions and role actions in Customize before sharing a command.
+Discord permission requirements such as ManageMessages work across servers. If server-specific
 restrictions are added later, remote execution stops until they are cleared.
 
 Apply `migrations/app/20261002T0928_add_custom_command_sharing` with

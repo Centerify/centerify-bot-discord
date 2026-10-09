@@ -6,7 +6,8 @@ import {
   type CommandSharing,
   type SharingRepository,
 } from "../../../src/modules/custom-commands/discord/CustomCommandSharingService.js";
-import { record } from "./fixtures.js";
+import { record, ROLE } from "./fixtures.js";
+import { markdownPatch } from "../../../src/modules/custom-commands/discord/markdown.js";
 const repository: SharingRepository = {
   available: vi.fn(),
   get: vi.fn(),
@@ -488,4 +489,18 @@ test("Replace cannot delete legacy conflicts even with a valid confirmation", as
   await expect(service.save(client, "admin", record({ aliases: ["hi"] }), "selected", [target.id], error.fingerprint, "replace"))
     .rejects.toThrow("Only server custom commands");
   expect(repository.save).not.toHaveBeenCalled();
+});
+
+test.each(["button", "select"])("role actions in a %s block sharing and stop remote resolution", async (component) => {
+  const sourceText = component === "button"
+    ? `Hi\n@button [Join](SetRole(${ROLE}))`
+    : `Hi\n@select Roles\n@option [Join](SetRole(${ROLE}))\n@endselect`;
+  const command = record(markdownPatch(sourceText));
+  commands.listCommands.mockImplementation(async (id) => id === source.id ? [command] : []);
+  for (const scope of ["all", "selected"] as const)
+    await expect(service.save(client, "admin", command, scope, [target.id])).rejects.toThrow("role actions");
+  expect(repository.save).not.toHaveBeenCalled();
+  expect(await service.resolve(client, target, command.name)).toBeNull();
+  await service.save(client, "admin", command, "server", []);
+  expect(repository.save).toHaveBeenCalledWith(command, null);
 });

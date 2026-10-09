@@ -1,5 +1,6 @@
 import { trackCollector } from "../../../adapters/discord/resources.js";
 import { attachStageNavigation } from "./stageNavigation.js";
+import { responseActions, responseRoleIds } from "../domain/components.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -104,10 +105,11 @@ export async function openCustomCommandEditor(
         (key) =>
           (patch[key as keyof CustomCommandDefinition] as string[] | undefined)
             ?.length,
-      )
+      ) ||
+      (patch.content !== undefined && responseRoleIds(patch.content).length > 0)
     )
       throw new CustomCommandValidationError(
-        "Role and channel restrictions belong to one server. Use Discord permission requirements for shared commands.",
+        "Role and channel restrictions and role actions belong to one server. Use Discord permission requirements for shared commands.",
       );
     const saved = await customCommandService.updateCommand(
       current.guildId,
@@ -322,8 +324,11 @@ export async function openCustomCommandEditor(
               allowedMentions: { parse: [] },
               flags: MessageFlags.Ephemeral,
             });
-            if (staged)
-              attachStageNavigation(message, previewContext, payloads);
+            if (staged || responseActions(command.content[index]).length)
+              attachStageNavigation(message, previewContext, payloads, {
+                responseIndex: index,
+                preview: true,
+              });
           }
           return;
         }
