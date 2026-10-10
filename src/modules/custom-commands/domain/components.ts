@@ -4,6 +4,28 @@ import type {
   ResponseTemplate,
   SequenceAction,
 } from "./types.js";
+import { customVariables } from "./variables.js";
+import { CUSTOM_COMMAND_LIMITS as L } from "./constants.js";
+import { CustomCommandValidationError } from "./errors.js";
+
+function staticTarget(value: string, content: ResponseTemplate[]): string {
+  const variables = customVariables(content);
+  const cache = new Map<string, string>();
+  const expand = (input: string): string => {
+    const value = input.replace(
+      /\{([A-Z][A-Z0-9_]*)\}/g,
+      (token, key: string) => {
+        if (!Object.hasOwn(variables, key)) return token;
+        if (!cache.has(key)) cache.set(key, expand(variables[key]));
+        return cache.get(key)!;
+      },
+    );
+    if (value.length > L.templateInput)
+      throw new CustomCommandValidationError("Rendered output is too long.");
+    return value;
+  };
+  return expand(value).replace(/^<(?:@!?|#)(\d{17,20})>$/, "$1");
+}
 
 export function isEffectAction(
   action: ComponentAction,
@@ -43,8 +65,8 @@ export function responseChannelIds(content: ResponseTemplate[]): string[] {
   return responseEffects(content).flatMap((action) =>
     "channelId" in action &&
     action.channelId &&
-    /^\d{17,20}$/.test(action.channelId)
-      ? [action.channelId]
+    /^\d{17,20}$/.test(staticTarget(action.channelId, content))
+      ? [staticTarget(action.channelId, content)]
       : [],
   );
 }
@@ -57,8 +79,8 @@ export function responseUserIds(
     (!membersOnly || (action.action !== "unban" && action.action !== "note")) &&
     "userId" in action &&
     action.userId &&
-    /^\d{17,20}$/.test(action.userId)
-      ? [action.userId]
+    /^\d{17,20}$/.test(staticTarget(action.userId, content))
+      ? [staticTarget(action.userId, content)]
       : [],
   );
 }

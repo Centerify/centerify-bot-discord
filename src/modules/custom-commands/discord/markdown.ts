@@ -13,8 +13,14 @@ import {
   COMPONENT_ACTION_FIELDS,
 } from "../domain/CustomCommandValidator.js";
 import { parseDuration } from "../../moderation/discord/index.js";
+import {
+  customVariables,
+  templateTokens,
+  TEMPLATE_VARIABLE_KEYS,
+} from "../domain/variables.js";
 
-export const MARKDOWN_EXAMPLE = `@main
+export const MARKDOWN_EXAMPLE = `@var USER_ID = {user.id}
+@main
 @title Welcome to {guild.name}!
 @color Blurple
 @thumbnail {user.avatar}
@@ -34,7 +40,7 @@ Read the full rules in:
 @button danger [Close](Cancel)`;
 
 export const MARKDOWN_HELP = `**Template syntax**
-Start with \`@main\`; \`@stage(n)\` starts another embed. Directives belong at the **start of a line**, without indentation. Ordinary lines become the description. The example has a Rules page.
+Start with \`@main\`; \`@stage(n)\` adds an embed. Directives belong at the **start of a line**. Ordinary lines become the description. The example has a Rules page. Define \`@var USER_ID = {user.id}\` before the template; use \`{USER_ID}\` in text/actions.
 
 **Buttons** (up to five per stage)
 \`@button primary [Rules](Go(stage(1)))\` — open page 1
@@ -59,7 +65,10 @@ Also: Unwarn, Timeout, RemoveTimeout, Kick, Ban, Unban, SetNickname, Reply, Send
 
 Separate messages use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. Maximum five messages or stages. Variables work in labels, action targets and text.`;
 
-function parseAction(value: string): ComponentAction | undefined {
+function parseAction(
+  value: string,
+  validator: CustomCommandValidator,
+): ComponentAction | undefined {
   const navigation = /^(go|back)\(stage\((\d+)\)\)$/i.exec(value);
   if (navigation)
     return {
@@ -138,7 +147,7 @@ function parseAction(value: string): ComponentAction | undefined {
         "Action arguments must use JSON strings, numbers or structured action objects. Quote IDs and text.",
       );
     }
-    return new CustomCommandValidator().action(data);
+    return validator.action(data);
   }
   return undefined;
 }
@@ -154,7 +163,12 @@ function serializeAction(action: ComponentAction): string {
   if ("target" in action) return `${action.action}(stage(${action.target}))`;
   if (action.action === "main" || action.action === "cancel")
     return action.action;
-  return `Action(${JSON.stringify(new CustomCommandValidator().action({ ...action }))})`;
+  const data = Object.fromEntries(
+    Object.entries(action).filter(
+      ([key]) => !["label", "description", "style"].includes(key),
+    ),
+  );
+  return `Action(${JSON.stringify(data)})`;
 }
 
 function scalar(input: string, line: number): string {
@@ -172,7 +186,10 @@ function scalar(input: string, line: number): string {
 }
 
 /** Parse a small declarative dialect. No expressions, HTML or code are executed. */
-export function parseCommandMarkdown(source: string): ResponseTemplate[] {
+export function parseCommandMarkdown(
+  source: string,
+  savedVariables: Record<string, string> = {},
+): ResponseTemplate[] {
   if (!source.trim() || source.length > L.markdownInput)
     throw new CustomCommandValidationError(
       `Markdown must contain 1–${L.markdownInput} characters.`,
@@ -181,6 +198,32 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
     .replace(/^\uFEFF/, "")
     .replace(/\r\n?/g, "\n")
     .split("\n");
+  const variables = customVariables([{ variables: savedVariables }]);
+  const declared = new Set<string>();
+  let headerEnd = -1;
+  for (const [index, line] of lines.entries()) {
+    if (!line.trim()) continue;
+    if (!line.startsWith("@var ")) break;
+    const entry = /^@var ([A-Z][A-Z0-9_]{0,49})\s*=\s*(.*)$/.exec(line);
+    if (!entry || declared.has(entry[1]))
+      throw new CustomCommandValidationError(
+        `Markdown line ${index + 1}: use unique @var NAME = value definitions before the template.`,
+      );
+    variables[entry[1]] = scalar(entry[2], index + 1);
+    declared.add(entry[1]);
+    lines[index] = "";
+    headerEnd = index;
+  }
+  customVariables([{ variables }]);
+  const keys = new Set<string>([
+    ...TEMPLATE_VARIABLE_KEYS,
+    ...Object.keys(variables),
+  ]);
+  const validator = new CustomCommandValidator({
+    validate: (value) => {
+      templateTokens(value, keys);
+    },
+  });
   const stagedShorthand = /^@(?:main|stage\(\d+\))$/.test(
     lines.find((line) => line.trim()) ?? "",
   );
@@ -216,6 +259,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   };
   for (const [index, line] of lines.entries()) {
     const number = index + 1;
+    if (index <= headerEnd) continue;
     if (fence) {
       append(line);
       if (new RegExp(`^ {0,3}${fence.char}{${fence.length},}\\s*$`).test(line))
@@ -288,7 +332,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
       }
       if (key === "option") {
         const option = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(raw);
-        const action = option && parseAction(option[2]);
+        const action = option && parseAction(option[2], validator);
         if (!option || !action)
           fail(
             number,
@@ -354,7 +398,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
       if (!link) fail(number, "use @button [Label](https://example.com).");
       const label = link![1].replace(/\\(.)/g, "$1");
       const target = link![2];
-      const action = parseAction(target);
+      const action = parseAction(target, validator);
       if (action) {
         if (style === "link") fail(number, "actions cannot use link style.");
         (response!.buttons ??= []).push({
@@ -445,6 +489,8 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   if (explicit && response) fail(lines.length, "missing closing :::.");
   if (fence) fail(lines.length, "unclosed code fence.");
   finish(lines.length);
+  if (responses[0] && Object.keys(variables).length)
+    responses[0].variables = variables;
   return new CustomCommandValidator().responses(responses);
 }
 
@@ -462,7 +508,10 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
         /^(?:@|:::|\\| {0,3}(?:`{3,}|~{3,}))/.test(line) ? `\\${line}` : line,
       )
       .join("\n");
-  return content
+  const definitions = Object.entries(customVariables(content)).map(
+    ([key, value]) => `@var ${key} = ${quote(value)}`,
+  );
+  const source = content
     .map((response) => {
       const lines = [response.type === "TEXT" ? ":::text" : ":::embed"];
       if (response.stage !== undefined)
@@ -516,10 +565,28 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
       return lines.join("\n");
     })
     .join("\n\n");
+  return [...definitions, source].join("\n");
 }
 
-export function markdownPatch(source: string) {
-  const content = parseCommandMarkdown(source);
+export function parseVariableDefinitions(
+  source: string,
+): Record<string, string> {
+  const definitions = source
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => (line.startsWith("@var ") ? line : `@var ${line}`))
+    .join("\n");
+  const content = parseCommandMarkdown(
+    `${definitions}\n:::text\nVariables\n:::`,
+  );
+  return customVariables(content);
+}
+
+export function markdownPatch(
+  source: string,
+  savedVariables: Record<string, string> = {},
+) {
+  const content = parseCommandMarkdown(source, savedVariables);
   return {
     content,
     responseType: content.length > 1 ? ("MULTI" as const) : content[0].type,

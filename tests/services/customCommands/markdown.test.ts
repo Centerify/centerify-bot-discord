@@ -80,8 +80,8 @@ test("the downloadable syntax example has a working Rules page", () => {
   expect(MARKDOWN_HELP).toContain("at the **start of a line**");
 });
 
-test("the saved .txt welcome template has navigable Rules and Server info pages", () => {
-  const source = readFileSync("docs/welcome-stages.txt", "utf8");
+test("the saved .cfg welcome template has navigable Rules and Server info pages", () => {
+  const source = readFileSync("docs/welcome-stages.cfg", "utf8");
   const content = parseCommandMarkdown(source);
   expect(content.map((response) => response.stage)).toEqual([0, 1, 2]);
   expect(content[0].buttons).toMatchObject([

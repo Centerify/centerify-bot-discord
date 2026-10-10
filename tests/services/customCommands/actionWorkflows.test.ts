@@ -714,7 +714,7 @@ test("the member-review template gives usage guidance for missing targets and ac
   s.ctx.command = record({
     name: "kos",
     cooldownSeconds: 60,
-    ...markdownPatch(readFileSync("docs/member-review-template.txt", "utf8")),
+    ...markdownPatch(readFileSync("docs/member-review-template.cfg", "utf8")),
   });
   Object.assign(s.ctx.member.user, {
     displayAvatarURL: () => "https://example.com/avatar.png",

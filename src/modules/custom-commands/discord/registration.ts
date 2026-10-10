@@ -104,7 +104,7 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
       .addAttachmentOption((o) =>
         o
           .setName("file")
-          .setDescription("Command template (.txt; legacy .md also works)")
+          .setDescription("Command template (.cfg; legacy .txt and .md also work)")
           .setRequired(true),
       ),
   );

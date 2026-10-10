@@ -57,7 +57,7 @@ export interface SelectTemplate {
 export type ButtonTemplate = LinkButtonTemplate | ActionButtonTemplate;
 export type ResponseTemplate = (
   { type: "TEXT"; text: string } | { type: "EMBED"; embed: EmbedTemplate }
-) & { buttons?: ButtonTemplate[]; selects?: SelectTemplate[]; stage?: number };
+) & { buttons?: ButtonTemplate[]; selects?: SelectTemplate[]; stage?: number; variables?: Record<string, string> };
 export interface CustomCommandDefinition {
   name: string;
   description: string;

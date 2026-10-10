@@ -1,6 +1,9 @@
 import { trackCollector } from "../../../adapters/discord/resources.js";
 import { attachStageNavigation } from "./stageNavigation.js";
-import { responseActions, hasServerActionReferences } from "../domain/components.js";
+import {
+  responseActions,
+  hasServerActionReferences,
+} from "../domain/components.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -46,8 +49,10 @@ import {
   serializeCommandMarkdown,
   MARKDOWN_EXAMPLE,
   MARKDOWN_HELP,
+  parseVariableDefinitions,
 } from "./markdown.js";
 import { editorView, type EditorSection } from "./editorView.js";
+import { customVariables } from "../domain/variables.js";
 
 async function authorize(
   interaction: RepliableInteraction,
@@ -166,6 +171,7 @@ export async function openCustomCommandEditor(
       if (
         ([
           "markdown",
+          "custom-variables",
           "response",
           "media",
           "field",
@@ -182,11 +188,15 @@ export async function openCustomCommandEditor(
         const source =
           action === "markdown"
             ? (markdownDraft ?? serializeCommandMarkdown(command.content))
-            : "";
+            : action === "custom-variables"
+              ? Object.entries(customVariables(command.content))
+                  .map(([key, value]) => `${key} = ${JSON.stringify(value)}`)
+                  .join("\n")
+              : "";
         if (source.length > L.modalInput) {
           await interaction.reply({
             content:
-              "This template exceeds 4,000 characters. Use Download .txt, then upload the edited file with /custom template.",
+              "This template exceeds 4,000 characters. Use Download .cfg, then upload the edited file with /custom template.",
             flags: MessageFlags.Ephemeral,
           });
           return;
@@ -203,67 +213,77 @@ export async function openCustomCommandEditor(
                   required: true,
                 },
               ])
-            : action === "preview"
-              ? editorModal(id, "Preview command", [
+            : action === "custom-variables"
+              ? editorModal(id, "Edit custom variables", [
                   {
-                    id: "args",
-                    label: "Sample arguments (space-separated)",
-                    max: L.argumentInput,
+                    id: "variables",
+                    label: "NAME = value per line (empty clears)",
+                    value: source,
+                    max: L.modalInput,
                     paragraph: true,
                   },
                 ])
-              : action === "permissions"
-                ? editorModal(id, "Discord permission names", [
+              : action === "preview"
+                ? editorModal(id, "Preview command", [
                     {
-                      id: "permissions",
-                      label: "Names separated by spaces (empty clears)",
-                      value: command[restriction].join(" "),
-                      max: L.restrictions * (L.name + 1),
+                      id: "args",
+                      label: "Sample arguments (space-separated)",
+                      max: L.argumentInput,
                       paragraph: true,
                     },
                   ])
-                : action === "settings"
-                  ? editorModal(id, "Command settings", [
+                : action === "permissions"
+                  ? editorModal(id, "Discord permission names", [
                       {
-                        id: "description",
-                        label: "Description",
-                        value: command.description,
-                        max: L.description,
-                      },
-                      {
-                        id: "aliases",
-                        label: "Aliases separated by spaces (empty clears)",
-                        value: command.aliases.join(" "),
-                        max: L.aliases * (L.name + 1),
-                      },
-                      {
-                        id: "cooldown",
-                        label: "Cooldown seconds (0–86400)",
-                        value: String(command.cooldownSeconds),
-                        max: 5,
-                        required: true,
-                      },
-                      {
-                        id: "scope",
-                        label: "Scope: USER, CHANNEL, GUILD, GLOBAL_COMMAND",
-                        value: command.cooldownScope,
-                        max: 20,
-                        required: true,
-                      },
-                      {
-                        id: "flags",
-                        label: "enabled, reply, delete (comma-separated)",
-                        value: [
-                          command.enabled ? "enabled" : "",
-                          command.replyToInvocation ? "reply" : "",
-                          command.deleteInvocation ? "delete" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(","),
-                        max: 50,
+                        id: "permissions",
+                        label: "Names separated by spaces (empty clears)",
+                        value: command[restriction].join(" "),
+                        max: L.restrictions * (L.name + 1),
+                        paragraph: true,
                       },
                     ])
-                  : responseModal(id, action, command.content[index]!);
+                  : action === "settings"
+                    ? editorModal(id, "Command settings", [
+                        {
+                          id: "description",
+                          label: "Description",
+                          value: command.description,
+                          max: L.description,
+                        },
+                        {
+                          id: "aliases",
+                          label: "Aliases separated by spaces (empty clears)",
+                          value: command.aliases.join(" "),
+                          max: L.aliases * (L.name + 1),
+                        },
+                        {
+                          id: "cooldown",
+                          label: "Cooldown seconds (0–86400)",
+                          value: String(command.cooldownSeconds),
+                          max: 5,
+                          required: true,
+                        },
+                        {
+                          id: "scope",
+                          label: "Scope: USER, CHANNEL, GUILD, GLOBAL_COMMAND",
+                          value: command.cooldownScope,
+                          max: 20,
+                          required: true,
+                        },
+                        {
+                          id: "flags",
+                          label: "enabled, reply, delete (comma-separated)",
+                          value: [
+                            command.enabled ? "enabled" : "",
+                            command.replyToInvocation ? "reply" : "",
+                            command.deleteInvocation ? "delete" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(","),
+                          max: 50,
+                        },
+                      ])
+                    : responseModal(id, action, command.content[index]!);
         await interaction.showModal(modal);
         const submitted = await interaction
           .awaitModalSubmit({
@@ -335,7 +355,15 @@ export async function openCustomCommandEditor(
         let patch: Partial<CustomCommandDefinition>;
         if (action === "markdown") {
           markdownDraft = submitted.fields.getTextInputValue("markdown");
-          patch = markdownPatch(markdownDraft);
+          patch = markdownPatch(markdownDraft, customVariables(command.content));
+        } else if (action === "custom-variables") {
+          const variables = parseVariableDefinitions(
+            submitted.fields.getTextInputValue("variables"),
+          );
+          const content = structuredClone(command.content);
+          for (const response of content) delete response.variables;
+          if (Object.keys(variables).length) content[0].variables = variables;
+          patch = { content };
         } else if (action === "permissions")
           patch = {
             [restriction]: value("permissions")
@@ -370,7 +398,8 @@ export async function openCustomCommandEditor(
           };
         try {
           command = await update(patch);
-          if (action === "markdown") markdownDraft = undefined;
+          if (action === "markdown" || action === "custom-variables")
+            markdownDraft = undefined;
           await submitted.editReply("Custom command updated.");
           await onSaved?.(command);
           await root.editReply({
@@ -416,8 +445,8 @@ export async function openCustomCommandEditor(
               {
                 name:
                   action === "markdown-help"
-                    ? "command-example.txt"
-                    : "command.txt",
+                    ? "command-example.cfg"
+                    : "command.cfg",
               },
             ),
           ],
@@ -442,12 +471,23 @@ export async function openCustomCommandEditor(
             {
               title: "Command variables",
               description:
-                "Use these placeholders in text and embed text. Arguments: {args.0} through {args.24}. Missing optional values are empty. Dates use UTC.",
+                "Use these placeholders in text and embed text. Arguments: {args.0} through {args.24}. Missing optional values are empty. Dates use UTC. Define custom names using Edit custom variables or @var USER_ID = {user.id} before the template, then use {USER_ID} in text and actions.",
               fields: [
                 ...[...groups].map(([name, values]) => ({
                   name,
                   value: values.join(" "),
                 })),
+                ...(Object.keys(customVariables(command.content)).length
+                  ? [
+                      {
+                        name: "Custom variables",
+                        value: Object.keys(customVariables(command.content))
+                          .map((key) => `{${key}}`)
+                          .join(" ")
+                          .slice(0, 1024),
+                      },
+                    ]
+                  : []),
                 {
                   name: "Dynamic embed URLs",
                   value:

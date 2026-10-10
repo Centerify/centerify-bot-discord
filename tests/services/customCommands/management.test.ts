@@ -365,6 +365,24 @@ test("pagination respects rendered message size for long markdown names", async 
   ).toBeLessThanOrEqual(2000);
 });
 
+test("template uploads recognize custom variables already saved on the command", async () => {
+  const initial = record({ content: [{
+    type: "TEXT", text: "{GREETING}", variables: { GREETING: "Hello {user.mention}!" },
+  }] });
+  mocks.get.mockResolvedValue(initial);
+  const interaction = fixture("template", { name: "welcome" });
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("@main\n@title Welcome\n{GREETING}")));
+  try {
+    await handleCustomManagement(interaction as never);
+    expect(mocks.update).toHaveBeenCalledWith(interaction.guild.id, USER, initial.name,
+      expect.objectContaining({ content: [expect.objectContaining({ variables: initial.content[0].variables })] }),
+      "updated", initial.updatedAt,
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 test.each(["template", "markdown"])("%s file uploads parse and save the definition before opening the editor", async (subcommand) => {
   const interaction = fixture(subcommand, { name: "welcome" });
   const source =

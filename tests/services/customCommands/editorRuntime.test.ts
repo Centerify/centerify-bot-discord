@@ -246,18 +246,18 @@ test("variable help lists placeholders without saving", async () => {
   expect(mocks.update).not.toHaveBeenCalled();
 });
 
-test("template downloads and syntax examples use .txt with a Rules page", async () => {
+test("template downloads and syntax examples use .cfg with a Rules page", async () => {
   const f = fixture();
   await openCustomCommandEditor(f.root as never, record());
   f.button.customId = "cc:session:markdown-help";
   await f.collect(f.button);
   const help = f.button.followUp.mock.calls[0]![0];
   expect(help.content).toContain("Rules page");
-  expect(help.files[0].name).toBe("command-example.txt");
+  expect(help.files[0].name).toBe("command-example.cfg");
   f.button.followUp.mockClear();
   f.button.customId = "cc:session:markdown-download";
   await f.collect(f.button);
-  expect(f.button.followUp.mock.calls[0]![0].files[0].name).toBe("command.txt");
+  expect(f.button.followUp.mock.calls[0]![0].files[0].name).toBe("command.cfg");
 });
 
 test("Markdown modal saves parsed responses with the observed revision", async () => {
@@ -301,6 +301,26 @@ test("Markdown modal saves parsed responses with the observed revision", async (
   );
 });
 
+test("Edit Template keeps saved custom variables when the pasted source omits definitions", async () => {
+  const f = fixture();
+  const initial = record({ content: [{
+    type: "TEXT", text: "{GREETING}", variables: { GREETING: "Hello {user.mention}!" },
+  }] });
+  await openCustomCommandEditor(f.root as never, initial);
+  f.button.customId = "cc:session:markdown";
+  const submission = {
+    user: { id: USER }, guildId: f.guild.id, guild: f.guild,
+    inCachedGuild: () => true, deferReply: vi.fn(), editReply: vi.fn().mockResolvedValue(undefined),
+    fields: { getTextInputValue: () => "@main\n@title Welcome\n{GREETING}" },
+  };
+  f.button.awaitModalSubmit.mockResolvedValue(submission);
+  await f.collect(f.button);
+  expect(mocks.update).toHaveBeenCalledWith(f.guild.id, USER, initial.name,
+    expect.objectContaining({ content: [expect.objectContaining({ variables: initial.content[0].variables })] }),
+    "updated", initial.updatedAt,
+  );
+});
+
 test("invalid Markdown reports an error without replacing the saved responses", async () => {
   const f = fixture();
   await openCustomCommandEditor(f.root as never, record());
@@ -337,8 +357,99 @@ test("large templates are never truncated into the modal", async () => {
   expect(f.button.showModal).not.toHaveBeenCalled();
   expect(f.button.reply).toHaveBeenCalledWith(
     expect.objectContaining({
-      content: expect.stringContaining("Download .txt"),
+      content: expect.stringContaining("Download .cfg"),
     }),
   );
   expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test("the custom variable modal saves definitions while preserving responses", async () => {
+  const f = fixture();
+  const initial = record();
+  await openCustomCommandEditor(f.root as never, initial);
+  f.button.customId = "cc:session:custom-variables";
+  const submission = {
+    user: { id: USER },
+    guildId: f.guild.id,
+    guild: f.guild,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    editReply: vi.fn(),
+    fields: {
+      getTextInputValue: () =>
+        "USER_ID = {user.id}\nGREETING = Hello {user.name}",
+    },
+  };
+  f.button.awaitModalSubmit.mockResolvedValue(submission);
+  await f.collect(f.button);
+  expect(f.button.showModal).toHaveBeenCalledOnce();
+  expect(mocks.update).toHaveBeenCalledWith(
+    f.guild.id,
+    USER,
+    initial.name,
+    {
+      content: [
+        {
+          ...initial.content[0],
+          variables: { USER_ID: "{user.id}", GREETING: "Hello {user.name}" },
+        },
+      ],
+    },
+    "updated",
+    initial.updatedAt,
+  );
+  expect(submission.editReply).toHaveBeenCalledWith("Custom command updated.");
+});
+
+test("invalid variable definitions never save, and shared fixed targets remain rejected", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.customId = "cc:session:custom-variables";
+  const submission = {
+    user: { id: USER },
+    guildId: f.guild.id,
+    guild: f.guild,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    editReply: vi.fn().mockResolvedValue(undefined),
+    fields: { getTextInputValue: () => "USER_ID = {USER_ID}" },
+  };
+  f.button.awaitModalSubmit.mockResolvedValue(submission);
+  await f.collect(f.button);
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(submission.editReply).toHaveBeenCalledWith(
+    expect.objectContaining({ content: expect.stringContaining("Circular") }),
+  );
+
+  const shared = fixture();
+  const initial = record({
+    sourceGuildId: "source",
+    content: [
+      {
+        type: "TEXT",
+        text: "Hello",
+        variables: { USER_ID: "{args.0}" },
+        buttons: [
+          {
+            label: "Warn",
+            action: "warn",
+            userId: "{USER_ID}",
+            reason: "Reason",
+          },
+        ],
+      },
+    ],
+  });
+  mocks.shared.mockResolvedValue(record({ ...initial, guildId: "source" }));
+  await openCustomCommandEditor(shared.root as never, initial);
+  shared.button.customId = "cc:session:custom-variables";
+  shared.button.awaitModalSubmit.mockResolvedValue({
+    ...submission,
+    fields: { getTextInputValue: () => `USER_ID = ${USER}` },
+  });
+  await shared.collect(shared.button);
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(submission.editReply).toHaveBeenLastCalledWith(
+    expect.stringContaining("fixed action targets require a local command"),
+  );
 });

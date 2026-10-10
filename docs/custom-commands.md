@@ -41,7 +41,8 @@ or choose multiple roles/channels.
 
 `/custom configure name:welcome` opens a private, three-minute editor:
 
-- **Responses** offers **Edit Template**, **Download .txt**, and **Syntax & example**.
+- **Responses** offers **Edit Template**, **Edit custom variables**,
+  **Download .cfg**, and **Syntax & example**.
   Write the whole response sequence as one template. Submitting parses, validates,
   and saves all responses together. Invalid submissions keep the saved definition
   intact and retain your draft in the open editor for correction.
@@ -93,7 +94,7 @@ Only server owners and administrators may use the editor or upload templates.
 Use `/custom configure name:welcome` → **Edit Template** to replace the command's
 responses. The following example sends one embed with a **Rules** button. Clicking
 it opens the rules on the same message. A longer version with a **Server info** page
-is in [welcome-stages.txt](welcome-stages.txt):
+is in [welcome-stages.cfg](welcome-stages.cfg):
 
 <!-- prettier-ignore -->
 ```text
@@ -117,11 +118,51 @@ Read the full rules in:
 @button danger [Close](Cancel)
 ```
 
-Put `@main` on the first line. Each `@stage(n)` starts another embed. Stage numbers
+Put `@main` on the first template line, after any `@var` definitions. Each `@stage(n)` starts another embed. Stage numbers
 must be unique; use `@main` for stage zero. Put every `@` directive at the **start of
 its line**, with no spaces before it. Lines without `@` become the embed description.
 You can use up to five stages and five buttons per stage. Buttons use one component
 row; each dropdown uses another. Each message may have at most five component rows.
+
+### Custom variables
+
+Choose **Edit custom variables** and enter one definition per line:
+
+```text
+USER_ID = {user.id}
+TARGET_ID = {args.0}
+GREETING = Hello {user.mention}!
+```
+
+Use `{USER_ID}`, `{TARGET_ID}` and `{GREETING}` in response text, embed text,
+control labels and action targets/messages. Values can be constants or combine
+built-in and custom placeholders. Definitions apply to every response and page.
+Custom names use uppercase letters, digits and underscores, starting with a letter;
+up to 25 names of 50 characters and values of 2,000 characters are allowed. Unknown
+references, duplicate names and circular definitions are rejected. Clearing a
+variable still referenced by the template is rejected until those uses are removed.
+Embed URLs still require HTTPS or an approved built-in image placeholder.
+
+In `.cfg` files, put definitions before the template:
+
+```text
+@var USER_ID = {user.id}
+@var GREETING = Hello {user.mention}!
+@main
+@title Welcome
+{GREETING} Your ID is {USER_ID}.
+@button [My ID](Reply("Your ID: {USER_ID}"))
+```
+
+Downloads preserve these definitions. Custom variables also survive JSON export,
+import and command sharing; fixed IDs in custom action variables require a local
+command, just like direct action targets.
+
+Editing or uploading a template keeps the command's saved variables, so you can
+use `{GREETING}` without repeating its definition. Inline `@var` definitions add
+or replace saved values. Use **Edit custom variables** to remove definitions.
+A complete welcome example with custom variables and a dropdown is available in
+[welcome-example.cfg](welcome-example.cfg).
 
 ### Syntax reference
 
@@ -235,7 +276,7 @@ Choose an action for the member supplied in the first argument.
 @endselect
 ```
 
-The complete [member-review-template.txt](member-review-template.txt) also includes
+The complete [member-review-template.cfg](member-review-template.cfg) also includes
 role tools, nickname controls and a combined note-and-warning workflow. Replace its
 example role ID before saving. Invoke it as `!review @Member` or
 `/custom run command:review args:@Member`, using a real mention or member ID.
@@ -374,10 +415,10 @@ leading/trailing spaces, or a leading quote must be preserved. Downloaded templa
 add quoting and escaping automatically. Variables are still substituted in text,
 including code blocks; code is never executed.
 
-The modal accepts 4,000 characters. For larger templates, use **Download .txt**, edit
-the file, then run `/custom template name:welcome file:<your-file.txt>`. Uploads
+The modal accepts 4,000 characters. For larger templates, use **Download .cfg**, edit
+the file, then run `/custom template name:welcome file:<your-file.cfg>`. Uploads
 accept regular and ephemeral Discord attachments. `/custom markdown` remains an
-alias. Files may use `.txt`, `.md` or `.markdown`, with a 192,000-byte download limit and a
+alias. Files use `.cfg`; legacy `.txt`, `.md` and `.markdown` uploads also work, with a 192,000-byte download limit and a
 48,000-character source limit. Parsed definitions still obey all normal response
 limits, including the 24,000-character JSON payload limit. File downloads use the
 same Discord-host allowlist, redirect rejection, timeout and stream-size checks

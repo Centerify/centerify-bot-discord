@@ -1,4 +1,7 @@
-import type { CustomCommandExecutionContext, VariableResolver } from "../discord/types.js";
+import type {
+  CustomCommandExecutionContext,
+  VariableResolver,
+} from "../discord/types.js";
 import {
   CUSTOM_COMMAND_PREFIX,
   CUSTOM_COMMAND_LIMITS as L,
@@ -7,7 +10,7 @@ import { CustomCommandValidationError } from "../domain/errors.js";
 
 // Only these complete placeholders may be used as embed URLs.
 export { URL_VARIABLES } from "../domain/variables.js";
-import { templateTokens } from "../domain/variables.js";
+import { templateTokens, customVariables } from "../domain/variables.js";
 const iso = (date: Date | null | undefined) => date?.toISOString() ?? "";
 
 export function parseArguments(input: string): string[] {
@@ -106,7 +109,9 @@ export class CustomCommandVariableResolver {
       throw new Error("Invalid or duplicate variable resolver.");
     this.resolvers.set(resolver.key, resolver);
   }
-  private tokens(template: string) { return templateTokens(template, new Set(this.resolvers.keys())); }
+  private tokens(template: string) {
+    return templateTokens(template, new Set(this.resolvers.keys()));
+  }
   public validate(template: string): void {
     this.tokens(template);
   }
@@ -114,20 +119,33 @@ export class CustomCommandVariableResolver {
     template: string,
     context: CustomCommandExecutionContext,
   ): Promise<string> {
-    let result = "";
-    let position = 0;
-    for (const token of this.tokens(template)) {
-      result += template.slice(position, token.start);
-      result += /^args\.\d+$/.test(token.key)
-        ? (context.args[Number(token.key.slice(5))] ?? "")
-        : await this.resolvers.get(token.key)!.resolve(context);
+    const variables = customVariables(context.command.content);
+    const keys = new Set([...this.resolvers.keys(), ...Object.keys(variables)]);
+    const cache = new Map<string, string>();
+    const expand = async (source: string): Promise<string> => {
+      let result = "";
+      let position = 0;
+      for (const token of templateTokens(source, keys)) {
+        result += source.slice(position, token.start);
+        if (Object.hasOwn(variables, token.key)) {
+          if (!cache.has(token.key))
+            cache.set(token.key, await expand(variables[token.key]));
+          result += cache.get(token.key)!;
+        } else
+          result += /^args\.\d+$/.test(token.key)
+            ? (context.args[Number(token.key.slice(5))] ?? "")
+            : await this.resolvers.get(token.key)!.resolve(context);
+        if (result.length > L.templateInput)
+          throw new CustomCommandValidationError(
+            "Rendered output is too long.",
+          );
+        position = token.end;
+      }
+      result += source.slice(position);
       if (result.length > L.templateInput)
         throw new CustomCommandValidationError("Rendered output is too long.");
-      position = token.end;
-    }
-    result += template.slice(position);
-    if (result.length > L.templateInput)
-      throw new CustomCommandValidationError("Rendered output is too long.");
-    return result;
+      return result;
+    };
+    return expand(template);
   }
 }

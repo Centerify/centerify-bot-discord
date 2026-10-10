@@ -20,7 +20,13 @@ import type {
   EffectAction,
 } from "./types.js";
 import { responseActions, isEffectAction } from "./components.js";
-import { URL_VARIABLES, templateSyntax } from "./variables.js";
+import {
+  URL_VARIABLES,
+  templateSyntax,
+  templateTokens,
+  TEMPLATE_VARIABLE_KEYS,
+  customVariables,
+} from "./variables.js";
 
 export function normalizeCommandName(name: string): string {
   return name.trim().toLowerCase();
@@ -237,6 +243,26 @@ export class CustomCommandValidator {
       return fail(`Provide 1–${L.messages} response messages.`);
     if (JSON.stringify(input).length > L.templateInput)
       fail("Response payload is too large.");
+    const variables = customVariables(
+      input.filter((entry) => entry && typeof entry === "object"),
+    );
+    if (Object.keys(variables).length) {
+      const keys = new Set<string>([
+        ...TEMPLATE_VARIABLE_KEYS,
+        ...Object.keys(variables),
+      ]);
+      return new CustomCommandValidator({
+        validate: (value) => {
+          templateTokens(value, keys);
+        },
+      }).responsePayload(input, templates);
+    }
+    return this.responsePayload(input, templates);
+  }
+  private responsePayload(
+    input: unknown[],
+    templates: boolean,
+  ): ResponseTemplate[] {
     const responses: ResponseTemplate[] = Array.from(input).map((entry) => {
       const data = object(entry, "Response", [
         "type",
@@ -245,14 +271,19 @@ export class CustomCommandValidator {
         "buttons",
         "selects",
         "stage",
+        "variables",
       ]);
       if (
         data.stage !== undefined &&
         (!Number.isSafeInteger(data.stage) || (data.stage as number) < 0)
       )
         fail("Stage must be a nonnegative integer.");
-      const stage =
-        data.stage === undefined ? {} : { stage: data.stage as number };
+      const stage = {
+        ...(data.stage === undefined ? {} : { stage: data.stage as number }),
+        ...(data.variables === undefined
+          ? {}
+          : { variables: { ...(data.variables as Record<string, string>) } }),
+      };
       const buttons =
         data.buttons === undefined
           ? {}
