@@ -9,6 +9,7 @@ import {
   StringSelectMenuBuilder,
 } from "discord.js";
 import type { CustomCommandRecord } from "../domain/types.js";
+import { customVariables } from "../domain/variables.js";
 import {
   CUSTOM_COMMAND_LIMITS as L,
   RESTRICTION_KEYS,
@@ -141,16 +142,20 @@ export function editorView(
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(`${prefix}markdown-download`)
-      .setLabel("Download .txt")
+      .setLabel("Download .cfg")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`${prefix}markdown-help`)
       .setLabel("Syntax & example")
       .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`${prefix}custom-variables`)
+      .setLabel("Edit custom variables")
+      .setStyle(ButtonStyle.Secondary),
   );
   return {
     ...panel(
-      `**Response template**\n${command.content.length} ordered response(s) • ${command.cooldownSeconds}s ${command.cooldownScope} cooldown.\n\nStart with @main for the first embed; @stage(n) adds a page. Add a Rules button with @button primary [Rules](Go(stage(1))). Put every @ directive at the start of its line. **Edit Template** replaces all responses after validation. Use **Preview** to check the saved result.\n\nFor templates over 4,000 characters, download the .txt source, edit it, then upload it with \`/custom template name:${command.name} file:…\`.`,
+      `**Response template**\n${Object.keys(customVariables(command.content)).length} custom variable(s) • ${command.content.length} ordered response(s) • ${command.cooldownSeconds}s ${command.cooldownScope} cooldown.\n\nUse **Edit custom variables** to define USER_ID = {user.id} and insert {USER_ID} in your template.\n\nStart with @main for the first embed; @stage(n) adds a page. Add a Rules button with @button primary [Rules](Go(stage(1))). Put every @ directive at the start of its line. **Edit Template** replaces all responses after validation. Use **Preview** to check the saved result.\n\nFor templates over 4,000 characters, download the .cfg source, edit it, then upload it with \`/custom template name:${command.name} file:…\`.`,
     ),
     components: [navigation, controls],
     allowedMentions: { parse: [] as [] },

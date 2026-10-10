@@ -45,8 +45,8 @@ test("the downloaded stream is bounded independently of reported attachment size
   );
 });
 
-test("template uploads prefer .txt, accept legacy .md, and enforce size limits", async () => {
-  const template = { ...attachment, name: "command.txt" };
+test("template uploads accept .cfg and legacy text formats, and enforce size limits", async () => {
+  const template = { ...attachment, name: "command.cfg" };
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation(async () => new Response("**Hello**")),
@@ -60,6 +60,8 @@ test("template uploads prefer .txt, accept legacy .md, and enforce size limits",
       "markdown",
     ),
   ).toBe("**Hello**");
+  for (const extension of [".txt", ".markdown", ".CFG"])
+    expect(await readCommandAttachment({ ...template, name: `command${extension}` } as never, "markdown")).toBe("**Hello**");
   await expect(
     readCommandAttachment(attachment as never, "markdown"),
   ).rejects.toThrow(".txt");

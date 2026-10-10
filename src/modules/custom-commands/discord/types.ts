@@ -15,6 +15,9 @@ export interface CustomCommandTransport {
   send(payload: MessageCreateOptions, index: number): Promise<unknown>;
   deleteInvocation?(): Promise<unknown>;
 }
+export interface CustomCommandExecutionPort {
+  execute(context: CustomCommandExecutionContext, transport: CustomCommandTransport): Promise<void>;
+}
 export interface VariableResolver {
   key: string;
   resolve(context: CustomCommandExecutionContext): string | Promise<string>;

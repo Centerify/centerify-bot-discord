@@ -8,7 +8,7 @@ export async function readCommandAttachment(
 ): Promise<string> {
   const maxBytes = format === "json" ? L.importBytes : L.markdownInput * 4;
   const extensions =
-    format === "json" ? [".json"] : [".txt", ".md", ".markdown"];
+    format === "json" ? [".json"] : [".cfg", ".txt", ".md", ".markdown"];
   if (
     attachment.size > maxBytes ||
     !extensions.some((extension) =>
@@ -18,7 +18,7 @@ export async function readCommandAttachment(
     throw new CustomCommandValidationError(
       format === "json"
         ? "Upload a JSON file no larger than 8 MB."
-        : `Upload a .txt, .md or .markdown file no larger than ${maxBytes} bytes.`,
+        : `Upload a .cfg (or legacy .txt, .md or .markdown) file no larger than ${maxBytes} bytes.`,
     );
   const url = new URL(attachment.url);
   if (

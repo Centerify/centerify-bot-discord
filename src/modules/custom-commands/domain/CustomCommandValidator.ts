@@ -1,4 +1,7 @@
-import { PERMISSION_NAMES, type PermissionName as PermissionsString } from "./permissions.js";
+import {
+  PERMISSION_NAMES,
+  type PermissionName as PermissionsString,
+} from "./permissions.js";
 import {
   CUSTOM_COMMAND_LIMITS as L,
   COOLDOWN_SCOPES,
@@ -12,8 +15,18 @@ import type {
   EmbedTemplate,
   ButtonTemplate,
   ResponseTemplate,
+  ComponentAction,
+  SelectTemplate,
+  EffectAction,
 } from "./types.js";
-import { URL_VARIABLES, templateSyntax } from "./variables.js";
+import { responseActions, isEffectAction } from "./components.js";
+import {
+  URL_VARIABLES,
+  templateSyntax,
+  templateTokens,
+  TEMPLATE_VARIABLE_KEYS,
+  customVariables,
+} from "./variables.js";
 
 export function normalizeCommandName(name: string): string {
   return name.trim().toLowerCase();
@@ -106,10 +119,21 @@ const definitionKeys = [
   "deleteInvocation",
   "replyToInvocation",
 ];
+export const COMPONENT_ACTION_FIELDS = [
+  "userId",
+  "reason",
+  "durationMs",
+  "caseNumber",
+  "deleteMessageSeconds",
+  "nickname",
+  "text",
+  "channelId",
+  "actions",
+  "successMessage",
+  "repeatable",
+] as const;
 export class CustomCommandValidator {
-  public constructor(
-    public readonly variables = templateSyntax,
-  ) {}
+  public constructor(public readonly variables = templateSyntax) {}
   public name(input: unknown): string {
     const name = normalizeCommandName(text(input, "Name", L.name));
     if (!/^[\p{L}\p{N}_-][\p{L}\p{N}\p{M}_-]*$/u.test(name))
@@ -219,31 +243,66 @@ export class CustomCommandValidator {
       return fail(`Provide 1–${L.messages} response messages.`);
     if (JSON.stringify(input).length > L.templateInput)
       fail("Response payload is too large.");
+    const variables = customVariables(
+      input.filter((entry) => entry && typeof entry === "object"),
+    );
+    if (Object.keys(variables).length) {
+      const keys = new Set<string>([
+        ...TEMPLATE_VARIABLE_KEYS,
+        ...Object.keys(variables),
+      ]);
+      return new CustomCommandValidator({
+        validate: (value) => {
+          templateTokens(value, keys);
+        },
+      }).responsePayload(input, templates);
+    }
+    return this.responsePayload(input, templates);
+  }
+  private responsePayload(
+    input: unknown[],
+    templates: boolean,
+  ): ResponseTemplate[] {
     const responses: ResponseTemplate[] = Array.from(input).map((entry) => {
       const data = object(entry, "Response", [
         "type",
         "text",
         "embed",
         "buttons",
+        "selects",
         "stage",
+        "variables",
       ]);
       if (
         data.stage !== undefined &&
         (!Number.isSafeInteger(data.stage) || (data.stage as number) < 0)
       )
         fail("Stage must be a nonnegative integer.");
-      const stage =
-        data.stage === undefined ? {} : { stage: data.stage as number };
+      const stage = {
+        ...(data.stage === undefined ? {} : { stage: data.stage as number }),
+        ...(data.variables === undefined
+          ? {}
+          : { variables: { ...(data.variables as Record<string, string>) } }),
+      };
       const buttons =
         data.buttons === undefined
           ? {}
           : { buttons: this.buttons(data.buttons, templates) };
+      const selects =
+        data.selects === undefined
+          ? {}
+          : { selects: this.selects(data.selects, templates) };
+      if (
+        (buttons.buttons?.length ? 1 : 0) + (selects.selects?.length ?? 0) >
+        L.componentRows
+      )
+        fail(`Use at most ${L.componentRows} component rows per message.`);
       if (data.type === "TEXT") {
         if (data.embed !== undefined)
           fail("Text responses cannot contain an embed.");
         const value = text(data.text, "Response text", L.text);
         if (templates) this.variables.validate(value);
-        return { type: "TEXT", text: value, ...stage, ...buttons };
+        return { type: "TEXT", text: value, ...stage, ...buttons, ...selects };
       }
       if (data.type !== "EMBED" || data.text !== undefined)
         return fail("Unsupported response type.");
@@ -252,6 +311,7 @@ export class CustomCommandValidator {
         embed: this.embed(data.embed, templates),
         ...stage,
         ...buttons,
+        ...selects,
       };
     });
     const stages = responses
@@ -267,13 +327,313 @@ export class CustomCommandValidator {
         "Stages require exactly one @main and unique @stage(n) markers on every response.",
       );
     for (const response of responses)
-      for (const button of response.buttons ?? [])
-        if ("action" in button) {
-          if (!stages.length) fail("Action buttons require staged responses.");
-          if (button.target !== undefined && !stages.includes(button.target))
-            fail("Button targets an unknown stage.");
-        }
+      for (const action of responseActions(response)) {
+        if (!isEffectAction(action) && !stages.length)
+          fail("Navigation actions require staged responses.");
+        if ("target" in action && !stages.includes(action.target))
+          fail("Action targets an unknown stage.");
+      }
     return responses;
+  }
+  public action(
+    data: Record<string, unknown>,
+    templates = true,
+    nested = false,
+  ): ComponentAction {
+    const aliases: Record<string, string> = {
+      setrole: "addrole",
+      setwarn: "warn",
+      addnote: "note",
+      removewarn: "unwarn",
+    };
+    const name =
+      typeof data.action === "string" ? data.action.toLowerCase() : data.action;
+    const action = choice(
+      typeof name === "string" ? (aliases[name] ?? name) : name,
+      [
+        "go",
+        "back",
+        "main",
+        "cancel",
+        "addrole",
+        "removerole",
+        "togglerole",
+        "warn",
+        "unwarn",
+        "note",
+        "timeout",
+        "removetimeout",
+        "kick",
+        "ban",
+        "unban",
+        "setnickname",
+        "reply",
+        "sendmessage",
+        "sequence",
+      ] as const,
+      "Component action",
+    );
+    const effect = !["go", "back", "main", "cancel"].includes(action);
+    if (nested && (!effect || action === "sequence"))
+      fail(
+        "Sequences contain only individual effect actions; navigation and nested sequences are unsupported.",
+      );
+    const fields: Record<typeof action, string[]> = {
+      go: ["target"],
+      back: ["target"],
+      main: [],
+      cancel: [],
+      addrole: ["roleId", "userId"],
+      removerole: ["roleId", "userId"],
+      togglerole: ["roleId", "userId"],
+      warn: ["userId", "reason", "durationMs"],
+      unwarn: ["userId", "reason", "caseNumber"],
+      note: ["userId", "reason"],
+      timeout: ["userId", "reason", "durationMs"],
+      removetimeout: ["userId", "reason"],
+      kick: ["userId", "reason"],
+      ban: ["userId", "reason", "deleteMessageSeconds"],
+      unban: ["userId", "reason"],
+      setnickname: ["userId", "nickname"],
+      reply: ["text"],
+      sendmessage: ["text", "channelId"],
+      sequence: ["actions"],
+    };
+    const allowed = [
+      "action",
+      "label",
+      "description",
+      "style",
+      ...fields[action],
+      ...(effect ? ["successMessage", "repeatable"] : []),
+    ];
+    if (Object.keys(data).some((key) => !allowed.includes(key)))
+      fail(`Unsupported fields for ${action} action.`);
+    const checkedText = (
+      value: unknown,
+      label: string,
+      max: number,
+      empty = false,
+    ) => {
+      const result = text(value, label, max, empty);
+      if (templates) this.variables.validate(result);
+      return result;
+    };
+    const id = (value: unknown, label: string): string => {
+      const result = text(value, label, 100);
+      if (/^\d{17,20}$/.test(result)) return result;
+      if (templates && /^\{[^{}]+\}$/.test(result)) {
+        this.variables.validate(result);
+        return result;
+      }
+      return fail(
+        `${label} requires a Discord ID or a complete variable placeholder.`,
+      );
+    };
+    const options = {
+      ...(data.successMessage === undefined
+        ? {}
+        : {
+            successMessage: checkedText(
+              data.successMessage,
+              "Success message",
+              L.text,
+            ),
+          }),
+      ...(data.repeatable === undefined
+        ? {}
+        : { repeatable: boolean(data.repeatable, "Repeatable") }),
+    };
+    if (action === "go" || action === "back") {
+      if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
+        fail("Navigation requires a stage target.");
+      if (data.roleId !== undefined)
+        fail("Navigation cannot contain a role ID.");
+      return { action, target: data.target as number };
+    }
+    if (data.target !== undefined)
+      fail("This action cannot have a stage target.");
+    if (action === "main" || action === "cancel") {
+      if (data.roleId !== undefined)
+        fail("This action cannot contain a role ID.");
+      return { action };
+    }
+    if (action === "sequence") {
+      if (
+        !Array.isArray(data.actions) ||
+        !data.actions.length ||
+        data.actions.length > L.actionSteps
+      )
+        return fail(`Provide 1–${L.actionSteps} sequence actions.`);
+      return {
+        action,
+        actions: data.actions.map(
+          (entry) =>
+            this.action(
+              object(entry, "Sequence step", [
+                "action",
+                "roleId",
+                ...COMPONENT_ACTION_FIELDS,
+              ]),
+              templates,
+              true,
+            ) as EffectAction,
+        ),
+        ...options,
+      };
+    }
+    if (
+      action === "addrole" ||
+      action === "removerole" ||
+      action === "togglerole"
+    ) {
+      if (typeof data.roleId !== "string" || !/^\d{17,20}$/.test(data.roleId))
+        return fail("Role actions require a Discord role ID.");
+      return {
+        action,
+        roleId: data.roleId,
+        ...(data.userId === undefined
+          ? {}
+          : { userId: id(data.userId, "Target member") }),
+        ...options,
+      };
+    }
+    if (action === "reply" || action === "sendmessage") {
+      return {
+        action,
+        text: checkedText(data.text, "Action message", L.text),
+        ...(data.channelId === undefined
+          ? {}
+          : { channelId: id(data.channelId, "Target channel") }),
+        ...options,
+      };
+    }
+    const userId = id(data.userId, "Target member");
+    if (action === "setnickname")
+      return {
+        action,
+        userId,
+        nickname: checkedText(data.nickname, "Nickname", L.nickname, true),
+        ...options,
+      };
+    const reason = checkedText(data.reason, "Action reason", L.actionReason);
+    if (action === "warn" || action === "timeout") {
+      if (data.durationMs !== undefined || action === "timeout") {
+        if (
+          !Number.isSafeInteger(data.durationMs) ||
+          (data.durationMs as number) < 60_000 ||
+          (data.durationMs as number) > L.timeoutMs
+        )
+          fail(
+            "Duration must be between 1 minute and 28 days in milliseconds.",
+          );
+      }
+      if (action === "timeout")
+        return {
+          action,
+          userId,
+          reason,
+          durationMs: data.durationMs as number,
+          ...options,
+        };
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.durationMs === undefined
+          ? {}
+          : { durationMs: data.durationMs as number }),
+        ...options,
+      };
+    }
+    if (action === "unwarn") {
+      if (
+        data.caseNumber !== undefined &&
+        (!Number.isSafeInteger(data.caseNumber) ||
+          (data.caseNumber as number) < 1)
+      )
+        fail("Case number must be a positive integer.");
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.caseNumber === undefined
+          ? {}
+          : { caseNumber: data.caseNumber as number }),
+        ...options,
+      };
+    }
+    if (action === "ban") {
+      if (
+        data.deleteMessageSeconds !== undefined &&
+        (!Number.isSafeInteger(data.deleteMessageSeconds) ||
+          (data.deleteMessageSeconds as number) < 0 ||
+          (data.deleteMessageSeconds as number) > 7 * 24 * 60 * 60)
+      )
+        fail("Ban message deletion must be between 0 and 604800 seconds.");
+      return {
+        action,
+        userId,
+        reason,
+        ...(data.deleteMessageSeconds === undefined
+          ? {}
+          : { deleteMessageSeconds: data.deleteMessageSeconds as number }),
+        ...options,
+      };
+    }
+    return { action, userId, reason, ...options };
+  }
+  public selects(input: unknown, templates = true): SelectTemplate[] {
+    if (!Array.isArray(input) || input.length > L.componentRows)
+      return fail(`Use at most ${L.componentRows} selects per message.`);
+    return input.map((entry) => {
+      const data = object(entry, "Select", ["placeholder", "options"]);
+      const placeholder = text(
+        data.placeholder,
+        "Select placeholder",
+        L.selectPlaceholder,
+      );
+      if (/[\r\n]/.test(placeholder))
+        fail("Select placeholders must be a single line.");
+      if (templates) this.variables.validate(placeholder);
+      if (
+        !Array.isArray(data.options) ||
+        !data.options.length ||
+        data.options.length > L.selectOptions
+      )
+        return fail(`Provide 1–${L.selectOptions} select options.`);
+      const options = data.options.map((entry) => {
+        const option = object(entry, "Select option", [
+          "label",
+          "description",
+          "action",
+          "target",
+          "roleId",
+          ...COMPONENT_ACTION_FIELDS,
+        ]);
+        const label = text(option.label, "Select option label", L.selectLabel);
+        const description =
+          option.description === undefined
+            ? undefined
+            : text(
+                option.description,
+                "Select option description",
+                L.selectLabel,
+              );
+        for (const value of [label, description]) {
+          if (value === undefined) continue;
+          if (/[\r\n]/.test(value))
+            fail("Select labels and descriptions must be a single line.");
+          if (templates) this.variables.validate(value);
+        }
+        return {
+          ...this.action(option, templates),
+          label,
+          ...(description === undefined ? {} : { description }),
+        };
+      });
+      return { placeholder, options };
+    });
   }
   public buttons(input: unknown, templates = true): ButtonTemplate[] {
     if (!Array.isArray(input) || input.length > L.buttons)
@@ -285,6 +645,8 @@ export class CustomCommandValidator {
         "action",
         "target",
         "style",
+        "roleId",
+        ...COMPONENT_ACTION_FIELDS,
       ]);
       const label = text(data.label, "Button label", L.buttonLabel);
       if (/[\r\n]/.test(label)) fail("Button labels must be a single line.");
@@ -292,22 +654,9 @@ export class CustomCommandValidator {
       if (data.action !== undefined) {
         if (data.url !== undefined)
           fail("Action buttons cannot contain a URL.");
-        const action = choice(
-          data.action,
-          ["go", "back", "main", "cancel"] as const,
-          "Button action",
-        );
-        if (action === "go" || action === "back") {
-          if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
-            fail("Navigation requires a stage target.");
-        } else if (data.target !== undefined)
-          fail("This action cannot have a stage target.");
         return {
           label,
-          action,
-          ...(data.target === undefined
-            ? {}
-            : { target: data.target as number }),
+          ...this.action(data, templates),
           ...(data.style === undefined
             ? {}
             : {
@@ -319,7 +668,7 @@ export class CustomCommandValidator {
               }),
         };
       }
-      if (data.style !== undefined || data.target !== undefined)
+      if (Object.keys(data).some((key) => key !== "label" && key !== "url"))
         fail("Link buttons cannot have an action style or target.");
       const target = url(text(data.url, "Button URL", L.buttonUrl));
       return { label, url: target };

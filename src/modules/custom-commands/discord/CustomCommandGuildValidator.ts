@@ -1,6 +1,11 @@
 import type { Guild } from "discord.js";
 import type { CustomCommandDefinition } from "../domain/types.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
+import {
+  responseRoleIds,
+  responseChannelIds,
+  responseUserIds,
+} from "../domain/components.js";
 export async function validateGuildReferences(
   guild: Guild,
   commands: CustomCommandDefinition[],
@@ -9,12 +14,14 @@ export async function validateGuildReferences(
     commands.flatMap((command) => [
       ...command.allowedRoleIds,
       ...command.deniedRoleIds,
+      ...responseRoleIds(command.content),
     ]),
   );
   const channels = new Set(
     commands.flatMap((command) => [
       ...command.allowedChannelIds,
       ...command.deniedChannelIds,
+      ...responseChannelIds(command.content),
     ]),
   );
   // Refresh before administrative writes; don't trust submitted select/attachment IDs.
@@ -25,11 +32,31 @@ export async function validateGuildReferences(
       throw new CustomCommandValidationError(
         `Role ${id} does not belong to this server.`,
       );
+  for (const id of commands.flatMap((command) =>
+    responseRoleIds(command.content),
+  )) {
+    const role = guild.roles.cache.get(id)!;
+    if (id === guild.id || role.managed)
+      throw new CustomCommandValidationError(
+        "Role actions cannot use @everyone or managed roles.",
+      );
+  }
   for (const id of channels) {
     const channel = guild.channels.cache.get(id);
     if (!channel || channel.guildId !== guild.id || !channel.isTextBased())
       throw new CustomCommandValidationError(
         `Channel ${id} is not a text channel in this server.`,
+      );
+  }
+  for (const id of new Set(
+    commands.flatMap((command) => responseUserIds(command.content, true)),
+  )) {
+    const member = await guild.members
+      .fetch({ user: id, force: true })
+      .catch(() => null);
+    if (!member || member.guild.id !== guild.id)
+      throw new CustomCommandValidationError(
+        `Member ${id} does not belong to this server. Use a target variable for reusable templates.`,
       );
   }
 }

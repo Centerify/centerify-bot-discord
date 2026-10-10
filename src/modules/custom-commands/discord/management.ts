@@ -22,6 +22,7 @@ import {
 import { parseArguments } from "./CustomCommandVariableResolver.js";
 import { readCommandAttachment } from "./CustomCommandImport.js";
 import { markdownPatch } from "./markdown.js";
+import { customVariables } from "../domain/variables.js";
 import { openCustomCommandEditor } from "./editor.js";
 
 export function canManageCustomCommands(member: GuildMember): boolean {
@@ -331,7 +332,7 @@ export async function handleCustomManagement(
         interaction.options.getAttachment("file", true),
         "markdown",
       );
-      const patch = markdownPatch(source);
+      const patch = markdownPatch(source, customVariables(command.content));
       const current = command.sourceGuildId
         ? await customCommandSharingService.forManagement(
             interaction.client,

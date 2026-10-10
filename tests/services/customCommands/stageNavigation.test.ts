@@ -35,6 +35,8 @@ function setup() {
     const interaction = {
       customId: id,
       user: { id: userId },
+      isButton: () => true,
+      isStringSelectMenu: () => false,
       reply: vi.fn().mockResolvedValue(undefined),
       update: vi.fn().mockResolvedValue(undefined),
       deferUpdate: vi.fn().mockResolvedValue(undefined),
@@ -109,6 +111,7 @@ test("failed updates keep the current stage and allow a retry", async () => {
   await handler({
     customId: "cc-stage:0:0",
     user: { id: USER },
+    isButton: () => true,
     update: vi.fn().mockRejectedValue(new Error("network")),
   });
   expect((await click("cc-stage:0:0")).update).toHaveBeenCalled();
@@ -134,6 +137,7 @@ test("concurrent clicks are acknowledged without racing stage updates", async ()
   const pending = handler({
     customId: "cc-stage:0:0",
     user: { id: USER },
+    isButton: () => true,
     update,
   });
   expect((await click("cc-stage:0:1")).deferUpdate).toHaveBeenCalled();

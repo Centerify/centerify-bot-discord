@@ -29,6 +29,8 @@ export * from "./permissionGuards.js";
 export * from "./renderer.js";
 export * from "./warningRoleNames.js";
 export { runWarn } from "./warn.js";
+export { parseDuration } from "./durationParser.js";
+export { scheduleWarningRoleRemoval, cancelWarningRoleRemoval, removeWarningRoleIfUnused } from "./warningRoles.js";
 import { createWarningRoleLifecycle, warningLifecycleToken, restoreWarningRoleExpirations } from "./warningRoles.js";
 import { loggerToken } from "../../../core/index.js";
 

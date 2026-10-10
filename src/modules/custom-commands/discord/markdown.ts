@@ -2,12 +2,25 @@ import { Colors } from "discord.js";
 import type {
   EmbedTemplate,
   ResponseTemplate,
+  ComponentAction,
+  SelectTemplate,
 } from "../domain/types.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
-import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
+import {
+  CustomCommandValidator,
+  object,
+  COMPONENT_ACTION_FIELDS,
+} from "../domain/CustomCommandValidator.js";
+import { parseDuration } from "../../moderation/discord/index.js";
+import {
+  customVariables,
+  templateTokens,
+  TEMPLATE_VARIABLE_KEYS,
+} from "../domain/variables.js";
 
-export const MARKDOWN_EXAMPLE = `@main
+export const MARKDOWN_EXAMPLE = `@var USER_ID = {user.id}
+@main
 @title Welcome to {guild.name}!
 @color Blurple
 @thumbnail {user.avatar}
@@ -27,7 +40,7 @@ Read the full rules in:
 @button danger [Close](Cancel)`;
 
 export const MARKDOWN_HELP = `**Template syntax**
-Start with \`@main\` for the first embed. Each \`@stage(n)\` starts another embed. Put directives at the **start of a line**, without indentation. Ordinary lines become the description. The attached example has a Rules page.
+Start with \`@main\`; \`@stage(n)\` adds an embed. Directives belong at the **start of a line**. Ordinary lines become the description. The example has a Rules page. Define \`@var USER_ID = {user.id}\` before the template; use \`{USER_ID}\` in text/actions.
 
 **Buttons** (up to five per stage)
 \`@button primary [Rules](Go(stage(1)))\` — open page 1
@@ -35,14 +48,128 @@ Start with \`@main\` for the first embed. Each \`@stage(n)\` starts another embe
 \`@button success [Home](Main)\` — return to the first page
 \`@button danger [Close](Cancel)\` — remove controls
 \`@button [Website](https://example.com)\` — open a link
-Styles: primary, secondary, success, danger. Links use the link style.
+Styles: primary, secondary, success, danger.
+\`@button success [Join](SetRole(ROLE_ID))\` — add a role
+Also: \`AddRole(ID)\`, \`RemoveRole(ID)\`, \`ToggleRole(ID)\`.
+**Dropdowns**: \`@select Choose\`, then \`@option [Rules](Go(stage(1)))\`, then \`@endselect\`.
+
+**Custom actions**
+\`@button [Warn](SetWarn("{args.0}", "Reason", "1h"))\`
+\`@button [Note](AddNote("{args.0}", "Note"))\`
+Also: Unwarn, Timeout, RemoveTimeout, Kick, Ban, Unban, SetNickname, Reply, SendMessage. Quote IDs and text. \`Action({...})\` configures all fields; \`Actions([...])\` runs up to ten steps. Options use the same actions. Preview executes no effects.
 
 **Embed options**
 \`@title Text\` · \`@color Blurple\` or \`@color #5865f2\` · \`@cover URL\` · \`@thumbnail URL\` · \`@footer Text\`
-\`@field Name\`, then the value on following lines, then \`@endfield\`. Optional \`@inline true\` goes inside the field.
-\`@channel 123456789012345678\` mentions a specific channel. Replace the example ID with your channel's ID; this also works inside a field.
+\`@field Name\`, then its value, then \`@endfield\`; optional \`@inline true\` goes inside.
+\`@channel CHANNEL_ID\` mentions a channel.
 
-For plain text, use Discord Markdown. For separate text/embed messages, use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. A staged block needs its own marker. Maximum five messages or stages. Variables work in text and button labels. Saving replaces all responses; command settings stay unchanged.`;
+Separate messages use \`:::text\` or \`:::embed\` blocks closed by \`:::\`. Maximum five messages or stages. Variables work in labels, action targets and text.`;
+
+function parseAction(
+  value: string,
+  validator: CustomCommandValidator,
+): ComponentAction | undefined {
+  const navigation = /^(go|back)\(stage\((\d+)\)\)$/i.exec(value);
+  if (navigation)
+    return {
+      action: navigation[1].toLowerCase() as "go" | "back",
+      target: Number(navigation[2]),
+    };
+  const simple = /^(main|cancel|cancle)(?:\(\))?$/i.exec(value);
+  if (simple)
+    return { action: simple[1].toLowerCase() === "main" ? "main" : "cancel" };
+  const role = /^(setrole|addrole|removerole|togglerole)\((\d{17,20})\)$/i.exec(
+    value,
+  );
+  if (role)
+    return {
+      action:
+        role[1].toLowerCase() === "setrole"
+          ? "addrole"
+          : (role[1].toLowerCase() as "addrole" | "removerole" | "togglerole"),
+      roleId: role[2],
+    };
+  const call =
+    /^(action|actions|setwarn|warn|unwarn|removewarn|addnote|note|timeout|removetimeout|kick|ban|unban|setnickname|reply|sendmessage|setrole|addrole|removerole|togglerole)\(([\s\S]*)\)$/i.exec(
+      value,
+    );
+  if (call) {
+    const name = call[1].toLowerCase();
+    let data: Record<string, unknown>;
+    try {
+      if (name === "action")
+        data = object(JSON.parse(call[2]), "Action", [
+          "action",
+          "target",
+          "roleId",
+          ...COMPONENT_ACTION_FIELDS,
+        ]);
+      else if (name === "actions")
+        data = { action: "sequence", actions: JSON.parse(call[2]) };
+      else {
+        const args: unknown[] = JSON.parse(`[${call[2]}]`);
+        const fields: Record<string, string[]> = {
+          setrole: ["roleId", "userId"],
+          addrole: ["roleId", "userId"],
+          removerole: ["roleId", "userId"],
+          togglerole: ["roleId", "userId"],
+          setwarn: ["userId", "reason", "durationMs"],
+          warn: ["userId", "reason", "durationMs"],
+          unwarn: ["userId", "reason", "caseNumber"],
+          removewarn: ["userId", "reason", "caseNumber"],
+          addnote: ["userId", "reason"],
+          note: ["userId", "reason"],
+          timeout: ["userId", "durationMs", "reason"],
+          removetimeout: ["userId", "reason"],
+          kick: ["userId", "reason"],
+          ban: ["userId", "reason", "deleteMessageSeconds"],
+          unban: ["userId", "reason"],
+          setnickname: ["userId", "nickname"],
+          reply: ["text"],
+          sendmessage: ["channelId", "text"],
+        };
+        if (args.length > fields[name].length)
+          throw new CustomCommandValidationError(
+            `Too many arguments for ${name}.`,
+          );
+        data = { action: name };
+        args.forEach((arg, index) => {
+          const field = fields[name][index];
+          data[field] =
+            field === "durationMs" && typeof arg === "string"
+              ? (parseDuration(arg) ?? 0)
+              : arg;
+        });
+      }
+    } catch (error) {
+      if (error instanceof CustomCommandValidationError) throw error;
+      throw new CustomCommandValidationError(
+        "Action arguments must use JSON strings, numbers or structured action objects. Quote IDs and text.",
+      );
+    }
+    return validator.action(data);
+  }
+  return undefined;
+}
+
+function serializeAction(action: ComponentAction): string {
+  if (
+    "roleId" in action &&
+    action.userId === undefined &&
+    action.successMessage === undefined &&
+    action.repeatable === undefined
+  )
+    return `${action.action}(${action.roleId})`;
+  if ("target" in action) return `${action.action}(stage(${action.target}))`;
+  if (action.action === "main" || action.action === "cancel")
+    return action.action;
+  const data = Object.fromEntries(
+    Object.entries(action).filter(
+      ([key]) => !["label", "description", "style"].includes(key),
+    ),
+  );
+  return `Action(${JSON.stringify(data)})`;
+}
 
 function scalar(input: string, line: number): string {
   const value = input.trim();
@@ -59,7 +186,10 @@ function scalar(input: string, line: number): string {
 }
 
 /** Parse a small declarative dialect. No expressions, HTML or code are executed. */
-export function parseCommandMarkdown(source: string): ResponseTemplate[] {
+export function parseCommandMarkdown(
+  source: string,
+  savedVariables: Record<string, string> = {},
+): ResponseTemplate[] {
   if (!source.trim() || source.length > L.markdownInput)
     throw new CustomCommandValidationError(
       `Markdown must contain 1–${L.markdownInput} characters.`,
@@ -68,6 +198,32 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
     .replace(/^\uFEFF/, "")
     .replace(/\r\n?/g, "\n")
     .split("\n");
+  const variables = customVariables([{ variables: savedVariables }]);
+  const declared = new Set<string>();
+  let headerEnd = -1;
+  for (const [index, line] of lines.entries()) {
+    if (!line.trim()) continue;
+    if (!line.startsWith("@var ")) break;
+    const entry = /^@var ([A-Z][A-Z0-9_]{0,49})\s*=\s*(.*)$/.exec(line);
+    if (!entry || declared.has(entry[1]))
+      throw new CustomCommandValidationError(
+        `Markdown line ${index + 1}: use unique @var NAME = value definitions before the template.`,
+      );
+    variables[entry[1]] = scalar(entry[2], index + 1);
+    declared.add(entry[1]);
+    lines[index] = "";
+    headerEnd = index;
+  }
+  customVariables([{ variables }]);
+  const keys = new Set<string>([
+    ...TEMPLATE_VARIABLE_KEYS,
+    ...Object.keys(variables),
+  ]);
+  const validator = new CustomCommandValidator({
+    validate: (value) => {
+      templateTokens(value, keys);
+    },
+  });
   const stagedShorthand = /^@(?:main|stage\(\d+\))$/.test(
     lines.find((line) => line.trim()) ?? "",
   );
@@ -81,6 +237,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   let fieldBody: string[] = [],
     fence: { char: string; length: number } | undefined;
   let seen = new Set<string>();
+  let select: SelectTemplate | undefined;
   const responses: ResponseTemplate[] = [];
   const fail = (line: number, message: string): never => {
     throw new CustomCommandValidationError(`Markdown line ${line}: ${message}`);
@@ -89,6 +246,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   const finish = (line: number) => {
     if (!response) return;
     if (field) fail(line, "close the field with @endfield.");
+    if (select) fail(line, "close the select with @endselect.");
     const text = body.join("\n");
     if (response.type === "TEXT") response.text = text;
     else if (text.length) response.embed.description = text;
@@ -101,6 +259,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   };
   for (const [index, line] of lines.entries()) {
     const number = index + 1;
+    if (index <= headerEnd) continue;
     if (fence) {
       append(line);
       if (new RegExp(`^ {0,3}${fence.char}{${fence.length},}\\s*$`).test(line))
@@ -110,6 +269,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
     const stageMarker = /^@(main|stage\((\d+)\))$/.exec(line);
     if (stageMarker) {
       if (field) fail(number, "close the field before a stage marker.");
+      if (select) fail(number, "close the select before a stage marker.");
       if (stagedShorthand) {
         if (index > 0) finish(number);
         response = { type: "EMBED", embed: {} };
@@ -153,6 +313,7 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
     if (line.startsWith(":::"))
       fail(number, "close the current block with ::: before starting another.");
     if (!line.startsWith("@")) {
+      if (select && line.trim()) fail(number, "use @option inside a select.");
       append(line);
       continue;
     }
@@ -164,6 +325,37 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
       );
     const key = match![1],
       raw = match![2] ?? "";
+    if (select) {
+      if (key === "endselect" && !raw) {
+        select = undefined;
+        continue;
+      }
+      if (key === "option") {
+        const option = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(raw);
+        const action = option && parseAction(option[2], validator);
+        if (!option || !action)
+          fail(
+            number,
+            "use @option [Label](Action); URL options are unsupported.",
+          );
+        select.options.push({
+          label: option![1].replace(/\\(.)/g, "$1"),
+          ...action!,
+        });
+        continue;
+      }
+      if (key === "option-description") {
+        const option = select.options.at(-1);
+        if (!option || option.description !== undefined)
+          fail(number, "place one @option-description after an option.");
+        option!.description = scalar(raw, number);
+        continue;
+      }
+      fail(
+        number,
+        "close the select with @endselect before another directive.",
+      );
+    }
     if (key === "channel") {
       const id =
         /^(\d{17,20})$/.exec(raw)?.[1] ?? /^<#(\d{17,20})>$/.exec(raw)?.[1];
@@ -191,6 +383,13 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
     }
     if (field)
       fail(number, "close the field with @endfield before another directive.");
+    if (key === "select" || key === "dropdown") {
+      select = { placeholder: scalar(raw, number), options: [] };
+      (response!.selects ??= []).push(select);
+      continue;
+    }
+    if (["option", "option-description", "endselect"].includes(key))
+      fail(number, `@${key} requires an open @select.`);
     if (key === "button") {
       const styled =
         /^(?:(primary|secondary|success|danger|link)\s+)?(.*)$/i.exec(raw)!;
@@ -199,18 +398,12 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
       if (!link) fail(number, "use @button [Label](https://example.com).");
       const label = link![1].replace(/\\(.)/g, "$1");
       const target = link![2];
-      const navigation = /^(go|back)\(stage\((\d+)\)\)$/i.exec(target);
-      const simple = /^(main|cancel|cancle)(?:\(\))?$/i.exec(target);
-      if (navigation || simple) {
+      const action = parseAction(target, validator);
+      if (action) {
         if (style === "link") fail(number, "actions cannot use link style.");
         (response!.buttons ??= []).push({
           label,
-          action: navigation
-            ? (navigation[1].toLowerCase() as "go" | "back")
-            : simple![1].toLowerCase() === "main"
-              ? "main"
-              : "cancel",
-          ...(navigation ? { target: Number(navigation[2]) } : {}),
+          ...action,
           ...(style
             ? { style: style as "primary" | "secondary" | "success" | "danger" }
             : {}),
@@ -296,6 +489,8 @@ export function parseCommandMarkdown(source: string): ResponseTemplate[] {
   if (explicit && response) fail(lines.length, "missing closing :::.");
   if (fence) fail(lines.length, "unclosed code fence.");
   finish(lines.length);
+  if (responses[0] && Object.keys(variables).length)
+    responses[0].variables = variables;
   return new CustomCommandValidator().responses(responses);
 }
 
@@ -313,7 +508,10 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
         /^(?:@|:::|\\| {0,3}(?:`{3,}|~{3,}))/.test(line) ? `\\${line}` : line,
       )
       .join("\n");
-  return content
+  const definitions = Object.entries(customVariables(content)).map(
+    ([key, value]) => `@var ${key} = ${quote(value)}`,
+  );
+  const source = content
     .map((response) => {
       const lines = [response.type === "TEXT" ? ":::text" : ":::embed"];
       if (response.stage !== undefined)
@@ -346,26 +544,49 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
         }
       }
       for (const button of response.buttons ?? []) {
-        const target =
-          "url" in button
-            ? button.url
-            : button.action === "go" || button.action === "back"
-              ? `${button.action}(stage(${button.target}))`
-              : button.action;
+        const target = "url" in button ? button.url : serializeAction(button);
         const style =
           "action" in button && button.style ? `${button.style} ` : "";
         lines.push(
           `@button ${style}[${button.label.replace(/[\\\[\]]/g, "\\$&")}](${target})`,
         );
       }
+      for (const select of response.selects ?? []) {
+        add("select", select.placeholder);
+        for (const option of select.options) {
+          lines.push(
+            `@option [${option.label.replace(/[\\\[\]]/g, "\\$&")}](${serializeAction(option)})`,
+          );
+          add("option-description", option.description);
+        }
+        lines.push("@endselect");
+      }
       lines.push(":::");
       return lines.join("\n");
     })
     .join("\n\n");
+  return [...definitions, source].join("\n");
 }
 
-export function markdownPatch(source: string) {
-  const content = parseCommandMarkdown(source);
+export function parseVariableDefinitions(
+  source: string,
+): Record<string, string> {
+  const definitions = source
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => (line.startsWith("@var ") ? line : `@var ${line}`))
+    .join("\n");
+  const content = parseCommandMarkdown(
+    `${definitions}\n:::text\nVariables\n:::`,
+  );
+  return customVariables(content);
+}
+
+export function markdownPatch(
+  source: string,
+  savedVariables: Record<string, string> = {},
+) {
+  const content = parseCommandMarkdown(source, savedVariables);
   return {
     content,
     responseType: content.length > 1 ? ("MULTI" as const) : content[0].type,

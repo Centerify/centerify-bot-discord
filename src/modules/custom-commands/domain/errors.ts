@@ -14,3 +14,5 @@ export class CustomCommandCooldownError extends CustomCommandError {
   }
 }
 export class CustomCommandValidationError extends CustomCommandError {}
+/** Invalid invocation input; safe to show to the invoking member. */
+export class CustomCommandArgumentError extends CustomCommandValidationError {}

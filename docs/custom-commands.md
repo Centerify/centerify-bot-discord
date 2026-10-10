@@ -41,7 +41,8 @@ or choose multiple roles/channels.
 
 `/custom configure name:welcome` opens a private, three-minute editor:
 
-- **Responses** offers **Edit Template**, **Download .txt**, and **Syntax & example**.
+- **Responses** offers **Edit Template**, **Edit custom variables**,
+  **Download .cfg**, and **Syntax & example**.
   Write the whole response sequence as one template. Submitting parses, validates,
   and saves all responses together. Invalid submissions keep the saved definition
   intact and retain your draft in the open editor for correction.
@@ -73,13 +74,27 @@ administrative access. Management still requires server-side Administrator acces
 availability; they never replace server-side checks. Administrative replies and
 execution acknowledgements are ephemeral; executed responses are public.
 
+`/custom`, `/settings` and `/setup` defer privately before ownership checks.
+Discord requires the initial response within three seconds; an expired interaction
+cannot be revived by retrying it
+([Discord interaction documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#followup-messages)).
+If Discord rejects acknowledgement with `10062` (unknown interaction) or `40060`
+(already acknowledged), the precondition stops without running the command or
+sending another response. Invoke the command again. The warning logs the command,
+interaction/guild IDs, `interactionAgeMs` at the start of acknowledgement (from
+Discord's creation timestamp) and `acknowledgementDurationMs`, without the token.
+For repeated failures, use those timings to investigate event delivery/process
+delays versus the acknowledgement request; check for another bot instance when
+Discord reports an acknowledgement elsewhere. This handling cannot restore an
+interaction that Discord has already invalidated.
+
 ## Markdown response templates
 
 Only server owners and administrators may use the editor or upload templates.
 Use `/custom configure name:welcome` → **Edit Template** to replace the command's
 responses. The following example sends one embed with a **Rules** button. Clicking
 it opens the rules on the same message. A longer version with a **Server info** page
-is in [welcome-stages.txt](welcome-stages.txt):
+is in [welcome-stages.cfg](welcome-stages.cfg):
 
 <!-- prettier-ignore -->
 ```text
@@ -103,10 +118,51 @@ Read the full rules in:
 @button danger [Close](Cancel)
 ```
 
-Put `@main` on the first line. Each `@stage(n)` starts another embed. Stage numbers
+Put `@main` on the first template line, after any `@var` definitions. Each `@stage(n)` starts another embed. Stage numbers
 must be unique; use `@main` for stage zero. Put every `@` directive at the **start of
 its line**, with no spaces before it. Lines without `@` become the embed description.
-You can use up to five stages and five buttons per stage.
+You can use up to five stages and five buttons per stage. Buttons use one component
+row; each dropdown uses another. Each message may have at most five component rows.
+
+### Custom variables
+
+Choose **Edit custom variables** and enter one definition per line:
+
+```text
+USER_ID = {user.id}
+TARGET_ID = {args.0}
+GREETING = Hello {user.mention}!
+```
+
+Use `{USER_ID}`, `{TARGET_ID}` and `{GREETING}` in response text, embed text,
+control labels and action targets/messages. Values can be constants or combine
+built-in and custom placeholders. Definitions apply to every response and page.
+Custom names use uppercase letters, digits and underscores, starting with a letter;
+up to 25 names of 50 characters and values of 2,000 characters are allowed. Unknown
+references, duplicate names and circular definitions are rejected. Clearing a
+variable still referenced by the template is rejected until those uses are removed.
+Embed URLs still require HTTPS or an approved built-in image placeholder.
+
+In `.cfg` files, put definitions before the template:
+
+```text
+@var USER_ID = {user.id}
+@var GREETING = Hello {user.mention}!
+@main
+@title Welcome
+{GREETING} Your ID is {USER_ID}.
+@button [My ID](Reply("Your ID: {USER_ID}"))
+```
+
+Downloads preserve these definitions. Custom variables also survive JSON export,
+import and command sharing; fixed IDs in custom action variables require a local
+command, just like direct action targets.
+
+Editing or uploading a template keeps the command's saved variables, so you can
+use `{GREETING}` without repeating its definition. Inline `@var` definitions add
+or replace saved values. Use **Edit custom variables** to remove definitions.
+A complete welcome example with custom variables and a dropdown is available in
+[welcome-example.cfg](welcome-example.cfg).
 
 ### Syntax reference
 
@@ -130,6 +186,189 @@ You can use up to five stages and five buttons per stage.
 Button styles are `primary` (blue), `secondary` (gray), `success` (green), and
 `danger` (red). Omit the style for an HTTPS link button. The action names are
 case-insensitive. `Cancle` is also accepted as an alias for `Cancel`.
+
+### Role buttons and dropdowns
+
+Role actions change the member who ran the command:
+
+| Action                                   | Meaning                                             |
+| ---------------------------------------- | --------------------------------------------------- |
+| `SetRole(ROLE_ID)` or `AddRole(ROLE_ID)` | Add the configured role, preserving other roles     |
+| `RemoveRole(ROLE_ID)`                    | Remove the configured role                          |
+| `ToggleRole(ROLE_ID)`                    | Add the role when absent, or remove it when present |
+
+Replace `ROLE_ID` with a real role ID from your server. For example:
+
+```text
+@main
+@title Choose your access
+Use a button or choose an option below.
+@button success [Join](SetRole(123456789012345678))
+@button danger [Leave](RemoveRole(123456789012345678))
+@select Choose an action
+@option [Toggle membership](ToggleRole(123456789012345678))
+@option-description Join or leave the group
+@option [Read rules](Go(stage(1)))
+@endselect
+
+@stage(1)
+@title Rules
+Be respectful.
+@select Navigate
+@option [Home](Main)
+@option [Close](Cancel)
+@endselect
+```
+
+`@dropdown` is an alias for `@select`. Close each dropdown with `@endselect`.
+Each dropdown has 1–25 options and lets the member select one action at a time.
+Options support all button actions, including navigation and roles. HTTPS links
+use link buttons. Optional `@option-description` follows its option. Placeholders
+allow up to 150 characters; option labels and descriptions allow up to 100 each.
+Variables work in these fields and are checked again after expansion. Role IDs
+are fixed configuration values; arguments and variables cannot choose roles.
+Role buttons and dropdowns also work in ordinary, unstaged text/embed messages.
+Navigation actions require stages.
+
+Only the invoking member can use these controls. Role actions acknowledge privately,
+reload the saved command and member, and recheck command access, the bot's Manage
+Roles permission and role hierarchy. The bot must be above both the selected role
+and the member it manages. Managed roles and @everyone cannot be configured.
+Deleted or edited commands require a fresh invocation before changing roles.
+Preview allows navigation and reports role actions without changing any roles.
+Role changes do not consume additional cooldowns or record additional command usage.
+Controls expire after 15 minutes. Commands containing role actions are local to
+their original server; remove those actions before sharing across servers.
+
+### Custom actions and workflows
+
+Buttons and dropdown options can also run moderation, member and message actions.
+Use an ID or a complete variable such as `{args.0}` for a target. Member arguments
+may contain IDs or Discord mentions. Quote IDs and text in action calls:
+
+| Action call                                            | Result                                                                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `SetWarn("{args.0}", "Reason", "1h")` or `Warn(...)`   | Create a warning, assign its warning role and schedule expiry; omit duration for a permanent warning |
+| `AddNote("{args.0}", "Private note")` or `Note(...)`   | Add a private moderator note                                                                         |
+| `Unwarn("{args.0}", "Reason", 7)` or `RemoveWarn(...)` | Revoke warning case 7 and clean up its role; omit case number for the newest active warning          |
+| `Timeout("{args.0}", "10m", "Reason")`                 | Timeout a member                                                                                     |
+| `RemoveTimeout("{args.0}", "Reason")`                  | Clear a member's timeout and record the removal                                                      |
+| `Kick("{args.0}", "Reason")`                           | Kick a member and create a moderation case                                                           |
+| `Ban("{args.0}", "Reason", 3600)`                      | Ban a member, deleting the last 3,600 seconds of messages; omit deletion for none                    |
+| `Unban("{args.0}", "Reason")`                          | Remove an existing ban and create a moderation case                                                  |
+| `SetNickname("{args.0}", "New nickname")`              | Set a nickname; an empty string clears it                                                            |
+| `Reply("Hello {user.name}")`                           | Return a private reply                                                                               |
+| `SendMessage("{channel.id}", "Hello {user.mention}")`  | Send a public message to an accessible channel                                                       |
+| `AddRole("123456789012345678", "{args.0}")`            | Add a configured role to a target member; RemoveRole and ToggleRole accept the same optional target  |
+
+For example, invoke `!review @Member` or `/custom run command:review args:@Member`
+after saving this template:
+
+```text
+@main
+@title Member review
+Choose an action for the member supplied in the first argument.
+@button danger [Warn](SetWarn("{args.0}", "Please follow the rules", "1h"))
+@button secondary [Add note](AddNote("{args.0}", "Reviewed by {user.name}"))
+@select More actions
+@option [Timeout 10 minutes](Timeout("{args.0}", "10m", "Repeated disruption"))
+@option [Clear timeout](RemoveTimeout("{args.0}", "Review completed"))
+@endselect
+```
+
+The complete [member-review-template.cfg](member-review-template.cfg) also includes
+role tools, nickname controls and a combined note-and-warning workflow. Replace its
+example role ID before saving. Invoke it as `!review @Member` or
+`/custom run command:review args:@Member`, using a real mention or member ID.
+Templates using `{args.0}` as a member target require that argument: running only
+`!review` produces a usage reply and sends no panel. The failed invocation does
+not consume its cooldown or usage count. Invalid member/channel arguments produce
+guidance without echoing their values; access denials remain quiet on prefix
+messages.
+
+`Action({...})` exposes the complete structured configuration, including custom
+private acknowledgement text and repeatability:
+
+```text
+Review a member.
+@button [Save note](Action({"action":"note","userId":"{args.0}","reason":"Reviewed by {user.name}","successMessage":"Review saved for {args.0}.","repeatable":false}))
+```
+
+`Actions([...])` runs 1–10 actions in order. Use a `sequence` object to also configure
+the whole workflow's acknowledgement and repeatability:
+
+```text
+Review a member.
+@button danger [Note and warn](Action({"action":"sequence","actions":[{"action":"note","userId":"{args.0}","reason":"Staff review completed"},{"action":"warn","userId":"{args.0}","reason":"Please follow the rules","durationMs":3600000}],"successMessage":"Review completed.","repeatable":false}))
+```
+
+The same calls work in `@option [Label](Action(...))`. Nested sequences and
+navigation inside sequences are rejected. Add a separate navigation button/option
+to move between pages.
+
+Structured actions use these fields:
+
+| Action name                                                | Fields                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `addrole`, `removerole`, `togglerole`                      | Required static `roleId`; optional `userId`, defaulting to the invoking member |
+| `warn` (`setwarn` alias)                                   | `userId`, `reason`; optional `durationMs`                                      |
+| `unwarn` (`removewarn` alias)                              | `userId`, `reason`; optional `caseNumber`                                      |
+| `note` (`addnote` alias), `kick`, `unban`, `removetimeout` | `userId`, `reason`                                                             |
+| `timeout`                                                  | `userId`, `reason`, `durationMs`                                               |
+| `ban`                                                      | `userId`, `reason`; optional `deleteMessageSeconds`                            |
+| `setnickname`                                              | `userId`, `nickname`                                                           |
+| `reply`                                                    | `text`                                                                         |
+| `sendmessage`                                              | `text`; optional `channelId`, defaulting to the invocation channel             |
+| `sequence`                                                 | `actions`, an array of individual effect actions                               |
+
+Every effect action and sequence accepts optional `successMessage` and `repeatable`.
+All fields are validated; unknown fields are rejected. Reasons/notes allow up to
+1,000 characters, nicknames 32, and message/acknowledgement text 2,000. Duration is
+1 minute through 28 days; structured JSON uses milliseconds. Ban deletion is
+0–604,800 seconds. Text variables expand once and are checked again after expansion.
+Member/channel targets may be complete variable placeholders; role IDs remain
+fixed configuration. Literal member/channel IDs are checked against the server
+when saving. Notes and unban can refer to former members.
+
+Each click reloads the current command and clicking member. Built-in permissions
+apply even if the template's configured access rules are empty:
+
+| Actions                       | Clicking member                               | Bot                                                      |
+| ----------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| Warn/unwarn                   | Moderate Members                              | Manage Roles and valid hierarchy                         |
+| Add note                      | Moderate Members                              | No extra moderation permission                           |
+| Timeout/remove timeout        | Moderate Members                              | Moderate Members and valid hierarchy                     |
+| Kick                          | Kick Members                                  | Kick Members and valid hierarchy                         |
+| Ban/unban                     | Ban Members                                   | Ban Members; a current member must be below both parties |
+| Change another member's roles | Manage Roles and valid hierarchy              | Manage Roles and valid hierarchy                         |
+| Change nickname               | Manage Nicknames, or Change Nickname for self | Manage Nicknames and valid hierarchy                     |
+| Send message                  | View/send access in the destination           | View/send access in the destination                      |
+
+Notes remain private moderation records, available through `/note list`. Warnings
+use the existing case, warning-role and expiry lifecycle, and unwarn preserves a
+role still used by another active warning. Moderation actions cannot target the
+server owner, the bot itself or the clicking moderator. Notes and self-nickname
+changes follow their own permissions. Preview renders controls without executing
+effects; provide sample arguments for templates with a target variable.
+
+Every sequence expands and validates all steps and checks access before beginning.
+Permissions and membership are refreshed between steps. If a later Discord or
+database operation fails, completed effects remain and the private reply reports
+how many steps finished. Warning cases are retained if role assignment fails,
+matching the existing warning policy.
+
+Role actions are repeatable by default; other effects and sequences run once per
+button or dropdown option during that message's session. Set `repeatable: true`
+to allow repeats. An attempted effect consumes a nonrepeatable control even if
+its outcome is uncertain, preventing an accidental duplicate warning or message.
+Validation failures and failed interaction acknowledgements consume nothing.
+Run the command again to start a new session. Actions do not add invocation usage
+or reserve another command cooldown, and controls expire after 15 minutes.
+
+Templates with variable targets can be shared; sharing eligibility is rechecked
+for effect clicks. Remove role actions and fixed member/channel targets before
+sharing across servers. All effects stay within the invocation server. Template
+data cannot execute JavaScript, shell commands, SQL or arbitrary Discord commands.
 
 For `@channel`, replace `123456789012345678` with the real channel ID. In Discord,
 enable **Developer Mode**, right-click the channel, and choose **Copy Channel ID**
@@ -161,8 +400,8 @@ pages, write separate `:::text` or `:::embed` blocks and close each with `:::`.
 Put `@main` or `@stage(n)` inside its own block if those messages should be
 interactive. Without stage markers, the bot sends all blocks in order.
 
-Only the member who invoked the command can navigate its message. A click replaces
-the current message, clearing previous text or embeds as needed. Controls expire
+Only the member who invoked the command can navigate its message. A navigation click
+replaces the current message, clearing previous text or embeds as needed. Controls expire
 after 15 minutes or a bot restart; timeout removes the buttons. Navigation reuses
 the rendered snapshot from invocation, including variables and timestamps, and
 does not consume cooldowns or increase usage. Private previews support the same
@@ -176,10 +415,10 @@ leading/trailing spaces, or a leading quote must be preserved. Downloaded templa
 add quoting and escaping automatically. Variables are still substituted in text,
 including code blocks; code is never executed.
 
-The modal accepts 4,000 characters. For larger templates, use **Download .txt**, edit
-the file, then run `/custom template name:welcome file:<your-file.txt>`. Uploads
+The modal accepts 4,000 characters. For larger templates, use **Download .cfg**, edit
+the file, then run `/custom template name:welcome file:<your-file.cfg>`. Uploads
 accept regular and ephemeral Discord attachments. `/custom markdown` remains an
-alias. Files may use `.txt`, `.md` or `.markdown`, with a 192,000-byte download limit and a
+alias. Files use `.cfg`; legacy `.txt`, `.md` and `.markdown` uploads also work, with a 192,000-byte download limit and a
 48,000-character source limit. Parsed definitions still obey all normal response
 limits, including the 24,000-character JSON payload limit. File downloads use the
 same Discord-host allowlist, redirect rejection, timeout and stream-size checks
@@ -257,8 +496,8 @@ are not executed; rename one or narrow its scope. Removing a command automatical
 removes its sharing reference. Clones and exports retain local-only scope by default.
 
 Role and channel IDs belong to one Discord server. Clear all allowed/denied role
-and channel restrictions in Customize before sharing a command. Discord permission
-requirements such as ManageMessages work across servers. If server-specific
+and channel restrictions, role actions and fixed action targets in Customize before sharing a command.
+Discord permission requirements such as ManageMessages work across servers. If server-specific
 restrictions are added later, remote execution stops until they are cleared.
 
 Apply `migrations/app/20261002T0928_add_custom_command_sharing` with

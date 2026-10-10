@@ -1,6 +1,9 @@
 import { currentApplication } from "../../../src/adapters/discord/context.js";
 import { customCommandsToken } from "../../../src/modules/custom-commands/index.js";
-import { executorToken, sharingToken } from "../../../src/modules/custom-commands/discord/tokens.js";
+import {
+  executorToken,
+  sharingToken,
+} from "../../../src/modules/custom-commands/discord/tokens.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { Collection, type Message } from "discord.js";
 import { container } from "@sapphire/framework";
@@ -16,6 +19,11 @@ import {
 } from "../../../src/modules/custom-commands/discord/runtime.js";
 import { isBuiltInCommand } from "../../../src/modules/custom-commands/discord/reservedNames.js";
 import { context, record } from "./fixtures.js";
+import {
+  CustomCommandArgumentError,
+  CustomCommandPermissionError,
+  CustomCommandValidationError,
+} from "../../../src/modules/custom-commands/domain/errors.js";
 function fixture(content = "!welcome John") {
   const c = context();
   return {
@@ -32,7 +40,10 @@ function fixture(content = "!welcome John") {
 }
 beforeEach(() => vi.restoreAllMocks());
 test("message fast paths do not access the repository", async () => {
-  const lookup = vi.spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias");
+  const lookup = vi.spyOn(
+    currentApplication().resolve(customCommandsToken),
+    "getCommandByNameOrAlias",
+  );
   for (const message of [
     { ...fixture(), guild: null },
     { ...fixture(), author: { bot: true } },
@@ -49,7 +60,10 @@ test("message fast paths do not access the repository", async () => {
 test("prefix arguments normalize whitespace; canonical executor handles reply and deletion", async () => {
   const command = record();
   const lookup = vi
-    .spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias")
+    .spyOn(
+      currentApplication().resolve(customCommandsToken),
+      "getCommandByNameOrAlias",
+    )
     .mockResolvedValue(command);
   const executor = vi
     .spyOn(currentApplication().resolve(executorToken), "execute")
@@ -71,10 +85,14 @@ test("prefix arguments normalize whitespace; canonical executor handles reply an
   expect(message.channel.send).toHaveBeenCalledOnce();
 });
 test("unknown commands fall through; Sapphire registry names and aliases are protected", async () => {
-  vi.spyOn(currentApplication().resolve(sharingToken), "resolve").mockResolvedValue(null);
-  vi.spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias").mockResolvedValue(
-    null,
-  );
+  vi.spyOn(
+    currentApplication().resolve(sharingToken),
+    "resolve",
+  ).mockResolvedValue(null);
+  vi.spyOn(
+    currentApplication().resolve(customCommandsToken),
+    "getCommandByNameOrAlias",
+  ).mockResolvedValue(null);
   expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(
     false,
   );
@@ -109,7 +127,10 @@ test("unknown commands fall through; Sapphire registry names and aliases are pro
 
 test("local commands take precedence and unknown local names fall back to authorized sharing", async () => {
   const local = vi
-    .spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias")
+    .spyOn(
+      currentApplication().resolve(customCommandsToken),
+      "getCommandByNameOrAlias",
+    )
     .mockResolvedValue(record({ enabled: false }));
   const shared = vi
     .spyOn(currentApplication().resolve(sharingToken), "resolve")
@@ -133,3 +154,50 @@ test("local commands take precedence and unknown local names fall back to author
     expect.any(Object),
   );
 });
+
+test("missing member arguments reply with usage help without mentions or fallback execution", async () => {
+  vi.spyOn(
+    currentApplication().resolve(customCommandsToken),
+    "getCommandByNameOrAlias",
+  ).mockResolvedValue(record({ name: "kos" }));
+  vi.spyOn(
+    currentApplication().resolve(executorToken),
+    "execute",
+  ).mockRejectedValue(
+    new CustomCommandArgumentError(
+      "Missing member argument {args.0}. Usage: !kos @Member.",
+    ),
+  );
+  const message = fixture("!kos");
+  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
+    true,
+  );
+  expect(message.reply).toHaveBeenCalledExactlyOnceWith({
+    content: "Missing member argument {args.0}. Usage: !kos @Member.",
+    allowedMentions: { parse: [], repliedUser: false },
+  });
+  expect(message.channel.send).not.toHaveBeenCalled();
+});
+
+test.each([
+  new CustomCommandPermissionError("Only moderators may run this command."),
+  new CustomCommandValidationError("Private template configuration issue."),
+])(
+  "access denials and template configuration errors remain quiet",
+  async (error) => {
+    vi.spyOn(
+      currentApplication().resolve(customCommandsToken),
+      "getCommandByNameOrAlias",
+    ).mockResolvedValue(record());
+    vi.spyOn(
+      currentApplication().resolve(executorToken),
+      "execute",
+    ).mockRejectedValue(error);
+    const message = fixture();
+    expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
+      true,
+    );
+    expect(message.reply).not.toHaveBeenCalled();
+    expect(message.channel.send).not.toHaveBeenCalled();
+  },
+);
