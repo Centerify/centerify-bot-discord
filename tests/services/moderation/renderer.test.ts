@@ -9,6 +9,7 @@ const warning = {
   action: "WARNING",
   reason: "Repeated spam",
   durationMs: 60_000,
+  metadata: { warningRoleId: "role" },
   createdAt: "2026-09-15T12:00:00.000Z",
 };
 
@@ -32,6 +33,12 @@ test("history details identify expired warnings as no longer counted", () => {
 
   assert.match(field.name, /Warning • Expired/);
   assert.match(field.value, /no longer counts/);
+});
+
+test("warnings without a role show warning expiration instead of role removal", () => {
+  const field = formatDetailedCaseField({ ...warning, metadata: { warningRoleId: null } }, new Date("2026-09-15T12:00:30.000Z"));
+  assert.match(field.value, /Warning expires/);
+  assert.doesNotMatch(field.value, /Role removal/);
 });
 
 test("history details include warning revocation attribution and reason", () => {

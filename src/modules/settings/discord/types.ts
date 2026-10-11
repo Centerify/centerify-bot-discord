@@ -16,7 +16,9 @@ export type SetupScreen =
   | "goodbye-variables"
   | "autorole"
   | "logging"
-  | "moderation";
+  | "moderation"
+  | "warning-roles"
+  | "command-access";
 
 export type SetupComponentInteraction =
   | ButtonInteraction<"cached">

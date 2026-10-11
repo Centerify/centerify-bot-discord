@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'8f45d6d1cc46b2fe3738fc8990f468c978137894031c5a92132729734c689b05'>;
+  StorageHashBase<'4721d6a27f9cb5f869c7bf9e84f11d9a744d8fb3ab8e1cdbc9108207b0e78d13'>;
 export type ExecutionHash =
   ExecutionHashBase<'6c0cf42c3de6e117af55ef6825b671cedb3060cd1618d842f7b9845b03132d25'>;
 export type ProfileHash =
@@ -324,6 +324,8 @@ export type FieldOutputTypes = {
       readonly globalBanEnabled: CodecTypes['pg/bool@1']['output'];
       readonly globalWarnEnabled: CodecTypes['pg/bool@1']['output'];
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['output'];
+      readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['output'] | null;
+      readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -504,6 +506,8 @@ export type FieldInputTypes = {
       readonly globalBanEnabled: CodecTypes['pg/bool@1']['input'];
       readonly globalWarnEnabled: CodecTypes['pg/bool@1']['input'];
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['input'];
+      readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['input'] | null;
+      readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -662,6 +666,7 @@ export type StorageColumnTypes = {
     readonly guild_config: {
       readonly autoRoleEnabled: CodecTypes['pg/bool@1']['output'];
       readonly autoRoleId: CodecTypes['pg/text@1']['output'] | null;
+      readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly globalBanEnabled: CodecTypes['pg/bool@1']['output'];
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['output'];
@@ -675,6 +680,7 @@ export type StorageColumnTypes = {
       readonly loggingEnabled: CodecTypes['pg/bool@1']['output'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly welcomeChannelId: CodecTypes['pg/text@1']['output'] | null;
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['output'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['output'];
@@ -842,6 +848,7 @@ export type StorageColumnInputTypes = {
     readonly guild_config: {
       readonly autoRoleEnabled: CodecTypes['pg/bool@1']['input'];
       readonly autoRoleId: CodecTypes['pg/text@1']['input'] | null;
+      readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly globalBanEnabled: CodecTypes['pg/bool@1']['input'];
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['input'];
@@ -855,6 +862,7 @@ export type StorageColumnInputTypes = {
       readonly loggingEnabled: CodecTypes['pg/bool@1']['input'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly welcomeChannelId: CodecTypes['pg/text@1']['input'] | null;
       readonly welcomeEnabled: CodecTypes['pg/bool@1']['input'];
       readonly welcomeMessage: CodecTypes['pg/text@1']['input'];
@@ -1635,6 +1643,16 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/bool@1', false>;
                   };
+                };
+                readonly warningRoleSettings: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: true;
+                };
+                readonly commandRoleAccess: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: true;
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
@@ -2807,6 +2825,14 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
+              readonly warningRoleSettings: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
+              readonly commandRoleAccess: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2851,6 +2877,8 @@ type ContractBase = Omit<
                 readonly globalBanEnabled: { readonly column: 'globalBanEnabled' };
                 readonly globalWarnEnabled: { readonly column: 'globalWarnEnabled' };
                 readonly globalNoteEnabled: { readonly column: 'globalNoteEnabled' };
+                readonly warningRoleSettings: { readonly column: 'warningRoleSettings' };
+                readonly commandRoleAccess: { readonly column: 'commandRoleAccess' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };

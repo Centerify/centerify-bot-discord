@@ -197,6 +197,46 @@ Enable the **Message Content Intent** for this bot in the Discord Developer
 Portal so `!trigger` commands can read messages, then deploy the database
 migration with `npx prisma db migrate` before restarting the bot.
 
+## Warning roles and command access
+
+Apply the included migration with `npx prisma db migrate` before starting the
+updated bot. A verified server administrator with Manage Server permission can
+open these controls in `/settings` or `/setup`. Changes save immediately and
+apply only to that server.
+
+Use **Warning Roles** to choose a behavior:
+
+- **Numbered roles** adds a role for each active warning count. The name must
+  include `{count}`, such as `warn{count}` or `Warning {count}`.
+- **One shared role** uses an existing role selected in the picker, or creates a
+  role with the configured shared name. It remains assigned until the member's
+  last active warning using that role ends or is revoked.
+- **No role** records warnings and expiration without assigning Discord roles.
+  The bot does not need Manage Roles to issue or revoke warnings without roles.
+
+**Names, color & duration** accepts a hex color such as `#ff0000`, a Discord color
+name such as `Orange`, and a default duration from `1m` through `28d` or
+`permanent`. Separate display and mentionability have their own toggles. Styles
+apply when a warning role is next used; selecting an existing shared role keeps
+its name. Roles must be assignable and below the moderator and bot. Existing
+warnings keep their recorded role and expiration. `/warn duration:permanent`
+overrides a timed server default. Global warnings use each destination server's
+settings, including its default duration when no duration is supplied.
+
+Use **Command Access** to select an enabled slash command and configure its
+allowed and denied roles. An empty allowed list permits any role; otherwise the
+member needs at least one allowed role. A denied role always blocks access,
+including administrators. These lists add restrictions while preserving the
+command's Discord permission requirements. **Reset access** removes that
+command's role rules. `/settings`, `/setup`, `/verify`, and `/unverify` retain
+their existing permission checks so administrators can recover configuration.
+For individual custom commands, use `/custom configure` → **Access rules**;
+those restrictions apply to both prefix and slash execution. The `/custom` rule
+in Command Access applies to the slash command group.
+
+Existing servers default to numbered `warn1`, `warn2`, etc., permanent warnings,
+and unrestricted role access to commands.
+
 ## XP
 
 Apply the included database migration before starting the updated bot:

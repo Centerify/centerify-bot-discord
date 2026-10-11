@@ -2,6 +2,7 @@ import { serviceToken, type CenterifyModule } from "../../core/index.js";
 import type { GuildConfigStore } from "./domain/config.js";
 import { VerifyGuildOwnership, type OwnershipRepository } from "./application/VerifyGuildOwnership.js";
 export * from "./domain/config.js";
+export * from "./domain/settings.js";
 export { VerifyGuildOwnership } from "./application/VerifyGuildOwnership.js";
 export type { OwnershipRepository } from "./application/VerifyGuildOwnership.js";
 export const guildConfigToken = serviceToken<GuildConfigStore>("guilds.config");

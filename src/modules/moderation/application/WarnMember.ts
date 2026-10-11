@@ -23,7 +23,7 @@ export interface WarningRepository {
     reason: string;
     durationMs: number | null;
     isGlobal: boolean;
-    metadata: { warningRoleId: string; warningCount: number; originGuildId?: string };
+    metadata: { warningRoleId: string | null; warningCount: number; originGuildId?: string };
   }): Promise<WarningCase>;
 }
 
@@ -34,13 +34,13 @@ export interface RecordWarningInput {
   reason: string;
   durationMs: number | null;
   warningCount: number;
-  warningRoleId: string;
+  warningRoleId: string | null;
   originGuildId?: string;
 }
 
 /** Transport effects use IDs and plain data; Discord objects stay in the adapter. */
 export interface WarningEffects {
-  prepareRole(guildId: string, count: number): Promise<{ id: string; name: string; error: string | null }>;
+  prepareRole(guildId: string, count: number): Promise<{ id: string | null; name: string; error: string | null }>;
   assignRole(guildId: string, roleId: string): Promise<void>;
 }
 export type WarnInput = Omit<RecordWarningInput, "warningCount" | "warningRoleId">;
@@ -57,7 +57,7 @@ export class WarnMember {
     if (role.error) return { status: "rejected", roleName: role.name, reason: role.error };
     // Preserve the audit case if Discord assignment subsequently fails.
     const moderationCase = await this.record({ ...input, warningCount, warningRoleId: role.id });
-    await effects.assignRole(input.guildId, role.id);
+    if (role.id) await effects.assignRole(input.guildId, role.id);
     return { status: "created", roleName: role.name, moderationCase };
   }
 

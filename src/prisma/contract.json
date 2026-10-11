@@ -761,6 +761,13 @@
                   "kind": "scalar"
                 }
               },
+              "commandRoleAccess": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -852,6 +859,13 @@
                   "kind": "scalar"
                 }
               },
+              "warningRoleSettings": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
               "welcomeChannelId": {
                 "nullable": true,
                 "type": {
@@ -939,6 +953,9 @@
                 "autoRoleId": {
                   "column": "autoRoleId"
                 },
+                "commandRoleAccess": {
+                  "column": "commandRoleAccess"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -977,6 +994,9 @@
                 },
                 "updatedAt": {
                   "column": "updatedAt"
+                },
+                "warningRoleSettings": {
+                  "column": "warningRoleSettings"
                 },
                 "welcomeChannelId": {
                   "column": "welcomeChannelId"
@@ -2497,6 +2517,11 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "commandRoleAccess": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -2597,6 +2622,11 @@
                   "codecId": "pg/timestamptz-string@1",
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "warningRoleSettings": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": true
                 },
                 "welcomeChannelId": {
                   "codecId": "pg/text@1",
@@ -3533,7 +3563,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8f45d6d1cc46b2fe3738fc8990f468c978137894031c5a92132729734c689b05"
+    "storageHash": "4721d6a27f9cb5f869c7bf9e84f11d9a744d8fb3ab8e1cdbc9108207b0e78d13"
   },
   "execution": {
     "executionHash": "6c0cf42c3de6e117af55ef6825b671cedb3060cd1618d842f7b9845b03132d25",

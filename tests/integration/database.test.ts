@@ -85,6 +85,19 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
     expect(await custom.list(duplicateGuild)).toHaveLength(1);
   });
 
+  test("warning modes and command role rules persist independently for each server", async () => {
+    const { warningRoleSettings } = await import("../../src/modules/guilds/domain/settings.js");
+    const roles = { warn: { allowedRoleIds: ["123456789012345678"], deniedRoleIds: [] } };
+    await config.update(guildA, { warningRoleSettings: warningRoleSettings({ mode: "single", singleName: "Warned", color: 0xff0000 }), commandRoleAccess: roles });
+    await config.update(guildB, { warningRoleSettings: warningRoleSettings({ mode: "none" }) });
+    expect((await config.getOrCreate(guildA)).warningRoleSettings).toMatchObject({ mode: "single", color: 0xff0000 });
+    expect((await config.getOrCreate(guildA)).commandRoleAccess).toEqual(roles);
+    expect((await config.getOrCreate(guildB)).warningRoleSettings).toMatchObject({ mode: "none" });
+    expect((await config.getOrCreate(guildB)).commandRoleAccess).toBeNull();
+    await config.update(guildA, { welcomeMessage: "Changed greeting" });
+    expect((await config.getOrCreate(guildA)).commandRoleAccess).toEqual(roles);
+  });
+
   test("concurrent creations enforce the 25-rule server limit", async () => {
     await Promise.all(Array.from({ length: 24 }, (_, index) => custom.create(rule(limitGuild, `rule-${index}`))));
     const results = await Promise.allSettled([

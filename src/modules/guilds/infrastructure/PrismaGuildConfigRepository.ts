@@ -1,5 +1,6 @@
 import { db } from "../../../adapters/prisma/client.js";
 import { DEFAULT_WELCOME_MESSAGE, DEFAULT_GOODBYE_MESSAGE, type GuildConfigStore, type GuildConfigUpdate } from "../domain/config.js";
+import { warningRoleSettings, commandRoleAccess } from "../domain/settings.js";
 
 export class PrismaGuildConfigRepository implements GuildConfigStore {
   constructor(private readonly database: typeof db = db) {}
@@ -21,6 +22,9 @@ export class PrismaGuildConfigRepository implements GuildConfigStore {
   }
 
   public async update(guildId: string, data: GuildConfigUpdate) {
+    data = { ...data };
+    if (data.warningRoleSettings !== undefined) data.warningRoleSettings = warningRoleSettings(data.warningRoleSettings);
+    if (data.commandRoleAccess !== undefined) data.commandRoleAccess = commandRoleAccess(data.commandRoleAccess);
     try {
       return await this.database.orm.public.GuildConfig.upsert({
         create: {

@@ -24,7 +24,7 @@ export class WarnCommand extends Command {
         .addStringOption((option) =>
           option
             .setName("duration")
-            .setDescription("Optional duration like 10m, 1h, 1d, 7d")
+            .setDescription("Duration like 10m, 1h or permanent; otherwise uses server default")
             .setRequired(false),
         )
         .addBooleanOption((option) =>

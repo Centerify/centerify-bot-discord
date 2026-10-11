@@ -26,6 +26,16 @@ test("a rejected role does not create an audit case or assign a role", async () 
   expect(assignRole).not.toHaveBeenCalled();
 });
 
+test("no-role warnings are counted and audited without assigning a Discord role", async () => {
+  const createCase = vi.fn().mockResolvedValue(warning), assignRole = vi.fn();
+  const result = await new WarnMember({ countWarningsForUser: async () => 2, createCase }).execute(input, {
+    prepareRole: async () => ({ id: null, name: "No warning role", error: null }), assignRole,
+  });
+  expect(result.status).toBe("created");
+  expect(createCase).toHaveBeenCalledWith(expect.objectContaining({ metadata: { warningCount: 3, warningRoleId: null } }));
+  expect(assignRole).not.toHaveBeenCalled();
+});
+
 test("global moderation continues after unavailable servers and records partial outcomes", async () => {
   const config: GuildConfigStore = { getOrCreate: vi.fn(), update: vi.fn(), globalModerationGuildIds: vi.fn() };
   const warn = vi.fn();

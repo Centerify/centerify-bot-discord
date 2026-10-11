@@ -28,6 +28,7 @@ export * from "./commandUtils.js";
 export * from "./permissionGuards.js";
 export * from "./renderer.js";
 export * from "./warningRoleNames.js";
+export * from "./durationParser.js";
 export { runWarn } from "./warn.js";
 import { createWarningRoleLifecycle, warningLifecycleToken, restoreWarningRoleExpirations } from "./warningRoles.js";
 import { loggerToken } from "../../../core/index.js";

@@ -1,3 +1,3 @@
-export function getWarnRoleName(warnCount: number) {
-  return `warn${warnCount}`;
+export function getWarnRoleName(warnCount: number, template = "warn{count}") {
+  return template.replace("{count}", String(warnCount));
 }
