@@ -17,6 +17,7 @@ import {
   validateMemberAction,
 } from "../permissionGuards.js";
 import { buildCaseEmbed } from "../renderer.js";
+import { warningRoleId } from "../../domain/warningLifecycle.js";
 import {
   cancelWarningRoleRemoval,
   removeWarningRoleIfUnused,
@@ -70,14 +71,6 @@ export class UnwarnCommand extends Command {
       return;
     }
 
-    const botValidation = validateBotPermissions(interaction.guild, [
-      PermissionFlagsBits.ManageRoles,
-    ]);
-    if (botValidation) {
-      await interaction.reply({ content: botValidation, flags: MessageFlags.Ephemeral });
-      return;
-    }
-
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const user = interaction.options.getUser("user", true);
@@ -107,12 +100,27 @@ export class UnwarnCommand extends Command {
     const caseNumber = interaction.options.getInteger("case-number");
 
     try {
+      const active = await moderationCaseService.activeWarningsForUser(interaction.guildId, user.id);
+      const selected = caseNumber ? active.find((warning) => warning.caseNumber === caseNumber) : active[0];
+      if (!selected) {
+        await interaction.editReply({ content: caseNumber
+          ? `Case #${caseNumber} is not an active warning for that member.`
+          : "That member has no active warnings." });
+        return;
+      }
+      if (warningRoleId(selected.metadata)) {
+        const botValidation = validateBotPermissions(interaction.guild, [PermissionFlagsBits.ManageRoles]);
+        if (botValidation) {
+          await interaction.editReply({ content: botValidation });
+          return;
+        }
+      }
       const warning = await moderationCaseService.revokeActiveWarning({
         guildId: interaction.guildId,
         targetUserId: user.id,
         moderatorUserId: interaction.user.id,
         reason,
-        caseNumber,
+        caseNumber: selected.caseNumber,
       });
       if (!warning) {
         await interaction.editReply({

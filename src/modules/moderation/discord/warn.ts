@@ -24,11 +24,11 @@ import {
   dmUser,
   toAuditLogReason,
 } from "./commandUtils.js";
-import { getWarningExpiresAt } from "../domain/warningLifecycle.js";
+import { getWarningExpiresAt, warningRoleId } from "../domain/warningLifecycle.js";
 import {
-  getWarnRoleName,
   scheduleWarningRoleRemoval,
 } from "./warningRoles.js";
+import { applyWarningRoleStyle, getOrCreateWarnRole, loadWarningRoleSettings } from "./warningRoleSettings.js";
 import {
   getGlobalModerationTargets,
   globalModeration,
@@ -52,24 +52,38 @@ export async function runWarn(
   }
 
   const durationInput = interaction.options.getString("duration");
-  const durationMs = durationInput ? parseDuration(durationInput) : null;
-  if (durationInput && (!durationMs || durationMs > maxDiscordTimeoutMs)) {
+  const permanent = durationInput?.trim().toLowerCase() === "permanent";
+  let durationMs = durationInput && !permanent ? parseDuration(durationInput) : null;
+  if (durationInput && !permanent && (!durationMs || durationMs > maxDiscordTimeoutMs)) {
     await interaction.reply({
-      content: "Use a duration from 1m through 28d, like `10m`, `1h`, or `7d`.",
+      content: "Use a duration from 1m through 28d, like `10m`, `1h`, or `7d`, or permanent.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
-  const botValidation = validateBotPermissions(interaction.guild, [
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const reason = interaction.options.getString("reason", true).trim();
+  if (!reason) {
+    await interaction.editReply({ content: "The reason cannot be empty." });
+    return;
+  }
+  const settings = await loadWarningRoleSettings(interaction.guildId).catch((error) => {
+    logger.error({ err: error, guildId: interaction.guildId }, "Failed to load warning settings");
+    return null;
+  });
+  if (!settings) {
+    await interaction.editReply({ content: "I could not load warning settings right now." });
+    return;
+  }
+  if (!durationInput) durationMs = settings.defaultDurationMs;
+  const botValidation = settings.mode === "none" ? null : validateBotPermissions(interaction.guild, [
     PermissionFlagsBits.ManageRoles,
   ]);
   if (botValidation) {
-    await interaction.reply({ content: botValidation, flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: botValidation });
     return;
   }
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const user = interaction.options.getUser("user", true);
   const member = await interaction.guild.members.fetch(user.id).catch(() => null);
@@ -84,11 +98,6 @@ export async function runWarn(
     return;
   }
 
-  const reason = interaction.options.getString("reason", true).trim();
-  if (!reason) {
-    await interaction.editReply({ content: "The reason cannot be empty." });
-    return;
-  }
   const isGlobal = interaction.options.getBoolean("global") ?? false;
 
   try {
@@ -107,7 +116,9 @@ export async function runWarn(
         guildIds: targets.guilds.map((guild) => guild.id), targetUserId: user.id, action: "warn",
       }, async (guildId) => {
         const guild = targets.guilds.find((entry) => entry.id === guildId)!;
-          if (validateBotPermissions(guild, [PermissionFlagsBits.ManageRoles])) {
+          const targetSettings = guild.id === interaction.guildId ? settings : await loadWarningRoleSettings(guild.id);
+          const targetDurationMs = durationInput ? durationMs : targetSettings.defaultDurationMs;
+          if (targetSettings.mode !== "none" && validateBotPermissions(guild, [PermissionFlagsBits.ManageRoles])) {
             return null;
           }
 
@@ -118,18 +129,21 @@ export async function runWarn(
 
           const result = await warnMember.execute({
             guildId: guild.id, targetUserId: user.id, moderatorUserId: interaction.user.id,
-            reason, durationMs, originGuildId: interaction.guildId,
+            reason, durationMs: targetDurationMs, originGuildId: interaction.guildId,
           }, {
             async prepareRole(_, count) {
-              const role = await getOrCreateWarnRole(guild, count);
-              return { id: role.id, name: role.name, error: guild.id === interaction.guildId
-                ? validateWarningRole(interaction, role) : validateGlobalWarningRole(guild, role) };
+              const role = await getOrCreateWarnRole(guild, count, targetSettings);
+              if (!role) return { id: null, name: "No warning role", error: null };
+              const error = guild.id === interaction.guildId
+                ? validateWarningRole(interaction, role) : validateGlobalWarningRole(guild, role);
+              if (!error) await applyWarningRoleStyle(role, targetSettings);
+              return { id: role.id, name: role.name, error };
             },
             async assignRole(_, roleId) { await targetMember.roles.add(roleId, toAuditLogReason(`Global warning: ${reason}`)); },
           });
           if (result.status === "rejected") return null;
           const { moderationCase } = result;
-          if (durationMs) {
+          if (targetDurationMs) {
             scheduleWarningRoleRemoval(interaction.client, moderationCase);
           }
         return moderationCase;
@@ -171,8 +185,11 @@ export async function runWarn(
       guildId: interaction.guildId, targetUserId: user.id, moderatorUserId: interaction.user.id, reason, durationMs,
     }, {
       async prepareRole(_, count) {
-        const role = await getOrCreateWarnRole(interaction.guild, count);
-        return { id: role.id, name: role.name, error: validateWarningRole(interaction, role) };
+        const role = await getOrCreateWarnRole(interaction.guild, count, settings);
+        if (!role) return { id: null, name: "No warning role", error: null };
+        const error = validateWarningRole(interaction, role);
+        if (!error) await applyWarningRoleStyle(role, settings);
+        return { id: role.id, name: role.name, error };
       },
       async assignRole(_, roleId) { await member.roles.add(roleId, toAuditLogReason(reason)); },
     });
@@ -189,10 +206,10 @@ export async function runWarn(
         `You received a warning in ${interaction.guild.name}.`,
         `Case: #${moderationCase.caseNumber}`,
         `Issued by: ${interaction.user.tag}`,
-        `Role: ${roleName}`,
+        warningRoleId(moderationCase.metadata) ? `Role: ${roleName}` : "Role: None",
         `Duration: ${durationMs ? formatDuration(durationMs) : "Permanent"}`,
         expiresAt
-          ? `Role removal: ${time(expiresAt, TimestampStyles.LongDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)})`
+          ? `Warning expires: ${time(expiresAt, TimestampStyles.LongDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)})`
           : null,
         `Reason: ${reason}`,
       ]
@@ -211,26 +228,13 @@ export async function runWarn(
     }
 
     await interaction.editReply({
-      content: `Warning created - Case #${moderationCase.caseNumber}; assigned ${roleName}`,
+      content: `Warning created - Case #${moderationCase.caseNumber}; ${warningRoleId(moderationCase.metadata) ? `assigned ${roleName}` : "no role assigned"}`,
       embeds: [buildCaseEmbed(moderationCase)],
     });
   } catch (error) {
     logger.error({ err: error, guildId: interaction.guildId }, "Warn command failed");
     await interaction.editReply({ content: "I could not create that warning right now." });
   }
-}
-
-async function getOrCreateWarnRole(guild: Guild, warnCount: number) {
-  const roleName = getWarnRoleName(warnCount);
-  const existingRole = guild.roles.cache.find((role) => role.name === roleName);
-  if (existingRole) {
-    return existingRole;
-  }
-
-  return guild.roles.create({
-    name: roleName,
-    reason: `Created role for warning count ${warnCount}`,
-  });
 }
 
 function validateWarningRole(

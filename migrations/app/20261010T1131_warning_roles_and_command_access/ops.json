@@ -1,0 +1,86 @@
+[
+  {
+    "id": "column.public.guild_config.commandRoleAccess",
+    "label": "Add column \"commandRoleAccess\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "commandRoleAccess",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"commandRoleAccess\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "commandRoleAccess"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"commandRoleAccess\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"commandRoleAccess\" jsonb"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"commandRoleAccess\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "commandRoleAccess"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.guild_config.warningRoleSettings",
+    "label": "Add column \"warningRoleSettings\" to \"guild_config\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "warningRoleSettings",
+        "table": "guild_config"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"warningRoleSettings\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "warningRoleSettings"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"warningRoleSettings\"",
+        "sql": "ALTER TABLE \"public\".\"guild_config\" ADD COLUMN \"warningRoleSettings\" jsonb"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"warningRoleSettings\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "guild_config",
+          "warningRoleSettings"
+        ]
+      }
+    ]
+  }
+]

@@ -23,6 +23,8 @@ import {
 } from "../../guilds/discord/index.js";
 import type { SetupRenderer } from "./renderer.js";
 import type { SetupComponentInteraction } from "./types.js";
+import { handleWarningSettings } from "./warningSettings.js";
+import { CommandAccessEditor } from "./commandAccess.js";
 
 type UpdateConfig = (
   guildId: string,
@@ -30,6 +32,7 @@ type UpdateConfig = (
 ) => Promise<GuildConfig>;
 
 export class SetupInteractionHandler {
+  private readonly commandAccess = new CommandAccessEditor();
   public constructor(
     private readonly renderer: SetupRenderer,
     private readonly updateConfig: UpdateConfig,
@@ -55,7 +58,7 @@ export class SetupInteractionHandler {
       await componentInteraction.reply({ content: "This module is disabled.", flags: MessageFlags.Ephemeral });
       return config;
     }
-    const opensModal = componentInteraction.isButton() && ["welcome-edit", "goodbye-edit", "xp-rewards", "xp-peers-id", "xp-apply-id"].includes(action ?? "");
+    const opensModal = componentInteraction.isButton() && ["welcome-edit", "goodbye-edit", "xp-rewards", "xp-peers-id", "xp-apply-id", "warning-edit"].includes(action ?? "");
     if (!opensModal) {
       // Acknowledge before the ownership check's network and database requests.
       if (componentInteraction.isButton() && (action === "xp-peers" || action === "xp-apply")) {
@@ -67,6 +70,14 @@ export class SetupInteractionHandler {
     }
     // Modal submissions recheck ownership before saving; showing a modal must
     // itself be the initial response to its button interaction.
+
+    if (action?.startsWith("command-access"))
+      return this.commandAccess.handle(componentInteraction, config, sessionId, this.updateConfig);
+    if (action?.startsWith("warning-") && action !== "warning-roles") {
+      const next = await handleWarningSettings(componentInteraction, config, sessionId, this.updateConfig);
+      await rootInteraction.editReply(this.renderer.buildScreen("warning-roles", componentInteraction.guild, next, sessionId));
+      return next;
+    }
 
     if (componentInteraction.isStringSelectMenu()) {
       let data: GuildConfigUpdate;
@@ -148,6 +159,7 @@ export class SetupInteractionHandler {
       case "autorole":
       case "logging":
       case "moderation":
+      case "warning-roles":
         await interaction.editReply(
           this.renderer.buildScreen(action, interaction.guild, config, sessionId),
         );

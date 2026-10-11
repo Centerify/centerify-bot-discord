@@ -62,7 +62,7 @@ export function buildCaseEmbed(moderationCase: ModerationCaseView) {
                 ? "Warning expired"
                 : revocation
                   ? "Original expiry"
-                  : "Role removal",
+                  : roleId ? "Role removal" : "Warning expires",
               value: `${time(expiresAt, TimestampStyles.ShortDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)})`,
               inline: true,
             },
@@ -189,7 +189,8 @@ function formatWarningTiming(
     return `**Warning status:** Expired ${time(expiresAt, TimestampStyles.RelativeTime)} • no longer counts`;
   }
 
-  return `**Role removal:** ${time(expiresAt, TimestampStyles.ShortDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)}) • counts until then`;
+  const timingLabel = warningRoleId(moderationCase.metadata) ? "Role removal" : "Warning expires";
+  return `**${timingLabel}:** ${time(expiresAt, TimestampStyles.ShortDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)}) • counts until then`;
 }
 
 function caseStatus(

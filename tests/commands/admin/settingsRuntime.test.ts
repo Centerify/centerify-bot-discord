@@ -56,7 +56,7 @@ test("settings keeps XP server controls inside the XP section", async () => {
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
   const view = f.editReply.mock.calls[0][0];
   const labels = view.components.flatMap((row: any) => row.toJSON().components.map((item: any) => item.label));
-  expect(labels).toEqual(["Welcome", "Goodbye", "Auto Role", "Logging", "Global Moderation", "XP", "Custom Commands", "Done"]);
+  expect(labels).toEqual(["Welcome", "Goodbye", "Auto Role", "Logging", "Global Moderation", "XP", "Custom Commands", "Warning Roles", "Command Access", "Done"]);
   expect(labels).not.toContain("Choose XP Servers");
   expect(labels).not.toContain("Apply XP to Servers");
   expect(view.components).toHaveLength(2);
@@ -77,7 +77,7 @@ test("configuration category buttons route through the shared settings handler",
   const f = fixture();
   mocks.handle.mockResolvedValue(config);
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
-  for (const action of ["xp", "welcome", "goodbye", "autorole", "logging", "moderation"]) {
+  for (const action of ["xp", "welcome", "goodbye", "autorole", "logging", "moderation", "warning-roles", "command-access"]) {
     const b = { ...button(), customId: `setup:settings-session:${action}` };
     await f.callbacks.collect(b);
     expect(mocks.handle).toHaveBeenLastCalledWith(expect.objectContaining({ componentInteraction: b, config }));

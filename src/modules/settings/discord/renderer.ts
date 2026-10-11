@@ -19,6 +19,8 @@ import { XP_METHOD_CHOICES } from "../../xp/index.js";
 import { formatGreetingVariableList } from "../../welcome/discord/index.js";
 import { validateAssignableRole } from "../../guilds/discord/index.js";
 import type { SetupScreen, SetupView } from "./types.js";
+import { buildWarningRoleScreen } from "./warningSettings.js";
+import { buildCommandAccessScreen } from "./commandAccess.js";
 
 export class SetupRenderer {
   public constructor(private readonly entryCommand: "settings" | "setup" = "settings", public readonly isAvailable: (action: string) => boolean = () => true) {}
@@ -47,6 +49,10 @@ export class SetupRenderer {
         return this.buildLoggingScreen(guild, config, sessionId);
       case "moderation":
         return this.buildModerationScreen(guild, config, sessionId);
+      case "warning-roles":
+        return buildWarningRoleScreen(guild, config, sessionId);
+      case "command-access":
+        return buildCommandAccessScreen(guild, config, sessionId);
       case "main":
         return this.buildMainScreen(guild, config, sessionId);
     }
@@ -102,6 +108,8 @@ export class SetupRenderer {
             "`Auto Role` new member role",
             "`Logging` server log channel",
             "`Global Moderation` shared bans, warnings, and notes",
+            "`Warning Roles` role behavior, names, colors, and default duration",
+            "`Command Access` allowed and denied roles for each slash command",
             ...(this.entryCommand === "settings" ? ["`Custom Commands` responses and global or selected-server scope"] : []),
           ].join("\n"),
         },
@@ -120,6 +128,8 @@ export class SetupRenderer {
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           this.button(sessionId, "xp", "XP", ButtonStyle.Primary),
           ...(this.entryCommand === "settings" ? [this.button(sessionId, "custom-commands", "Custom Commands", ButtonStyle.Primary)] : []),
+          this.button(sessionId, "warning-roles", "Warning Roles", ButtonStyle.Primary),
+          this.button(sessionId, "command-access", "Command Access", ButtonStyle.Primary),
           this.button(sessionId, "finish", "Done", ButtonStyle.Success),
         ),
       ].map((row) => new ActionRowBuilder<ButtonBuilder>().addComponents(row.components.filter((button) => {

@@ -53,6 +53,8 @@ model GuildConfig {
   globalBanEnabled  Boolean @default(false)
   globalWarnEnabled Boolean @default(false)
   globalNoteEnabled Boolean @default(false)
+  warningRoleSettings Jsonb?
+  commandRoleAccess Jsonb?
   createdAt        TimestamptzString @default(now())
   updatedAt        temporal.updatedAtString()
 

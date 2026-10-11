@@ -29,6 +29,8 @@ export interface GuildConfig {
   globalBanEnabled: boolean;
   globalWarnEnabled: boolean;
   globalNoteEnabled: boolean;
+  warningRoleSettings?: unknown;
+  commandRoleAccess?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +58,8 @@ export type GuildConfigUpdate = Partial<{
   globalBanEnabled: boolean;
   globalWarnEnabled: boolean;
   globalNoteEnabled: boolean;
+  warningRoleSettings: import("./settings.js").WarningRoleSettings;
+  commandRoleAccess: import("./settings.js").CommandRoleAccess;
 }>;
 
 export interface GuildConfigStore {
