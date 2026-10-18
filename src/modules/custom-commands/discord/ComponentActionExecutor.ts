@@ -14,6 +14,7 @@ import {
 import { authorizeComponentAction } from "./actionAuthorization.js";
 import { renderComponentAction } from "./actionTemplates.js";
 import { prepareRoleAction } from "./roleActions.js";
+import { prepareChannelAction } from "./channelActions.js";
 import type { ModerationCases, WarnMember } from "../../moderation/index.js";
 import {
   moderationCaseService,
@@ -136,6 +137,13 @@ export class ComponentActionExecutor {
       throw new CustomCommandPermissionError(message);
     };
     if ("roleId" in action) return prepareRoleAction(context, me, action);
+    if (
+      action.action === "setchannelname" ||
+      action.action === "setchanneltopic" ||
+      action.action === "setslowmode" ||
+      action.action === "setchannelcategory"
+    )
+      return prepareChannelAction(context, me, action);
     if (action.action === "reply") return async () => action.text;
     if (action.action === "sendmessage") {
       const channel =

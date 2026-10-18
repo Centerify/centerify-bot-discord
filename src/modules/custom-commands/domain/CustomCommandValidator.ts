@@ -128,12 +128,21 @@ export const COMPONENT_ACTION_FIELDS = [
   "nickname",
   "text",
   "channelId",
+  "name",
+  "topic",
+  "seconds",
+  "categoryId",
   "actions",
   "successMessage",
   "repeatable",
 ] as const;
 export class CustomCommandValidator {
-  public constructor(public readonly variables = templateSyntax) {}
+  public constructor(
+    public readonly variables: {
+      validate(template: string): void;
+      keys?(): string[];
+    } = templateSyntax,
+  ) {}
   public name(input: unknown): string {
     const name = normalizeCommandName(text(input, "Name", L.name));
     if (!/^[\p{L}\p{N}_-][\p{L}\p{N}\p{M}_-]*$/u.test(name))
@@ -243,14 +252,15 @@ export class CustomCommandValidator {
       return fail(`Provide 1–${L.messages} response messages.`);
     if (JSON.stringify(input).length > L.templateInput)
       fail("Response payload is too large.");
+    const builtInKeys = new Set(
+      this.variables.keys?.() ?? TEMPLATE_VARIABLE_KEYS,
+    );
     const variables = customVariables(
       input.filter((entry) => entry && typeof entry === "object"),
+      builtInKeys,
     );
     if (Object.keys(variables).length) {
-      const keys = new Set<string>([
-        ...TEMPLATE_VARIABLE_KEYS,
-        ...Object.keys(variables),
-      ]);
+      const keys = new Set<string>([...builtInKeys, ...Object.keys(variables)]);
       return new CustomCommandValidator({
         validate: (value) => {
           templateTokens(value, keys);
@@ -345,6 +355,7 @@ export class CustomCommandValidator {
       setwarn: "warn",
       addnote: "note",
       removewarn: "unwarn",
+      renamechannel: "setchannelname",
     };
     const name =
       typeof data.action === "string" ? data.action.toLowerCase() : data.action;
@@ -369,6 +380,10 @@ export class CustomCommandValidator {
         "setnickname",
         "reply",
         "sendmessage",
+        "setchannelname",
+        "setchanneltopic",
+        "setslowmode",
+        "setchannelcategory",
         "sequence",
       ] as const,
       "Component action",
@@ -397,6 +412,10 @@ export class CustomCommandValidator {
       setnickname: ["userId", "nickname"],
       reply: ["text"],
       sendmessage: ["text", "channelId"],
+      setchannelname: ["channelId", "name"],
+      setchanneltopic: ["channelId", "topic"],
+      setslowmode: ["channelId", "seconds"],
+      setchannelcategory: ["channelId", "categoryId"],
       sequence: ["actions"],
     };
     const allowed = [
@@ -498,6 +517,44 @@ export class CustomCommandValidator {
         ...options,
       };
     }
+    if (action === "setchannelname")
+      return {
+        action,
+        channelId: id(data.channelId, "Target channel"),
+        name: checkedText(data.name, "Channel name", L.channelName),
+        ...options,
+      };
+    if (action === "setchanneltopic")
+      return {
+        action,
+        channelId: id(data.channelId, "Target channel"),
+        topic: checkedText(data.topic, "Channel topic", L.channelTopic, true),
+        ...options,
+      };
+    if (action === "setslowmode") {
+      if (
+        !Number.isSafeInteger(data.seconds) ||
+        (data.seconds as number) < 0 ||
+        (data.seconds as number) > L.slowmodeSeconds
+      )
+        fail(`Slowmode must be 0–${L.slowmodeSeconds} seconds.`);
+      return {
+        action,
+        channelId: id(data.channelId, "Target channel"),
+        seconds: data.seconds as number,
+        ...options,
+      };
+    }
+    if (action === "setchannelcategory")
+      return {
+        action,
+        channelId: id(data.channelId, "Target channel"),
+        categoryId:
+          data.categoryId === null
+            ? null
+            : id(data.categoryId, "Target category"),
+        ...options,
+      };
     if (action === "reply" || action === "sendmessage") {
       return {
         action,

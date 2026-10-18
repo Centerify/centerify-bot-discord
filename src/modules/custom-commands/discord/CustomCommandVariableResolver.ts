@@ -10,7 +10,12 @@ import { CustomCommandValidationError } from "../domain/errors.js";
 
 // Only these complete placeholders may be used as embed URLs.
 export { URL_VARIABLES } from "../domain/variables.js";
-import { templateTokens, customVariables } from "../domain/variables.js";
+import {
+  templateTokens,
+  customVariables,
+  type TemplateToken,
+} from "../domain/variables.js";
+export type TemplateRender = (template: string) => Promise<string>;
 const iso = (date: Date | null | undefined) => date?.toISOString() ?? "";
 
 export function parseArguments(input: string): string[] {
@@ -18,7 +23,8 @@ export function parseArguments(input: string): string[] {
     throw new CustomCommandValidationError(
       `Arguments must be at most ${L.argumentInput} characters.`,
     );
-  const args = input.trim() ? input.trim().split(/\s+/u) : [];
+  const trimmed = input.trim();
+  const args = trimmed ? trimmed.split(/\s+/u) : [];
   if (args.length > L.arguments)
     throw new CustomCommandValidationError(
       `Use at most ${L.arguments} arguments.`,
@@ -119,22 +125,39 @@ export class CustomCommandVariableResolver {
     template: string,
     context: CustomCommandExecutionContext,
   ): Promise<string> {
-    const variables = customVariables(context.command.content);
+    return this.createSession(context)(template);
+  }
+  /** Share validation, parsed templates and pending resolutions within one render only. */
+  public createSession(context: CustomCommandExecutionContext): TemplateRender {
+    const variables = customVariables(
+      context.command.content,
+      new Set(this.resolvers.keys()),
+    );
     const keys = new Set([...this.resolvers.keys(), ...Object.keys(variables)]);
-    const cache = new Map<string, string>();
+    const cache = new Map<string, Promise<string>>();
+    const compiled = new Map<string, TemplateToken[]>();
     const expand = async (source: string): Promise<string> => {
       let result = "";
       let position = 0;
-      for (const token of templateTokens(source, keys)) {
+      let tokens = compiled.get(source);
+      if (!tokens) {
+        tokens = templateTokens(source, keys);
+        compiled.set(source, tokens);
+      }
+      for (const token of tokens) {
         result += source.slice(position, token.start);
-        if (Object.hasOwn(variables, token.key)) {
-          if (!cache.has(token.key))
-            cache.set(token.key, await expand(variables[token.key]));
-          result += cache.get(token.key)!;
-        } else
-          result += /^args\.\d+$/.test(token.key)
-            ? (context.args[Number(token.key.slice(5))] ?? "")
-            : await this.resolvers.get(token.key)!.resolve(context);
+        if (!cache.has(token.key))
+          cache.set(
+            token.key,
+            Promise.resolve().then(() =>
+              Object.hasOwn(variables, token.key)
+                ? expand(variables[token.key])
+                : /^args\.\d+$/.test(token.key)
+                  ? (context.args[Number(token.key.slice(5))] ?? "")
+                  : this.resolvers.get(token.key)!.resolve(context),
+            ),
+          );
+        result += await cache.get(token.key)!;
         if (result.length > L.templateInput)
           throw new CustomCommandValidationError(
             "Rendered output is too long.",
@@ -146,6 +169,6 @@ export class CustomCommandVariableResolver {
         throw new CustomCommandValidationError("Rendered output is too long.");
       return result;
     };
-    return expand(template);
+    return expand;
   }
 }

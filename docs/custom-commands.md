@@ -240,6 +240,43 @@ Role changes do not consume additional cooldowns or record additional command us
 Controls expire after 15 minutes. Commands containing role actions are local to
 their original server; remove those actions before sharing across servers.
 
+### Channel actions
+
+Channel actions work in buttons, dropdowns and sequences:
+
+| Action | Meaning |
+| ------ | ------- |
+| `SetChannelName("{channel.id}", "general")` | Rename the current channel; `RenameChannel` is an alias |
+| `SetChannelTopic("{channel.id}", "Welcome to {guild.name}")` | Set the topic; an empty string clears it |
+| `SetSlowmode("{channel.id}", 10)` | Set slowmode in seconds, from 0 (disabled) to 21,600 |
+| `SetChannelCategory("{channel.id}", "CATEGORY_ID")` | Move the channel into a category |
+| `SetChannelCategory("{channel.id}", null)` | Remove the channel from its category |
+
+Channel IDs may be fixed IDs or complete placeholders such as `{channel.id}` or
+`{args.0}`. Category IDs follow the same rule. Quote IDs and text; slowmode uses
+an integer, and clearing the category uses JSON `null`. Names allow 1–100
+characters and topics 0–1,024, checked again after variable expansion.
+
+Both the clicking member and bot need View Channel and Manage Channels in the
+target channel. Moving into a category also checks those permissions in the
+destination. Actions support regular text and announcement channels; slowmode
+requires a regular text channel. Moving preserves the channel's permission
+overwrites. Fixed channel/category references are validated on save and prevent
+cross-server sharing. Each workflow checks all steps before changing anything,
+then refreshes permissions between steps. Discord can still reject an update,
+including due to its channel-update rate limits.
+
+The [channel-management-template.cfg](channel-management-template.cfg) example
+manages the invocation channel without hardcoded server IDs. Existing role tools
+can be combined with these actions: `SetRole(ROLE_ID)`, `RemoveRole(ROLE_ID)` and
+`ToggleRole(ROLE_ID)` change the invoking member; use
+`SetRole("ROLE_ID", "{args.0}")` to target another member with Manage Roles and
+the required hierarchy checks.
+
+Unknown actions, wrong argument types/counts and malformed placeholders are
+rejected before saving. Template errors identify the Markdown source line;
+placeholder errors also report their line and column within the affected value.
+
 ### Custom actions and workflows
 
 Buttons and dropdown options can also run moderation, member and message actions.
@@ -319,6 +356,10 @@ Structured actions use these fields:
 | `setnickname`                                              | `userId`, `nickname`                                                           |
 | `reply`                                                    | `text`                                                                         |
 | `sendmessage`                                              | `text`; optional `channelId`, defaulting to the invocation channel             |
+| `setchannelname` (`renamechannel` alias)                    | `channelId`, `name` |
+| `setchanneltopic`                                          | `channelId`, `topic` (empty clears) |
+| `setslowmode`                                             | `channelId`, `seconds` (0–21,600) |
+| `setchannelcategory`                                      | `channelId`, `categoryId` (ID, placeholder or `null`) |
 | `sequence`                                                 | `actions`, an array of individual effect actions                               |
 
 Every effect action and sequence accepts optional `successMessage` and `repeatable`.
@@ -617,7 +658,11 @@ management functions and the existing legacy rules. The existing message listene
 routes `!` invocations to cached domain lookup and falls back to legacy rules.
 There is no new prefix configuration system: `!` already existed in this repository.
 The executor is independent of triggers and receives a normalized context and a
-transport. Renderer strategies and variable resolvers are registries. The CRUD
+transport. Renderer strategies and variable resolvers are registries. Each render
+shares one variable session across messages, embed fields and controls: definitions
+are validated once per session, repeated templates reuse parsed tokens, and
+concurrent uses of a variable share its pending resolution. Sessions are discarded
+after rendering so values do not leak between users or executions. The CRUD
 service accepts repository and guild-reference-validation dependencies so a future
 dashboard can reuse the same validations and transactions.
 
