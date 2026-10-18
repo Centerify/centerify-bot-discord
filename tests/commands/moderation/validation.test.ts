@@ -17,7 +17,7 @@ for (const command of commands) {
     await command.prototype.chatInputRun.call(Object.create(command.prototype), request as unknown as Command.ChatInputCommandInteraction);
     expect(request.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("inside a server") }));
   });
-  test(`${command.name} rejects an empty reason or note before taking action`, async () => {
+  test.each([false, true])(`${command.name} rejects an empty reason or note before taking action (deferred=%s)`, async (deferred) => {
     const role = { comparePositionTo: () => -1 };
     const target = { id: "target", kickable: true, bannable: true, moderatable: true, roles: { highest: role } };
     const request = {
@@ -28,9 +28,11 @@ for (const command of commands) {
         getUser: () => ({ id: "target", bot: false, system: false }),
         getString: (name: string) => name === "duration" ? (command === TimeoutCommand ? "10m" : null) : name === "user-id" ? "123456789012345678" : "   ",
         getInteger: () => null, getBoolean: () => false, getSubcommand: () => "add",
-      }, deferReply: vi.fn(), editReply: vi.fn(), reply: vi.fn(),
+      }, deferred, deferReply: vi.fn(), editReply: vi.fn(), reply: vi.fn(),
     };
     await command.prototype.chatInputRun.call(Object.create(command.prototype), request as unknown as Command.ChatInputCommandInteraction);
     expect(request.editReply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("cannot be empty") }));
+    expect(request.deferReply).toHaveBeenCalledTimes(deferred ? 0 : 1);
+    expect(request.reply).not.toHaveBeenCalled();
   });
 }

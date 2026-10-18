@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -33,19 +34,19 @@ export class BanCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({ content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.BanMembers)) {
-      await interaction.reply({ content: missingPermissionMessage("BanMembers"), flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: missingPermissionMessage("BanMembers"), flags: MessageFlags.Ephemeral });
       return;
     }
     const botValidation = validateBotPermissions(interaction.guild, [PermissionFlagsBits.BanMembers]);
     if (botValidation) {
-      await interaction.reply({ content: botValidation, flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: botValidation, flags: MessageFlags.Ephemeral });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const user = interaction.options.getUser("user", true);
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     if (member) {

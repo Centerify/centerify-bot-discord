@@ -4,7 +4,7 @@ import type {
   ContextMenuCommandInteraction,
   Message,
 } from "discord.js";
-import { MessageFlags } from "discord.js";
+import { commandReplyOptions } from "../../../adapters/discord/interactions.js";
 import { logger } from "../../../adapters/logging/runtime.js";
 import {
   guildOwnershipService,
@@ -28,13 +28,12 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
       return this.ok();
     // Ownership checks make REST and database requests before the command runs.
     if (
-      ["settings", "setup", "custom"].includes(interaction.commandName) &&
       !interaction.deferred &&
       !interaction.replied
     ) {
       const acknowledgementStartedAt = Date.now();
       try {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        await interaction.deferReply(commandReplyOptions(interaction));
       } catch (error) {
         const code =
           error && typeof error === "object" && "code" in error

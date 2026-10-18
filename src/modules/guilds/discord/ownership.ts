@@ -3,6 +3,7 @@ import { MessageFlags } from "discord.js";
 import { serviceRef } from "../../../adapters/discord/context.js";
 import { guildOwnershipToken, type VerifyGuildOwnership } from "../index.js";
 import { logger } from "../../../adapters/logging/runtime.js";
+import { replyToCommand } from "../../../adapters/discord/interactions.js";
 
 export const OWNERSHIP_REQUIRED_MESSAGE =
   "The server owner must run `/verify` before Centerify can work in this server.";
@@ -38,12 +39,9 @@ export async function requireVerifiedOwnership(interaction: RepliableInteraction
     return true;
   }
   const response = { content: OWNERSHIP_REQUIRED_MESSAGE, flags: MessageFlags.Ephemeral as const };
-  if (interaction.deferred && !interaction.replied) {
-    await interaction.editReply({ content: OWNERSHIP_REQUIRED_MESSAGE });
-  } else if (interaction.replied) {
-    await interaction.followUp(response);
-  } else {
-    await interaction.reply(response);
-  }
+  // A component deferUpdate targets its panel, rather than a loading reply.
+  // Denial must not delete or overwrite that panel.
+  if (interaction.deferred && interaction.isMessageComponent?.()) await interaction.followUp(response);
+  else await replyToCommand(interaction, response);
   return false;
 }

@@ -1,3 +1,4 @@
+import { replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { trackCollector } from "../../../../adapters/discord/resources.js";
 import { Command } from "@sapphire/framework";
 import {
@@ -43,7 +44,7 @@ export class ServerCommand extends Command {
     interaction: Command.ChatInputCommandInteraction,
   ) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
         flags: MessageFlags.Ephemeral,
       });
@@ -56,7 +57,7 @@ export class ServerCommand extends Command {
     const moreInfoId = `server:more:${interaction.id}`;
     const iconUrl = guild.iconURL({ size: 1024 });
 
-    await interaction.reply({
+    await replyToCommand(interaction, {
       components: [
         this.buildServerCard({
           guild,

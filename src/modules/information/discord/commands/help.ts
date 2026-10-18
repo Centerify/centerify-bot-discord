@@ -1,3 +1,4 @@
+import { replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import {
   Colors,
@@ -78,7 +79,7 @@ export class HelpCommand extends Command {
       )
       .addTextDisplayComponents(footer);
 
-    await interaction.reply({
+    await replyToCommand(interaction, {
       components: [container],
       flags: MessageFlags.IsComponentsV2,
     });

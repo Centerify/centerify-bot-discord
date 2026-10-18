@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { trackCollector } from "../../../../adapters/discord/resources.js";
 import { requireVerifiedOwnership } from "../../../guilds/discord/index.js";
 import { Command } from "@sapphire/framework";
@@ -36,15 +37,15 @@ export class ReportCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({ content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
       return;
     }
     const user = interaction.options.getUser("user", true);
     if (user.id === interaction.user.id || user.bot || user.system) {
-      await interaction.reply({ content: "Please choose another server member to report.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: "Please choose another server member to report.", flags: MessageFlags.Ephemeral });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const reason = interaction.options.getString("reason", true).trim();
     if (!reason) {
       await interaction.editReply({ content: "A report reason cannot be empty." });

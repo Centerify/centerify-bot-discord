@@ -51,3 +51,18 @@ test("finishing restored setup stops its collector without replacing the complet
   await f.handlers.end();
   expect(f.renderer.buildExpiredScreen).not.toHaveBeenCalled();
 });
+
+test("expired callbacks recover through the root reply without trying the invalid token", async () => {
+  const f = fixture();
+  await f.run();
+  mocks.handle.mockRejectedValueOnce({ code: 10062 });
+  const b = { ...f.component(), followUp: vi.fn() };
+  await f.handlers.collect(b);
+  expect(b.reply).not.toHaveBeenCalled();
+  expect(b.followUp).not.toHaveBeenCalled();
+  expect(f.interaction.editReply).toHaveBeenLastCalledWith({ content: expect.stringContaining("try the control again") });
+  expect(f.collector.resetTimer).not.toHaveBeenCalled();
+  mocks.handle.mockResolvedValue({ setupCompleted: true });
+  await f.handlers.collect(f.component());
+  expect(mocks.handle).toHaveBeenCalledTimes(2);
+});

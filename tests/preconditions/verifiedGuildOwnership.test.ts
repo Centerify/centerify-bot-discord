@@ -17,7 +17,7 @@ const precondition = Object.create(
 ) as VerifiedGuildOwnershipPrecondition;
 beforeEach(() => vi.resetAllMocks());
 
-test.each(["settings", "setup", "custom"])(
+test.each(["settings", "setup", "custom", "warn", "ban", "history"])(
   "%s acknowledgement completes before slow ownership checks start",
   async (commandName) => {
     let acknowledged = false;
@@ -43,7 +43,7 @@ test.each(["settings", "setup", "custom"])(
   },
 );
 
-test.each(["settings", "setup", "custom"])(
+test.each(["settings", "setup", "custom", "warn", "ban", "history"])(
   "an acknowledged %s interaction is not deferred twice",
   async (commandName) => {
     mocks.check.mockResolvedValue(true);
@@ -166,5 +166,17 @@ test.each([new Error("Connection failed"), { code: 50013 }])(
     ).rejects.toBe(error);
     expect(mocks.check).not.toHaveBeenCalled();
     expect(mocks.warn).not.toHaveBeenCalled();
+  },
+);
+
+test.each(["ping", "help", "info", "server", "status"])(
+  "%s acknowledges publicly before slow ownership requests",
+  async (commandName) => {
+    let acknowledged = false;
+    const interaction = { commandName, deferred: false, replied: false,
+      deferReply: vi.fn(async () => { acknowledged = true; }) };
+    mocks.check.mockImplementation(async () => { expect(acknowledged).toBe(true); return true; });
+    expect((await precondition.chatInputRun(interaction as never)).isOk()).toBe(true);
+    expect(interaction.deferReply).toHaveBeenCalledWith({});
   },
 );

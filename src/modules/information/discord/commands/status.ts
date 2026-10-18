@@ -1,3 +1,4 @@
+import { replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { trackCollector } from "../../../../adapters/discord/resources.js";
 import { Command } from "@sapphire/framework";
 import {
@@ -43,7 +44,7 @@ export class StatusCommand extends Command {
     const targetUser = interaction.options.getUser("user") ?? interaction.user;
 
     if (!(await this.canInspectTarget(interaction, targetUser))) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "You need Manage Server permission to inspect another member.",
         flags: MessageFlags.Ephemeral,
       });
@@ -66,7 +67,7 @@ export class StatusCommand extends Command {
       avatarUrl,
     });
 
-    await interaction.reply({
+    await replyToCommand(interaction, {
       components: [card],
       flags: MessageFlags.IsComponentsV2,
     });
