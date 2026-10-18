@@ -26,6 +26,7 @@
     "test:e2e": "node scripts/test-database.mjs --e2e",
     "check:discord": "node scripts/verify-discord.mjs",
     "typecheck": "tsc --noEmit",
+    "benchmark:performance": "tsx scripts/benchmark-performance.mts",
     "contract:emit": "prisma contract emit"
   },
   "dependencies": {

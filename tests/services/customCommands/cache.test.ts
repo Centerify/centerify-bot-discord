@@ -45,3 +45,24 @@ test("invalidating an in-flight read cannot restore stale data", async () => {
   await old;
   expect(await cache.get("a", async () => "unused")).toBe("fresh");
 });
+
+test("expiry cleanup preserves live entries across invalidation and reinsertion", async () => {
+  let now = 0;
+  const cache = new CustomCommandCache<string>(100, 3, () => now);
+  const load = vi.fn(async () => "value");
+  await cache.get("a", load);
+  now = 10;
+  await cache.get("b", load);
+  cache.invalidate("a");
+  now = 20;
+  await cache.get("a", load);
+  now = 110;
+  await cache.get("c", load);
+  expect(cache.size).toBe(2);
+  await cache.get("a", load);
+  expect(load).toHaveBeenCalledTimes(4);
+  now = 120;
+  await cache.get("a", load);
+  expect(load).toHaveBeenCalledTimes(5);
+  expect(cache.size).toBe(2);
+});

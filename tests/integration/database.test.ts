@@ -126,6 +126,25 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
     expect(await xp.totals(guildB, userId)).toEqual([{ userId, xp: 55 }]);
   });
 
+  test("independent XP service instances enforce persisted cooldowns atomically", async () => {
+    const { XpService } = await import("../../src/modules/xp/index.js");
+    const { PrismaXpRepository } = await import("../../src/modules/xp/infrastructure/PrismaXpRepository.js");
+    const repository = new PrismaXpRepository(db);
+    const userId = `${prefix}-independent-member`;
+    await config.update(guildA, { xpEnabled: true, xpMethods: "messages,reactions,daily", xpMessageAmount: 15, xpSharing: "server" });
+    const results = await Promise.all(Array.from({ length: 10 }, () =>
+      new XpService(repository, config).award(guildA, userId)));
+    expect(results.filter(Boolean)).toHaveLength(1);
+    const restarted = new XpService(repository, config);
+    expect(await restarted.award(guildA, userId)).toBe(false);
+    expect(await restarted.award(guildA, userId, "reactions")).toBe(true);
+    expect(await restarted.award(guildA, userId, "daily")).toBe(true);
+    const settings = await config.getOrCreate(guildA);
+    expect(await restarted.totals(guildA, userId)).toEqual([
+      { userId, xp: 15 + settings.xpReactionAmount + settings.xpDailyAmount },
+    ]);
+  });
+
   test("ownership verification remains local and a transfer invalidates authorization", async () => {
     let currentOwner = `${prefix}-owner`;
     const guild = {
