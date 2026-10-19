@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'4721d6a27f9cb5f869c7bf9e84f11d9a744d8fb3ab8e1cdbc9108207b0e78d13'>;
+  StorageHashBase<'01e9ce03a292435e66750ed685c656abd341f28a91aa637b01713841ab2926fb'>;
 export type ExecutionHash =
   ExecutionHashBase<'6c0cf42c3de6e117af55ef6825b671cedb3060cd1618d842f7b9845b03132d25'>;
 export type ProfileHash =
@@ -326,6 +326,7 @@ export type FieldOutputTypes = {
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['output'];
       readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['output'] | null;
+      readonly ticketSettings: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -508,6 +509,7 @@ export type FieldInputTypes = {
       readonly globalNoteEnabled: CodecTypes['pg/bool@1']['input'];
       readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly commandRoleAccess: CodecTypes['pg/jsonb@1']['input'] | null;
+      readonly ticketSettings: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -679,6 +681,7 @@ export type StorageColumnTypes = {
       readonly loggingChannelId: CodecTypes['pg/text@1']['output'] | null;
       readonly loggingEnabled: CodecTypes['pg/bool@1']['output'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['output'];
+      readonly ticketSettings: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['output'] | null;
       readonly welcomeChannelId: CodecTypes['pg/text@1']['output'] | null;
@@ -861,6 +864,7 @@ export type StorageColumnInputTypes = {
       readonly loggingChannelId: CodecTypes['pg/text@1']['input'] | null;
       readonly loggingEnabled: CodecTypes['pg/bool@1']['input'];
       readonly setupCompleted: CodecTypes['pg/bool@1']['input'];
+      readonly ticketSettings: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly warningRoleSettings: CodecTypes['pg/jsonb@1']['input'] | null;
       readonly welcomeChannelId: CodecTypes['pg/text@1']['input'] | null;
@@ -1650,6 +1654,11 @@ type ContractBase = Omit<
                   readonly nullable: true;
                 };
                 readonly commandRoleAccess: {
+                  readonly nativeType: 'jsonb';
+                  readonly codecId: 'pg/jsonb@1';
+                  readonly nullable: true;
+                };
+                readonly ticketSettings: {
                   readonly nativeType: 'jsonb';
                   readonly codecId: 'pg/jsonb@1';
                   readonly nullable: true;
@@ -2833,6 +2842,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
               };
+              readonly ticketSettings: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/jsonb@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -2879,6 +2892,7 @@ type ContractBase = Omit<
                 readonly globalNoteEnabled: { readonly column: 'globalNoteEnabled' };
                 readonly warningRoleSettings: { readonly column: 'warningRoleSettings' };
                 readonly commandRoleAccess: { readonly column: 'commandRoleAccess' };
+                readonly ticketSettings: { readonly column: 'ticketSettings' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };

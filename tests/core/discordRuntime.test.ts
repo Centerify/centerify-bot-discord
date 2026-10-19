@@ -33,6 +33,8 @@ test("the explicit loader installs existing commands and omits every disabled mo
       xp: { enabled: false },
       welcome: { enabled: false },
       "custom-commands": { enabled: false },
+      management: { enabled: false },
+      tickets: { enabled: false },
     },
   });
   await app.start();
@@ -74,7 +76,7 @@ test("all existing commands are installed with the default modules without loggi
   await discord.stores.get("preconditions").loadAll();
   await discord.stores.get("commands").loadAll();
   try {
-    expect(discord.stores.get("commands").size).toBe(23);
+    expect(discord.stores.get("commands").size).toBe(27);
     expect(discord.listenerCount("messageCreate")).toBe(1);
     expect(discord.listenerCount("messageReactionAdd")).toBe(1);
     expect(discord.stores.get("preconditions").has("verifiedGuildOwnership")).toBe(true);

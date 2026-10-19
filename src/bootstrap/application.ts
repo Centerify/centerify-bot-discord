@@ -32,6 +32,10 @@ import {
 } from "../modules/xp/index.js";
 import { createWelcomeModule } from "../modules/welcome/index.js";
 import { createSettingsModule } from "../modules/settings/index.js";
+import { createManagementModule } from "../modules/management/index.js";
+import { createTicketsModule } from "../modules/tickets/index.js";
+import { createPluginsModule, type PluginManager } from "../modules/plugins/index.js";
+import { LocalPluginRegistry } from "../modules/plugins/infrastructure/LocalPluginRegistry.js";
 import {
   createInformationModule,
   type RepositoryInfoProvider,
@@ -68,6 +72,7 @@ export interface ApplicationOptions {
   /** Replace a built-in by ID, or append a separately packaged module. */
   replacements?: readonly CenterifyModule[];
   additionalModules?: readonly CenterifyModule[];
+  pluginManager?: PluginManager;
 }
 
 export function createApplication(options: ApplicationOptions = {}) {
@@ -129,6 +134,15 @@ export function createApplication(options: ApplicationOptions = {}) {
       createSettingsModule(),
       async () => (await import("../modules/settings/discord/index.js")).discordModule,
     ),
+    withDiscord(
+      createManagementModule(),
+      async () => (await import("../modules/management/discord/index.js")).discordModule,
+    ),
+    withDiscord(
+      createTicketsModule(),
+      async () => (await import("../modules/tickets/discord/index.js")).discordModule,
+    ),
+    createPluginsModule(options.pluginManager ?? new LocalPluginRegistry(process.cwd())),
     withDiscord(
       createInformationModule(repositories.information ?? { get: getRepositoryInfo }),
       async () => (await import("../modules/information/discord/index.js")).discordModule,

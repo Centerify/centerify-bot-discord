@@ -26,6 +26,16 @@ test("module command contributions serialize valid unique names and stay within 
     }
   }
   expect(new Set(names).size).toBe(names.length);
-  expect(names).toHaveLength(23);
-  expect(names).toEqual(expect.arrayContaining(["setup", "settings", "unverify"]));
+  expect(names).toHaveLength(27);
+  expect(names).toEqual(
+    expect.arrayContaining([
+      "setup",
+      "settings",
+      "unverify",
+      "channel",
+      "role",
+      "serverconfig",
+      "ticket",
+    ]),
+  );
 });

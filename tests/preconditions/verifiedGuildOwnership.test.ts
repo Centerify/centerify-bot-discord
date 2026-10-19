@@ -17,7 +17,7 @@ const precondition = Object.create(
 ) as VerifiedGuildOwnershipPrecondition;
 beforeEach(() => vi.resetAllMocks());
 
-test.each(["settings", "setup", "custom"])(
+test.each(["settings", "setup", "custom", "channel", "role", "serverconfig", "ticket"])(
   "%s acknowledgement completes before slow ownership checks start",
   async (commandName) => {
     let acknowledged = false;
@@ -43,7 +43,7 @@ test.each(["settings", "setup", "custom"])(
   },
 );
 
-test.each(["settings", "setup", "custom"])(
+test.each(["settings", "setup", "custom", "channel", "role", "serverconfig", "ticket"])(
   "an acknowledged %s interaction is not deferred twice",
   async (commandName) => {
     mocks.check.mockResolvedValue(true);
@@ -79,7 +79,7 @@ test("unverify remains available after verification is removed", async () => {
   expect(interaction.deferReply).not.toHaveBeenCalled();
 });
 
-test.each(["settings", "setup", "custom"])(
+test.each(["settings", "setup", "custom", "channel", "role", "serverconfig", "ticket"])(
   "expired %s interactions stop before ownership requests",
   async (commandName) => {
     const apiError = Object.assign(new Error("Unknown interaction"), {

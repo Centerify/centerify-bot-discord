@@ -43,6 +43,9 @@ Each module has an intentional `index.ts` business API. `discord/index.ts` is a 
 | `custom-commands` | Definitions, validation, execution, sharing and legacy responses | `guilds`        |
 | `settings`        | Server settings presentation and configuration controls          | `guilds`        |
 | `information`     | Bot/server information presentation and repository metadata      | `guilds`        |
+| `management`      | Discord server settings, channels and roles                      | `guilds`        |
+| `tickets`         | Private support channels, panels and participant access          | `guilds`        |
+| `plugins`         | Installed-package inventory and the plugin SDK                   | `guilds`        |
 
 Discord-enabled modules additionally depend on `runtime`. Reports remain part of moderation because they use moderation history and review permissions. The existing log-channel setting remains guild configuration; a separate logging feature was not invented. The persisted guild configuration shape remains compatible with the existing database.
 

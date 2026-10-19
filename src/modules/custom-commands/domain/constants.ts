@@ -60,6 +60,11 @@ export const PROTECTED_COMMAND_NAMES = [
   "settings",
   "custom",
   "help",
+  "channel",
+  "role",
+  "serverconfig",
+  "ticket",
+  "bticket",
 ] as const;
 // Reuse the existing custom-response prefix. GuildConfig has no prefix setting.
 export const CUSTOM_COMMAND_PREFIX = "!";

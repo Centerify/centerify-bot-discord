@@ -124,6 +124,22 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
     expect((await config.getOrCreate(guildA)).commandRoleAccess).toEqual(roles);
   });
 
+  test("ticket settings persist independently and survive unrelated settings updates", async () => {
+    const tickets = {
+      enabled: true,
+      categoryId: "123456789012345678",
+      supportRoleId: "223456789012345678",
+    };
+    await config.update(guildA, { ticketSettings: tickets });
+    await config.update(guildB, { ticketSettings: { ...tickets, enabled: false } });
+    await config.update(guildA, { welcomeMessage: "Ticket settings remain saved" });
+    expect((await config.getOrCreate(guildA)).ticketSettings).toEqual(tickets);
+    expect((await config.getOrCreate(guildB)).ticketSettings).toEqual({
+      ...tickets,
+      enabled: false,
+    });
+  });
+
   test("concurrent creations enforce the 25-rule server limit", async () => {
     await Promise.all(
       Array.from({ length: 24 }, (_, index) => custom.create(rule(limitGuild, `rule-${index}`))),

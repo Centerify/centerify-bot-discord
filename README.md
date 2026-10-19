@@ -8,6 +8,10 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 - Independent server settings with current-owner verification
 - Interactive setup for greetings, automatic roles, logging, and moderation
 - Moderation cases, warnings, member reports, and opt-in global moderation
+- Server, channel and role management with permission and hierarchy checks
+- Private support tickets with persistent panels and retained message history
+- Native terminal plugin marketplace for Windows, macOS and Linux
+- Separately installable Better Ticket support-management module
 - Message XP, levels, and a leaderboard with server, global, or selected-server sharing
 - Server-specific custom message commands and member join/leave responses
 - `/ping` command for checking bot responsiveness
@@ -86,6 +90,11 @@ Sharing XP or global moderation requires explicit configuration; installing the
 bot in another server does not automatically join its sharing scope.
 
 ## Scripts
+
+See [management and ticket commands](docs/management.md) for the new command
+reference and ticket setup. Apply database migrations before starting this version.
+See [plugins and the native marketplace](docs/plugins.md) to install and manage
+optional modules. Better Ticket is developed separately in `plugins/better-ticket`.
 
 ```bash
 npm run dev

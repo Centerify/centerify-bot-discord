@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .cache/
+.centerify/
+artifacts/
+plugins/*/package/
+plugins/installed/
 .agents/
 .claude/
 .cursor/

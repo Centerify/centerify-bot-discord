@@ -852,6 +852,13 @@
                   "kind": "scalar"
                 }
               },
+              "ticketSettings": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
               "updatedAt": {
                 "nullable": false,
                 "type": {
@@ -991,6 +998,9 @@
                 },
                 "setupCompleted": {
                   "column": "setupCompleted"
+                },
+                "ticketSettings": {
+                  "column": "ticketSettings"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -2618,6 +2628,11 @@
                   "nativeType": "bool",
                   "nullable": false
                 },
+                "ticketSettings": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": true
+                },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "nativeType": "timestamptz",
@@ -3563,7 +3578,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "4721d6a27f9cb5f869c7bf9e84f11d9a744d8fb3ab8e1cdbc9108207b0e78d13"
+    "storageHash": "01e9ce03a292435e66750ed685c656abd341f28a91aa637b01713841ab2926fb"
   },
   "execution": {
     "executionHash": "6c0cf42c3de6e117af55ef6825b671cedb3060cd1618d842f7b9845b03132d25",

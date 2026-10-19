@@ -48,9 +48,12 @@ CENTERIFY_MODULES={"custom-commands":{"enabled":true,"config":{"maxCommands":200
 ```
 
 Built-in module IDs are `guilds`, `moderation`, `xp`, `welcome`, `custom-commands`,
-`settings`, `information`, and the shared `runtime`. Unspecified modules remain
+`settings`, `management`, `tickets`, `plugins`, `information`, and the shared `runtime`. Unspecified modules remain
 enabled. Keep required dependencies enabled; see [architecture](architecture.md)
 for the dependency table. Unknown IDs or invalid feature options fail startup.
+Installed plugins are selected by the native marketplace, not installed by
+`CENTERIFY_MODULES`. See [plugin management](plugins.md). `CENTERIFY_PLUGIN_STATE_DIR`
+sets a shared persistent plugin-state directory; the default is `.centerify`.
 
 When changing code, edit the owning module under `src/modules/<feature>`:
 

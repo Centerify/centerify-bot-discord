@@ -11,16 +11,23 @@ import { installDiscordModules } from "../adapters/discord/modules.js";
 import { createApplication } from "./application.js";
 import { db } from "../adapters/prisma/client.js";
 import { logger } from "../adapters/logging/pino.js";
+import { defaultPluginManager, loadInstalledPlugins } from "./plugins.js";
 
 export async function startBot(config: EnvironmentConfiguration = parseEnvironment()) {
   ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
+  const pluginManager = defaultPluginManager();
+  const installedPlugins = await loadInstalledPlugins(pluginManager);
   const client = new SapphireClient({
     ...gatewayOptions,
     baseUserDirectory: null,
     loadMessageCommandListeners: true,
     logger: { level: LogLevel.Info },
   });
-  const application = createApplication({ modules: config.modules });
+  const application = createApplication({
+    modules: config.modules,
+    pluginManager,
+    additionalModules: installedPlugins,
+  });
   let removeAdapters: (() => Promise<void>) | undefined;
   let stopping: Promise<void> | undefined;
   const stop = () =>

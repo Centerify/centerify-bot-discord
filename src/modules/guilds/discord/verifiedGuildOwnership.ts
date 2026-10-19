@@ -22,7 +22,16 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
       return this.ok();
     // Ownership checks make REST and database requests before the command runs.
     if (
-      ["settings", "setup", "custom"].includes(interaction.commandName) &&
+      [
+        "settings",
+        "setup",
+        "custom",
+        "channel",
+        "role",
+        "serverconfig",
+        "ticket",
+        "bticket",
+      ].includes(interaction.commandName) &&
       !interaction.deferred &&
       !interaction.replied
     ) {
