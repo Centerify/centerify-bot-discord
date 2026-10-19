@@ -9,6 +9,8 @@ import {
   type ModuleRegistry,
 } from "../../core/index.js";
 import { bindApplication, withApplication } from "./context.js";
+import { configuredRegistry, validateCommandConfiguration } from "./configuration.js";
+import type { CommandConfiguration } from "../../configuration.js";
 
 type CommandConstructor = new (context: Command.LoaderContext, options: Command.Options) => Command;
 export interface DiscordEvent {
@@ -107,7 +109,17 @@ async function runHandlers(
   });
 }
 
-export async function installDiscordModules(client: SapphireClient, application: ModuleRegistry) {
+export async function installDiscordModules(
+  client: SapphireClient,
+  application: ModuleRegistry,
+  configuration: CommandConfiguration = {},
+) {
+  validateCommandConfiguration(
+    application
+      .extensions(discordModuleToken)
+      .flatMap(({ value }) => Object.keys(value.definition.commands ?? {})),
+    configuration,
+  );
   const unbind = bindApplication(client, application);
   const disposers: (() => void | Promise<void>)[] = [];
   const commands = new Set<string>();
@@ -123,10 +135,13 @@ export async function installDiscordModules(client: SapphireClient, application:
       for (const [name, Original] of Object.entries(definition.commands ?? {})) {
         if (commands.has(name)) throw new Error(`Duplicate Discord command: ${name}`);
         commands.add(name);
+        if (configuration[name]?.enabled === false) continue;
         class ScopedCommand extends Original {
           override registerApplicationCommands(registry: Command.Registry) {
             return withApplication(application, () =>
-              super.registerApplicationCommands?.(registry),
+              super.registerApplicationCommands?.(
+                configuredRegistry(registry, configuration[name]),
+              ),
             );
           }
           override chatInputRun(interaction: Command.ChatInputCommandInteraction) {

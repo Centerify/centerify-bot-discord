@@ -19,6 +19,7 @@ ENV NODE_ENV=production LOG_FORMAT=json XDG_DATA_HOME=/tmp/centerify
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
+COPY --chown=node:node centerify.config.json centerify.config.schema.json ./
 USER node
 STOPSIGNAL SIGTERM
 CMD ["node", "--enable-source-maps", "dist/src/index.js"]

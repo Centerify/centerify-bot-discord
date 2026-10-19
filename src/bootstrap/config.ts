@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseModuleConfiguration } from "../core/index.js";
 import { parseLoggingConfiguration } from "../adapters/logging/config.js";
+import { loadConfiguration } from "../configuration.js";
 
 export class EnvironmentConfigurationError extends Error {
   override readonly name = "EnvironmentConfigurationError";
@@ -26,8 +27,14 @@ const environmentSchema = z.object({
 });
 
 /** Parse at the executable boundary before loading Discord or database resources. */
-export function parseEnvironment(env: NodeJS.ProcessEnv = process.env) {
-  const result = environmentSchema.safeParse(env);
+export function parseEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+  file = loadConfiguration(env),
+) {
+  const result = environmentSchema.safeParse({
+    ...env,
+    SHUTDOWN_TIMEOUT_MS: env.SHUTDOWN_TIMEOUT_MS ?? file.startup.shutdownTimeoutMs,
+  });
   if (!result.success) {
     const fields = result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
     throw new EnvironmentConfigurationError(
@@ -36,7 +43,9 @@ export function parseEnvironment(env: NodeJS.ProcessEnv = process.env) {
   }
   let modules;
   try {
-    modules = parseModuleConfiguration(result.data.CENTERIFY_MODULES);
+    modules = parseModuleConfiguration(
+      result.data.CENTERIFY_MODULES ?? JSON.stringify(file.modules),
+    );
   } catch {
     throw new EnvironmentConfigurationError(
       "CENTERIFY_MODULES must be a valid module configuration object. See docs/configuration.md.",
@@ -47,7 +56,9 @@ export function parseEnvironment(env: NodeJS.ProcessEnv = process.env) {
     databaseUrl: result.data.DATABASE_URL,
     shutdownTimeoutMs: result.data.SHUTDOWN_TIMEOUT_MS,
     modules,
-    logging: parseLoggingConfiguration(env),
+    logging: parseLoggingConfiguration(env, file.logging),
+    customization: file,
+    pluginStateDirectory: env.CENTERIFY_PLUGIN_STATE_DIR ?? file.plugins.stateDirectory,
   };
 }
 

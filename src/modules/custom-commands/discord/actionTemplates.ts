@@ -3,7 +3,7 @@ import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
 import { CustomCommandVariableResolver } from "./CustomCommandVariableResolver.js";
 import type { CustomCommandExecutionContext } from "./types.js";
 import { CustomCommandArgumentError } from "../domain/errors.js";
-import { CUSTOM_COMMAND_PREFIX } from "../domain/constants.js";
+import { customCommandPrefix } from "./configuration.js";
 
 /** Expand once, then validate the complete action before any side effects. */
 export async function renderComponentAction(
@@ -36,7 +36,7 @@ export async function renderComponentAction(
     ) {
       const target = field === "userId" ? "member" : "channel";
       const usage = ["{args.0}", "{args.first}", "{args}"].includes(template)
-        ? ` Usage: ${CUSTOM_COMMAND_PREFIX}${context.command.name} ${field === "userId" ? "@Member" : "#channel"}.`
+        ? ` Usage: ${customCommandPrefix()}${context.command.name} ${field === "userId" ? "@Member" : "#channel"}.`
         : "";
       throw new CustomCommandArgumentError(
         `${value ? "Invalid" : "Missing"} ${target} argument ${template}. Supply a ${target} mention or a 17–20 digit Discord ID.${usage}`,

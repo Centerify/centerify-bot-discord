@@ -4,7 +4,11 @@ import { CustomResponseService } from "./application/CustomResponseService.js";
 import type { CustomCommandDefinition, CustomCommandRepository } from "./domain/types.js";
 import type { LegacyResponseRepository } from "./domain/legacy.js";
 import type { SharingRepository } from "./application/CommandSharingService.js";
-import { CUSTOM_COMMAND_LIMITS, PROTECTED_COMMAND_NAMES } from "./domain/constants.js";
+import {
+  CUSTOM_COMMAND_LIMITS,
+  CUSTOM_COMMAND_PREFIX,
+  PROTECTED_COMMAND_NAMES,
+} from "./domain/constants.js";
 export { CustomCommandService, exportDefinition } from "./application/CustomCommandService.js";
 export { CustomResponseService } from "./application/CustomResponseService.js";
 export { ExecuteCustomCommand } from "./application/ExecuteCustomCommand.js";
@@ -24,6 +28,9 @@ export const customCommandRepositoryToken = serviceToken<CustomCommandRepository
 export const sharingRepositoryToken = serviceToken<SharingRepository>(
   "custom-commands.sharingRepository",
 );
+export const customCommandOptionsToken = serviceToken<{ prefix: string }>(
+  "custom-commands.options",
+);
 export function createCustomCommandsModule(options: {
   repository: CustomCommandRepository;
   legacy: LegacyResponseRepository;
@@ -41,11 +48,21 @@ export function createCustomCommandsModule(options: {
     },
     register(context) {
       const config = context.config as
-        { maxCommands?: unknown; maxLegacyResponses?: unknown } | undefined;
+        { maxCommands?: unknown; maxLegacyResponses?: unknown; prefix?: unknown } | undefined;
       if (config !== undefined && (!config || typeof config !== "object" || Array.isArray(config)))
         throw new Error("custom-commands config must be an object");
       const maxCommands = config?.maxCommands ?? CUSTOM_COMMAND_LIMITS.commandsPerGuild;
       const maxLegacy = config?.maxLegacyResponses ?? 25;
+      const prefix = config?.prefix ?? CUSTOM_COMMAND_PREFIX;
+      if (typeof prefix !== "string" || !/^\S{1,10}$/.test(prefix))
+        throw new Error("Custom command prefix must contain 1 to 10 non-whitespace characters");
+      if (
+        Object.keys(config ?? {}).some(
+          (key) => !["prefix", "maxCommands", "maxLegacyResponses"].includes(key),
+        )
+      )
+        throw new Error("Unknown custom-commands configuration option");
+      context.provide(customCommandOptionsToken, { prefix });
       if (
         typeof maxCommands !== "number" ||
         !Number.isInteger(maxCommands) ||

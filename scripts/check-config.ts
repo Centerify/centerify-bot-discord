@@ -1,7 +1,8 @@
-import "dotenv/config";
+import { loadStartupEnvironment } from "../src/bootstrap/environment.js";
 import { parseEnvironment } from "../src/bootstrap/config.js";
 
 try {
+  loadStartupEnvironment();
   const config = parseEnvironment();
   console.log(
     `Configuration is valid. Logging: ${config.logging.format}/${config.logging.level}. Shutdown timeout: ${config.shutdownTimeoutMs} ms.`,

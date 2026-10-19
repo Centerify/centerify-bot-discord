@@ -1,5 +1,7 @@
 import { currentApplication } from "../../../src/adapters/discord/context.js";
 import { customCommandsToken } from "../../../src/modules/custom-commands/index.js";
+import { customCommandOptionsToken } from "../../../src/modules/custom-commands/index.js";
+import { CustomCommandVariableResolver } from "../../../src/modules/custom-commands/discord/CustomCommandVariableResolver.js";
 import {
   executorToken,
   sharingToken,
@@ -34,6 +36,32 @@ function fixture(content = "!welcome John") {
   };
 }
 beforeEach(() => vi.restoreAllMocks());
+test("a configured multi-character prefix controls execution and template variables", async () => {
+  const options = currentApplication().resolve(customCommandOptionsToken);
+  const previous = options.prefix;
+  options.prefix = "::";
+  try {
+    vi.spyOn(
+      currentApplication().resolve(customCommandsToken),
+      "getCommandByNameOrAlias",
+    ).mockResolvedValue(record());
+    const execute = vi
+      .spyOn(currentApplication().resolve(executorToken), "execute")
+      .mockResolvedValue(undefined);
+    expect(await runDomainCustomCommand(fixture("::welcome John") as unknown as Message)).toBe(
+      true,
+    );
+    expect(await runDomainCustomCommand(fixture("!welcome John") as unknown as Message)).toBe(
+      false,
+    );
+    expect(execute).toHaveBeenCalledOnce();
+    expect(await new CustomCommandVariableResolver().render("{command.prefix}", context())).toBe(
+      "::",
+    );
+  } finally {
+    options.prefix = previous;
+  }
+});
 test("message fast paths do not access the repository", async () => {
   const lookup = vi.spyOn(
     currentApplication().resolve(customCommandsToken),

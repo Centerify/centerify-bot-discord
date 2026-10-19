@@ -14,6 +14,8 @@ import {
   time,
 } from "discord.js";
 import { getRepositoryInfo } from "../services.js";
+import { botIdentityToken } from "../../../../adapters/discord/configuration.js";
+import { currentApplication } from "../../../../adapters/discord/context.js";
 
 export class InfoCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -24,12 +26,13 @@ export class InfoCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const repo = await getRepositoryInfo();
+    const identity = currentApplication().resolve(botIdentityToken);
     const repositoryLink = repo.repositoryUrl ?? null;
 
     const header = new TextDisplayBuilder().setContent(
       [
-        `## ${escapeMarkdown(repo.name)}`,
-        escapeMarkdown(repo.description),
+        `## ${escapeMarkdown(identity.name ?? repo.name)}`,
+        escapeMarkdown(identity.description ?? repo.description),
         "",
         `Version ${escapeMarkdown(repo.version)}`,
       ].join("\n"),

@@ -1,8 +1,9 @@
 import pino from "pino";
 import { serializeError } from "./errors.js";
 import { parseLoggingConfiguration } from "./config.js";
+import { loadConfiguration } from "../../configuration.js";
 
-const config = parseLoggingConfiguration();
+const config = parseLoggingConfiguration(process.env, loadConfiguration().logging);
 
 export const logger = pino({
   name: "centerify-bot",

@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { ChatInputCommandInteraction } from "discord.js";
+import type { Command } from "@sapphire/framework";
 
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock("../../src/modules/guilds/discord/config.js", () => ({
@@ -65,6 +66,20 @@ test("access check failures fail closed and acknowledged interactions use follow
   ).toBe(true);
   expect(f.reply).not.toHaveBeenCalled();
   expect(f.followUp).toHaveBeenCalledOnce();
+});
+
+test("renamed commands and aliases retain role restrictions on their canonical command", async () => {
+  mocks.load.mockResolvedValue({ commandRoleAccess: { warn: { allowedRoleIds: [role] } } });
+  const interaction = { ...fixture(), commandName: "caution" };
+  expect(
+    (
+      await precondition.chatInputRun(
+        interaction as unknown as ChatInputCommandInteraction,
+        { name: "warn" } as Command,
+      )
+    ).isErr(),
+  ).toBe(true);
+  expect(interaction.reply).toHaveBeenCalledOnce();
 });
 test.each(["settings", "setup", "verify", "unverify"])(
   "/%s stays available for recovery",

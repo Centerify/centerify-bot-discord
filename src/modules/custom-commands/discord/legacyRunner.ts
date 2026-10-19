@@ -15,6 +15,7 @@ import {
   type CustomResponseKind,
 } from "./legacyService.js";
 import { guildOwnershipService } from "../../guilds/discord/index.js";
+import { customCommandPrefix } from "./configuration.js";
 
 function render(
   template: string,
@@ -74,8 +75,11 @@ function canSend(channel: unknown, member: GuildMember | null, embed: boolean) {
 export function createLegacyRunner() {
   const cooldowns = new Map<string, number>();
   async function runCustomCommand(message: Message) {
-    if (!message.guild || !message.member || !message.content.startsWith("!")) return;
-    const match = /^!([a-z0-9_-]{1,32})(?:\s+([\s\S]*))?$/i.exec(message.content);
+    const prefix = customCommandPrefix();
+    if (!message.guild || !message.member || !message.content.startsWith(prefix)) return;
+    const match = /^([a-z0-9_-]{1,32})(?:\s+([\s\S]*))?$/i.exec(
+      message.content.slice(prefix.length),
+    );
     if (!match) return;
     const trigger = match[1]!.toLowerCase();
     if (isBuiltInCommand(trigger)) return;

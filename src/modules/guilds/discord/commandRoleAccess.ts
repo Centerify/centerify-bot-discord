@@ -1,4 +1,4 @@
-import { Precondition } from "@sapphire/framework";
+import { Precondition, type Command } from "@sapphire/framework";
 import {
   MessageFlags,
   type ChatInputCommandInteraction,
@@ -14,16 +14,17 @@ export class CommandRoleAccessPrecondition extends Precondition {
     super(context, { ...options, position: 1 });
   }
 
-  override async chatInputRun(interaction: ChatInputCommandInteraction) {
+  override async chatInputRun(interaction: ChatInputCommandInteraction, command?: Command) {
+    const commandName = command?.name ?? interaction.commandName;
     if (
       !interaction.inCachedGuild() ||
-      PROTECTED_ACCESS_COMMANDS.some((name) => name === interaction.commandName)
+      PROTECTED_ACCESS_COMMANDS.some((name) => name === commandName)
     )
       return this.ok();
     let denial: string | null;
     try {
       const config = await guildConfigService.getOrCreate(interaction.guildId);
-      const rule = commandRoleAccess(config.commandRoleAccess)[interaction.commandName];
+      const rule = commandRoleAccess(config.commandRoleAccess)[commandName];
       if (!rule || (!rule.allowedRoleIds.length && !rule.deniedRoleIds.length)) return this.ok();
       const member = await interaction.guild.members.fetch({
         user: interaction.user.id,
@@ -31,7 +32,7 @@ export class CommandRoleAccessPrecondition extends Precondition {
       });
       denial = commandRoleDenial(
         config.commandRoleAccess,
-        interaction.commandName,
+        commandName,
         new Set(member.roles.cache.keys()),
       );
     } catch (error) {

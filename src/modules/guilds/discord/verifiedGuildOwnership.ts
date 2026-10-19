@@ -1,4 +1,4 @@
-import { Precondition } from "@sapphire/framework";
+import { Precondition, type Command } from "@sapphire/framework";
 import type {
   ChatInputCommandInteraction,
   ContextMenuCommandInteraction,
@@ -17,9 +17,9 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
     super(context, { ...options, position: 0 });
   }
 
-  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
-    if (interaction.commandName === "verify" || interaction.commandName === "unverify")
-      return this.ok();
+  public override async chatInputRun(interaction: ChatInputCommandInteraction, command?: Command) {
+    const commandName = command?.name ?? interaction.commandName;
+    if (commandName === "verify" || commandName === "unverify") return this.ok();
     // Ownership checks make REST and database requests before the command runs.
     if (
       [
@@ -31,7 +31,7 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
         "serverconfig",
         "ticket",
         "bticket",
-      ].includes(interaction.commandName) &&
+      ].includes(commandName) &&
       !interaction.deferred &&
       !interaction.replied
     ) {

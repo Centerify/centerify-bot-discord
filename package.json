@@ -29,6 +29,7 @@
     "test:security": "vitest run tests/core/errorSecurity.test.ts tests/modules/custom-commands/validationSecurity.test.ts tests/modules/guilds/roleSecurity.test.ts tests/modules/welcome/autoRoleSecurity.test.ts tests/modules/moderation/globalAuthorization.test.ts tests/modules/moderation/globalCommandSecurity.test.ts tests/services/customCommands/roleActions.test.ts tests/services/customCommands/actionWorkflows.test.ts tests/services/customCommands/sharedActions.test.ts tests/services/moderation/warningRolesRuntime.test.ts tests/services/customCommands/attachment.test.ts",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "check:config": "tsx scripts/check-config.ts",
+    "config:schema": "tsx scripts/config-schema.ts",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -16,7 +16,7 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 - Server-specific custom message commands and member join/leave responses
 - `/ping` command for checking bot responsiveness
 - TypeScript-first project structure
-- Environment-based configuration with `dotenv`
+- Central `centerify.config.json` customization with selectable dotenv files
 - Prisma 8 / Prisma Next data layer setup
 - Production build output through `tsc`
 
@@ -66,6 +66,9 @@ DATABASE_URL=postgresql://user:password@localhost:5432/database
 ```
 
 Run `npm run check:config` to validate configuration without connecting to services.
+Customize bot identity, presence, command names/descriptions/aliases, modules and
+startup in [`centerify.config.json`](centerify.config.json). Select a dotenv file
+with its `envFile` option or `npm start -- --env-file .env.production`.
 See [configuration and development](docs/configuration.md) for module selection,
 logging, package choices and quality commands, and [deployment](docs/deployment.md)
 for the production build and non-root Docker runtime.

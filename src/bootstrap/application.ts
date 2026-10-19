@@ -9,6 +9,8 @@ import {
   type ModuleConfiguration,
 } from "../core/index.js";
 import { withDiscord } from "../adapters/discord/modules.js";
+import { botIdentityToken } from "../adapters/discord/configuration.js";
+import type { CenterifyConfiguration } from "../configuration.js";
 import {
   createGuildsModule,
   type GuildConfigStore,
@@ -54,6 +56,7 @@ import { db } from "../adapters/prisma/client.js";
 import { logger } from "../adapters/logging/pino.js";
 
 export interface ApplicationOptions {
+  bot?: CenterifyConfiguration["bot"];
   modules?: ModuleConfiguration;
   logger?: Logger;
   database?: typeof db;
@@ -85,6 +88,7 @@ export function createApplication(options: ApplicationOptions = {}) {
       metadata: { id: "runtime", name: "Application resources", version: "1.0.0" },
       register(context) {
         context.provide(loggerToken, log);
+        context.provide(botIdentityToken, options.bot ?? {});
         context.provide(eventsToken, new InMemoryEventBus());
       },
     },
@@ -121,7 +125,12 @@ export function createApplication(options: ApplicationOptions = {}) {
         legacy: repositories.legacy ?? new PrismaLegacyResponseRepository(database),
         sharing: repositories.sharing ?? new PrismaCommandSharingRepository(database),
         logger: log,
-        reservedNames: () => [...(container.stores?.get("commands")?.keys() ?? [])],
+        reservedNames: () =>
+          [...(container.stores?.get("commands")?.values() ?? [])].flatMap((command) => [
+            command.name,
+            ...command.aliases,
+            ...command.applicationCommandRegistry.chatInputCommands,
+          ]),
         validateReferences: async (guildId, definitions) => {
           const { validateGuildReferences } =
             await import("../modules/custom-commands/discord/index.js");

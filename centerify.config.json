@@ -1,0 +1,9 @@
+{
+  "$schema": "./centerify.config.schema.json",
+  "bot": {},
+  "commands": {},
+  "modules": {},
+  "startup": {},
+  "logging": {},
+  "plugins": {}
+}

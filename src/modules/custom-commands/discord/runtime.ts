@@ -2,10 +2,8 @@ import { serviceRef } from "../../../adapters/discord/context.js";
 import { customCommandsToken } from "../index.js";
 import { executorToken, sharingToken } from "./tokens.js";
 import type { Message } from "discord.js";
-import {
-  CUSTOM_COMMAND_PREFIX as PREFIX,
-  CUSTOM_COMMAND_LIMITS as L,
-} from "../domain/constants.js";
+import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
+import { customCommandPrefix } from "./configuration.js";
 import { CustomCommandArgumentError, CustomCommandError } from "../domain/errors.js";
 import { parseArguments } from "./CustomCommandVariableResolver.js";
 
@@ -21,6 +19,7 @@ export async function resolveExecutableCustomCommand(client: Client, guild: Guil
 
 /** Called only after the existing message listener has checked guild ownership. */
 export async function runDomainCustomCommand(message: Message): Promise<boolean> {
+  const PREFIX = customCommandPrefix();
   if (
     !message.guild ||
     !message.member ||

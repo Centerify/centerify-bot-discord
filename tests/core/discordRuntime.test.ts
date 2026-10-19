@@ -87,6 +87,45 @@ test("all existing commands are installed with the default modules without loggi
   }
 });
 
+test("renamed slash commands and aliases reuse their canonical piece and retain command options", async () => {
+  const discord = client();
+  const app = createApplication({ logger: silentLogger });
+  await app.start();
+  const remove = await installDiscordModules(discord, app, {
+    ping: { enabled: false },
+    warn: { name: "warning", description: "Record a warning", aliases: ["caution"] },
+  });
+  try {
+    await discord.stores.get("commands").loadAll();
+    const store = discord.stores.get("commands");
+    expect(store.has("ping")).toBe(false);
+    expect(store.has("warning")).toBe(false);
+    const command = store.get("warn")!;
+    command.registerApplicationCommands!(command.applicationCommandRegistry);
+    const calls = (
+      command.applicationCommandRegistry as unknown as {
+        apiCalls: {
+          builtData: {
+            name: string;
+            description: string;
+            options: unknown[];
+            default_member_permissions: string;
+          };
+        }[];
+      }
+    ).apiCalls;
+    expect(calls.map((call) => call.builtData.name)).toEqual(["warning", "caution"]);
+    expect(calls[0]!.builtData.description).toBe("Record a warning");
+    expect(calls[0]!.builtData.options.length).toBeGreaterThan(0);
+    expect(calls[1]!.builtData).toEqual({ ...calls[0]!.builtData, name: "caution" });
+    expect(command.applicationCommandRegistry.chatInputCommands.has("caution")).toBe(true);
+  } finally {
+    await remove();
+    await app.stop();
+    await discord.destroy();
+  }
+});
+
 test("separate registries isolate events and tolerate a failing sibling handler", async () => {
   const calls: string[] = [];
   const error = vi.fn();

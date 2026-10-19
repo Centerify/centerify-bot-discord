@@ -1,5 +1,6 @@
 import type { CustomCommandExecutionContext, VariableResolver } from "../discord/types.js";
-import { CUSTOM_COMMAND_PREFIX, CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
+import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
+import { customCommandPrefix } from "./configuration.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
 
 // Only these complete placeholders may be used as embed URLs.
@@ -65,7 +66,7 @@ export class CustomCommandVariableResolver {
       "command.description": (c) => c.command.description,
       "command.usageCount": (c) => String(c.command.usageCount),
       "command.cooldown": (c) => String(c.command.cooldownSeconds),
-      "command.prefix": () => CUSTOM_COMMAND_PREFIX,
+      "command.prefix": () => customCommandPrefix(),
       "command.source": (c) => c.source,
       "args.count": (c) => String(c.args.length),
       "args.first": (c) => c.args[0] ?? "",

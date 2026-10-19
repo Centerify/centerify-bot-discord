@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "envFile": { "type": "string", "minLength": 1 },
+    "bot": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 400 },
+        "presence": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["online", "idle", "dnd", "invisible"]
+            },
+            "activity": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+                "type": {
+                  "type": "string",
+                  "enum": ["Playing", "Listening", "Watching", "Competing"]
+                }
+              },
+              "required": ["name", "type"],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "commands": {
+      "default": {},
+      "type": "object",
+      "propertyNames": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "name": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" },
+          "description": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "aliases": {
+            "maxItems": 20,
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9_-]{1,32}$" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "modules": {
+      "default": {},
+      "type": "object",
+      "propertyNames": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "anyOf": [
+          { "type": "boolean" },
+          {
+            "type": "object",
+            "properties": { "enabled": { "type": "boolean" }, "config": {} },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "startup": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "loginTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
+        },
+        "shutdownTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
+        },
+        "commandGuildIds": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^\\d{17,20}$" }
+        },
+        "commandRegistrationRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "logging": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["trace", "debug", "info", "warn", "error", "fatal", "silent"]
+        },
+        "format": { "type": "string", "enum": ["json", "pretty"] }
+      },
+      "additionalProperties": false
+    },
+    "plugins": {
+      "default": {},
+      "type": "object",
+      "properties": { "stateDirectory": { "type": "string", "minLength": 1 } },
+      "additionalProperties": false
+    }
+  },
+  "required": ["bot", "commands", "modules", "startup", "logging", "plugins"],
+  "additionalProperties": false
+}

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { PermissionFlagsBits, type GuildMember, type Message } from "discord.js";
+import { currentApplication } from "../../src/adapters/discord/context.js";
+import { customCommandOptionsToken } from "../../src/modules/custom-commands/index.js";
 
 const mocks = vi.hoisted(() => ({
   error: vi.fn(),
@@ -90,6 +92,22 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.list.mockResolvedValue([baseRule]);
   mocks.verified.mockResolvedValue(true);
+});
+
+test("legacy responses use the same configured prefix, including regex punctuation", async () => {
+  const options = currentApplication().resolve(customCommandOptionsToken);
+  const previous = options.prefix;
+  options.prefix = ".*";
+  try {
+    const current = commandFixture({ content: ".*hello world" });
+    await runCustomCommand(current.message);
+    expect(current.send).toHaveBeenCalledOnce();
+    const old = commandFixture();
+    await runCustomCommand(old.message);
+    expect(old.send).not.toHaveBeenCalled();
+  } finally {
+    options.prefix = previous;
+  }
 });
 
 afterEach(() => {

@@ -84,9 +84,9 @@ export async function loadInstalledPlugins(
   return result;
 }
 
-export function defaultPluginManager() {
+export function defaultPluginManager(stateDirectory = process.env.CENTERIFY_PLUGIN_STATE_DIR) {
   return new LocalPluginRegistry(
     process.cwd(),
-    process.env.CENTERIFY_PLUGIN_STATE_DIR || join(process.cwd(), ".centerify"),
+    stateDirectory || join(process.cwd(), ".centerify"),
   );
 }
