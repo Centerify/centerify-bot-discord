@@ -9,12 +9,19 @@ export interface ModerationDirectory {
 
 /** Participation and partial-failure policy are shared by every transport. */
 export class GlobalModeration {
-  constructor(private readonly config: GuildConfigStore, private readonly logger: Logger = silentLogger) {}
+  constructor(
+    private readonly config: GuildConfigStore,
+    private readonly logger: Logger = silentLogger,
+  ) {}
 
   async targets(sourceGuildId: string, feature: GlobalAction, directory: ModerationDirectory) {
-    if (!await directory.isVerified(sourceGuildId)) return { enabled: false, guildIds: [] };
+    if (!(await directory.isVerified(sourceGuildId))) return { enabled: false, guildIds: [] };
     const config = await this.config.getOrCreate(sourceGuildId);
-    const enabled = { ban: config.globalBanEnabled, warn: config.globalWarnEnabled, note: config.globalNoteEnabled }[feature];
+    const enabled = {
+      ban: config.globalBanEnabled,
+      warn: config.globalWarnEnabled,
+      note: config.globalNoteEnabled,
+    }[feature];
     if (!enabled) return { enabled: false, guildIds: [] };
     const guildIds: string[] = [];
     for (const id of await this.config.globalModerationGuildIds(feature)) {
@@ -23,7 +30,10 @@ export class GlobalModeration {
     return { enabled: true, guildIds };
   }
 
-  async apply(input: { guildIds: readonly string[]; targetUserId: string; action: GlobalAction }, perform: (guildId: string) => Promise<WarningCase | null>) {
+  async apply(
+    input: { guildIds: readonly string[]; targetUserId: string; action: GlobalAction },
+    perform: (guildId: string) => Promise<WarningCase | null>,
+  ) {
     const cases: WarningCase[] = [];
     const skippedGuildIds: string[] = [];
     for (const guildId of input.guildIds) {
@@ -34,7 +44,10 @@ export class GlobalModeration {
       } catch (error) {
         skippedGuildIds.push(guildId);
         const action = input.action === "warn" ? "warning" : input.action;
-        this.logger.warn({ err: error, guildId, userId: input.targetUserId }, `Global ${action} failed in a participating guild`);
+        this.logger.warn(
+          { err: error, guildId, userId: input.targetUserId },
+          `Global ${action} failed in a participating guild`,
+        );
       }
     }
     return { cases, skippedGuildIds };

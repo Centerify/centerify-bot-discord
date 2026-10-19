@@ -1,18 +1,36 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Guild, RepliableInteraction } from "discord.js";
 
-const mocks = vi.hoisted(() => ({ first: vi.fn(), upsert: vi.fn(), where: vi.fn(), delete: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  first: vi.fn(),
+  upsert: vi.fn(),
+  where: vi.fn(),
+  delete: vi.fn(),
+}));
 vi.mock("../../src/adapters/prisma/client.js", () => ({
-  db: { orm: { public: { GuildOwnership: {
-    where: mocks.where, upsert: mocks.upsert,
-  } } } },
+  db: {
+    orm: {
+      public: {
+        GuildOwnership: {
+          where: mocks.where,
+          upsert: mocks.upsert,
+        },
+      },
+    },
+  },
 }));
 vi.mock("../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-import { GuildOwnershipService, OWNERSHIP_REQUIRED_MESSAGE, requireVerifiedOwnership } from "../../src/modules/guilds/discord/ownership.js";
+import {
+  GuildOwnershipService,
+  OWNERSHIP_REQUIRED_MESSAGE,
+  requireVerifiedOwnership,
+} from "../../src/modules/guilds/discord/ownership.js";
 import { VerifyGuildOwnership } from "../../src/modules/guilds/index.js";
 import { PrismaOwnershipRepository } from "../../src/modules/guilds/infrastructure/PrismaOwnershipRepository.js";
-const service = new GuildOwnershipService(new VerifyGuildOwnership(new PrismaOwnershipRepository()));
+const service = new GuildOwnershipService(
+  new VerifyGuildOwnership(new PrismaOwnershipRepository()),
+);
 const fetchGuild = vi.fn();
 const guild = { id: "guild", ownerId: "old-owner", fetch: fetchGuild } as unknown as Guild;
 
@@ -68,8 +86,17 @@ test("only the current owner can remove verification", async () => {
 
 test("ownership denial completes a deferred reply", async () => {
   mocks.first.mockResolvedValue(null);
-  const interaction = { guild, deferred: true, replied: false, editReply: vi.fn(), followUp: vi.fn(), reply: vi.fn() };
-  expect(await requireVerifiedOwnership(interaction as unknown as RepliableInteraction)).toBe(false);
+  const interaction = {
+    guild,
+    deferred: true,
+    replied: false,
+    editReply: vi.fn(),
+    followUp: vi.fn(),
+    reply: vi.fn(),
+  };
+  expect(await requireVerifiedOwnership(interaction as unknown as RepliableInteraction)).toBe(
+    false,
+  );
   expect(interaction.editReply).toHaveBeenCalledWith({ content: OWNERSHIP_REQUIRED_MESSAGE });
   expect(interaction.followUp).not.toHaveBeenCalled();
   expect(interaction.reply).not.toHaveBeenCalled();

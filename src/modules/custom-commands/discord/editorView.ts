@@ -10,10 +10,7 @@ import {
 } from "discord.js";
 import type { CustomCommandRecord } from "../domain/types.js";
 import { customVariables } from "../domain/variables.js";
-import {
-  CUSTOM_COMMAND_LIMITS as L,
-  RESTRICTION_KEYS,
-} from "../domain/constants.js";
+import { CUSTOM_COMMAND_LIMITS as L, RESTRICTION_KEYS } from "../domain/constants.js";
 export type EditorSection = "responses" | "access";
 export function editorView(
   command: CustomCommandRecord,
@@ -58,19 +55,18 @@ export function editorView(
       .setStyle(ButtonStyle.Secondary),
   );
   if (section === "access") {
-    const selector =
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`${prefix}restriction`)
-          .setPlaceholder("Choose an access restriction")
-          .addOptions(
-            RESTRICTION_KEYS.map((key) => ({
-              label: key,
-              value: key,
-              default: key === restriction,
-            })),
-          ),
-      );
+    const selector = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`${prefix}restriction`)
+        .setPlaceholder("Choose an access restriction")
+        .addOptions(
+          RESTRICTION_KEYS.map((key) => ({
+            label: key,
+            value: key,
+            default: key === restriction,
+          })),
+        ),
+    );
     const clear = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`${prefix}clear`)

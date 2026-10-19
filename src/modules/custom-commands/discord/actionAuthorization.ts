@@ -3,11 +3,16 @@ import { isDeepStrictEqual } from "node:util";
 import { CustomCommandPermissionError } from "../domain/errors.js";
 import type { CustomCommandExecutionContext } from "./types.js";
 import { CustomCommandPermissionService } from "./CustomCommandPermissionService.js";
+import { guildOwnershipService } from "../../guilds/discord/index.js";
 
 export async function authorizeComponentAction(
   context: CustomCommandExecutionContext,
   loadCommand: () => Promise<CustomCommandRecord | undefined>,
 ) {
+  if (!(await guildOwnershipService.isVerified(context.guild)))
+    throw new CustomCommandPermissionError(
+      "Server ownership is no longer verified. Run /verify before using these controls.",
+    );
   const command = await loadCommand();
   if (
     !command ||

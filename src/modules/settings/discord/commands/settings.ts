@@ -9,10 +9,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
-import {
-  guildConfigService,
-  type GuildConfig,
-} from "../../../guilds/discord/index.js";
+import { guildConfigService, type GuildConfig } from "../../../guilds/discord/index.js";
 import { canManageServer } from "../../../guilds/discord/index.js";
 
 import { SetupRenderer } from "../renderer.js";
@@ -29,9 +26,7 @@ export class SettingsCommand extends Command {
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
@@ -62,23 +57,46 @@ export class SettingsCommand extends Command {
       return;
     }
 
-    const message = await interaction.editReply(this.buildView(interaction, config, "Choose a section below to manage settings."));
+    const message = await interaction.editReply(
+      this.buildView(interaction, config, "Choose a section below to manage settings."),
+    );
     let current = config;
     let busy = false;
     let finished = false;
     const renderer = new SetupRenderer("settings", settingsActionAvailable);
-    const handler = new SetupInteractionHandler(renderer, (id, data) => guildConfigService.update(id, data));
+    const handler = new SetupInteractionHandler(renderer, (id, data) =>
+      guildConfigService.update(id, data),
+    );
     const collector = message.createMessageComponentCollector({ time: 10 * 60_000 });
-  trackCollector("settings", collector);
+    trackCollector("settings", collector);
     collector.on("collect", async (button) => {
       if (!button.customId.startsWith(`setup:${interaction.id}:`)) return;
-      if (!button.isButton() && !button.isStringSelectMenu() && !button.isChannelSelectMenu() && !button.isRoleSelectMenu()) return;
-      if (button.user.id !== interaction.user.id || !button.inCachedGuild() || !canManageServer(button.member)) {
-        await button.reply({ content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral });
+      if (
+        !button.isButton() &&
+        !button.isStringSelectMenu() &&
+        !button.isChannelSelectMenu() &&
+        !button.isRoleSelectMenu()
+      )
+        return;
+      if (
+        button.user.id !== interaction.user.id ||
+        !button.inCachedGuild() ||
+        !canManageServer(button.member)
+      ) {
+        await button.reply({
+          content:
+            "Only the administrator who opened settings can use these controls, and Manage Server permission is required.",
+          flags: MessageFlags.Ephemeral,
+        });
         return;
       }
       if (busy || finished) {
-        await button.reply({ content: finished ? "This settings session is closed. Run /settings again." : "Finish the current settings action first.", flags: MessageFlags.Ephemeral });
+        await button.reply({
+          content: finished
+            ? "This settings session is closed. Run /settings again."
+            : "Finish the current settings action first.",
+          flags: MessageFlags.Ephemeral,
+        });
         return;
       }
       const action = button.customId.split(":").at(2);
@@ -91,11 +109,17 @@ export class SettingsCommand extends Command {
       try {
         if (action === "custom-commands" && button.isButton()) {
           await button.deferReply({ flags: MessageFlags.Ephemeral });
-          const { openCustomCommandSettings } = await import("../../../custom-commands/discord/index.js");
+          const { openCustomCommandSettings } =
+            await import("../../../custom-commands/discord/index.js");
           await openCustomCommandSettings(button);
           return;
         }
-        current = await handler.handleComponent({ componentInteraction: button, rootInteraction: interaction, config: current, sessionId: interaction.id });
+        current = await handler.handleComponent({
+          componentInteraction: button,
+          rootInteraction: interaction,
+          config: current,
+          sessionId: interaction.id,
+        });
         if (action === "finish" && button.deferred) {
           finished = true;
           collector.stop("finished");
@@ -103,9 +127,19 @@ export class SettingsCommand extends Command {
       } catch (error) {
         logger.error({ err: error, guildId: interaction.guildId }, "Settings interaction failed");
         if (button.deferred || button.replied) {
-          await button.followUp({ content: "I could not load or save settings right now. Please try again.", flags: MessageFlags.Ephemeral }).catch(() => null);
+          await button
+            .followUp({
+              content: "I could not load or save settings right now. Please try again.",
+              flags: MessageFlags.Ephemeral,
+            })
+            .catch(() => null);
         } else {
-          await button.reply({ content: "I could not open settings right now. Please try again.", flags: MessageFlags.Ephemeral }).catch(() => null);
+          await button
+            .reply({
+              content: "I could not open settings right now. Please try again.",
+              flags: MessageFlags.Ephemeral,
+            })
+            .catch(() => null);
         }
       } finally {
         busy = false;
@@ -116,10 +150,19 @@ export class SettingsCommand extends Command {
     });
   }
 
-  private buildView(interaction: Command.ChatInputCommandInteraction<"cached">, config: GuildConfig, content: string) {
+  private buildView(
+    interaction: Command.ChatInputCommandInteraction<"cached">,
+    config: GuildConfig,
+    content: string,
+  ) {
     return {
       content,
-      components: new SetupRenderer("settings", settingsActionAvailable).buildScreen("main", interaction.guild, config, interaction.id).components!,
+      components: new SetupRenderer("settings", settingsActionAvailable).buildScreen(
+        "main",
+        interaction.guild,
+        config,
+        interaction.id,
+      ).components!,
       embeds: [
         new EmbedBuilder()
           .setColor(Colors.Blurple)
@@ -140,7 +183,16 @@ export class SettingsCommand extends Command {
             },
             {
               name: "Selected XP Servers",
-              value: config.xpSharedGuildIds.split(",").filter(Boolean).map((id) => (interaction.client?.guilds.cache.get(id)?.name ?? id).replace(/[\\`*_~|<>@\r\n]/g, "").slice(0, 35)).join(", ") || "None",
+              value:
+                config.xpSharedGuildIds
+                  .split(",")
+                  .filter(Boolean)
+                  .map((id) =>
+                    (interaction.client?.guilds.cache.get(id)?.name ?? id)
+                      .replace(/[\\`*_~|<>@\r\n]/g, "")
+                      .slice(0, 35),
+                  )
+                  .join(", ") || "None",
             },
             {
               name: "Setup",
@@ -168,7 +220,9 @@ export class SettingsCommand extends Command {
             {
               name: "Auto Role",
               value: config.autoRoleEnabled
-                ? config.autoRoleId ? `<@&${config.autoRoleId}>` : "On, no role"
+                ? config.autoRoleId
+                  ? `<@&${config.autoRoleId}>`
+                  : "On, no role"
                 : "Off",
               inline: true,
             },

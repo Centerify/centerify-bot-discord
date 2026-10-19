@@ -6,14 +6,7 @@ import {
 import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
 import { CustomCommandRenderer } from "../../../src/modules/custom-commands/discord/CustomCommandRenderer.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../../../src/modules/custom-commands/domain/constants.js";
-import {
-  CHANNEL,
-  context,
-  definition,
-  record,
-  ROLE,
-  USER,
-} from "./fixtures.js";
+import { CHANNEL, context, definition, record, ROLE, USER } from "./fixtures.js";
 const variables = new CustomCommandVariableResolver();
 const validator = new CustomCommandValidator(variables);
 const renderer = new CustomCommandRenderer(variables, validator);
@@ -42,41 +35,30 @@ describe("controlled variable registry", () => {
     "{eval('1')}",
     "{process.env}",
     "{constructor.constructor('return process')()}",
-  ])(
-    "rejects unknown, malformed or executable-looking variables: %s",
-    (input) => {
-      expect(() => variables.validate(input)).toThrow();
-    },
-  );
+  ])("rejects unknown, malformed or executable-looking variables: %s", (input) => {
+    expect(() => variables.validate(input)).toThrow();
+  });
   test("argument values are inserted once and never interpreted as code or template expressions", async () => {
     const c = context({
       args: ["{guild.id}", "process.exit()", "$(touch /tmp/bad)", "@everyone"],
     });
     expect(await variables.render("{args}", c)).toBe(c.args.join(" "));
-    expect(
-      await variables.render("eval(); new Function(); DROP TABLE;", c),
-    ).toBe("eval(); new Function(); DROP TABLE;");
+    expect(await variables.render("eval(); new Function(); DROP TABLE;", c)).toBe(
+      "eval(); new Function(); DROP TABLE;",
+    );
   });
   test("registry supports async extension resolvers and rejects duplicate keys", async () => {
     const registry = new CustomCommandVariableResolver();
     registry.register({ key: "centerify.level", resolve: async () => "7" });
-    expect(await registry.render("Level {centerify.level}", context())).toBe(
-      "Level 7",
-    );
-    expect(() =>
-      registry.register({ key: "user.id", resolve: () => "bad" }),
-    ).toThrow("duplicate");
+    expect(await registry.render("Level {centerify.level}", context())).toBe("Level 7");
+    expect(() => registry.register({ key: "user.id", resolve: () => "bad" })).toThrow("duplicate");
   });
   test("arguments and templates have count and size bounds", () => {
     expect(parseArguments("  John\n Doe\t ")).toEqual(["John", "Doe"]);
     expect(parseArguments("  ")).toEqual([]);
     expect(() => parseArguments("x ".repeat(26))).toThrow("25 arguments");
-    expect(() => parseArguments("x".repeat(L.argumentInput + 1))).toThrow(
-      "2000 characters",
-    );
-    expect(() => variables.validate("x".repeat(L.templateInput + 1))).toThrow(
-      "too long",
-    );
+    expect(() => parseArguments("x".repeat(L.argumentInput + 1))).toThrow("2000 characters");
+    expect(() => variables.validate("x".repeat(L.templateInput + 1))).toThrow("too long");
   });
 });
 
@@ -122,9 +104,7 @@ describe("safe rendering strategies", () => {
               thumbnail: { url: "https://example.com/thumb.png" },
               image: { url: "https://example.com/image.png" },
               timestamp: true,
-              fields: [
-                { name: "Members", value: "{guild.memberCount}", inline: true },
-              ],
+              fields: [{ name: "Members", value: "{guild.memberCount}", inline: true }],
             },
           },
         ],
@@ -159,9 +139,7 @@ describe("safe rendering strategies", () => {
     expect(payloads[0]!.content).toBe("First");
     expect(payloads[1]!.embeds).toHaveLength(1);
     expect(payloads[2]!.content).toBe("Third");
-    expect(payloads.every((p) => p.allowedMentions?.parse?.length === 0)).toBe(
-      true,
-    );
+    expect(payloads.every((p) => p.allowedMentions?.parse?.length === 0)).toBe(true);
   });
   test("expanded text and embed fields fail before delivery instead of exceeding Discord limits", async () => {
     const c = context({
@@ -204,9 +182,7 @@ describe("input and Discord limits", () => {
     expect(() => validator.embed(embed)).toThrow();
   });
   test("accepts exact text and embed size boundaries", () => {
-    expect(
-      validator.responses([{ type: "TEXT", text: "x".repeat(2000) }])[0],
-    ).toBeDefined();
+    expect(validator.responses([{ type: "TEXT", text: "x".repeat(2000) }])[0]).toBeDefined();
     expect(
       validator.embed({
         description: "x".repeat(4096),
@@ -261,9 +237,7 @@ test("explicit null configuration, NUL bytes and lone surrogates fail validation
     "deleteInvocation",
     "replyToInvocation",
   ]) {
-    expect(() =>
-      validator.definition({ ...definition(), [key]: null }),
-    ).toThrow();
+    expect(() => validator.definition({ ...definition(), [key]: null })).toThrow();
   }
   for (const text of ["bad\u0000text", "bad\ud800text"])
     expect(() =>
@@ -313,8 +287,7 @@ test("dynamic media expands approved URLs, omits missing images and validates ex
       ],
     }),
   });
-  c.member.user.displayAvatarURL = () =>
-    "https://cdn.discordapp.com/avatar.png";
+  c.member.user.displayAvatarURL = () => "https://cdn.discordapp.com/avatar.png";
   c.guild.iconURL = () => null;
   const [payload] = await renderer.render(c);
   const embed = payload.embeds![0]!;
@@ -323,8 +296,7 @@ test("dynamic media expands approved URLs, omits missing images and validates ex
   expect(data.thumbnail).toBeUndefined();
   expect(data.footer?.icon_url).toBeUndefined();
   expect(data.author?.icon_url).toBe(data.image?.url);
-  c.member.user.displayAvatarURL = () =>
-    "https://user:secret@example.com/image";
+  c.member.user.displayAvatarURL = () => "https://user:secret@example.com/image";
   await expect(renderer.render(c)).rejects.toThrow("HTTPS");
   for (const url of [
     "{args}",
@@ -332,9 +304,7 @@ test("dynamic media expands approved URLs, omits missing images and validates ex
     "https://example.com/{user.avatar}",
     "{process.env.TOKEN}",
   ])
-    expect(() =>
-      validator.embed({ title: "Invalid", image: { url } }),
-    ).toThrow();
+    expect(() => validator.embed({ title: "Invalid", image: { url } })).toThrow();
 });
 
 test("an image-only embed with an unavailable dynamic image fails before sending", async () => {

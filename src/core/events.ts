@@ -5,7 +5,10 @@ export interface AppEvent {
 
 export interface EventBus {
   publish(event: AppEvent): Promise<void>;
-  subscribe<T extends AppEvent>(type: string, handler: (event: T) => void | Promise<void>): () => void;
+  subscribe<T extends AppEvent>(
+    type: string,
+    handler: (event: T) => void | Promise<void>,
+  ): () => void;
 }
 
 export class InMemoryEventBus implements EventBus {

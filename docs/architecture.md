@@ -33,16 +33,16 @@ Core never imports a module, Discord.js, Sapphire, Prisma or Pino. A feature tha
 
 Each module has an intentional `index.ts` business API. `discord/index.ts` is a separate public transport API; importing the business API does not load Discord or a database. Cross-module imports use these entrypoints. Inside a module, import private files directly to avoid barrel cycles. Bootstrap may import concrete infrastructure to compose implementations. Application and domain code never import transport or infrastructure code.
 
-| Module | Owns | Required module |
-| --- | --- | --- |
-| `runtime` | Logger and application event-bus instances | None |
-| `guilds` | Guild configuration storage and ownership verification | None |
-| `moderation` | Cases, warnings, global moderation policy and reports | `guilds` |
-| `xp` | Earning, cooldown/sharing policy and XP configuration | `guilds` |
-| `welcome` | Welcome/goodbye templates and joining-member roles | `guilds` |
-| `custom-commands` | Definitions, validation, execution, sharing and legacy responses | `guilds` |
-| `settings` | Server settings presentation and configuration controls | `guilds` |
-| `information` | Bot/server information presentation and repository metadata | `guilds` |
+| Module            | Owns                                                             | Required module |
+| ----------------- | ---------------------------------------------------------------- | --------------- |
+| `runtime`         | Logger and application event-bus instances                       | None            |
+| `guilds`          | Guild configuration storage and ownership verification           | None            |
+| `moderation`      | Cases, warnings, global moderation policy and reports            | `guilds`        |
+| `xp`              | Earning, cooldown/sharing policy and XP configuration            | `guilds`        |
+| `welcome`         | Welcome/goodbye templates and joining-member roles               | `guilds`        |
+| `custom-commands` | Definitions, validation, execution, sharing and legacy responses | `guilds`        |
+| `settings`        | Server settings presentation and configuration controls          | `guilds`        |
+| `information`     | Bot/server information presentation and repository metadata      | `guilds`        |
 
 Discord-enabled modules additionally depend on `runtime`. Reports remain part of moderation because they use moderation history and review permissions. The existing log-channel setting remains guild configuration; a separate logging feature was not invented. The persisted guild configuration shape remains compatible with the existing database.
 
@@ -114,6 +114,11 @@ TEST_DATABASE_URL=postgresql://... npm run test:database
 TEST_DATABASE_URL=postgresql://... npm run test:e2e
 ```
 
-There is no lint script. Database suites use unique synthetic guild records and clean them up; run them against a migrated development/test database. `check:discord` is a separate read-only live installation check requiring a Discord token. The architecture migration does not require logging the bot in or publishing commands to verify module composition.
+`npm run check` runs formatting, lint, typechecking, tests and the production build.
+See [configuration](configuration.md) for the shared editing workflow. Database
+suites use unique synthetic guild records and clean them up; run them against a
+migrated development/test database. `check:discord` is a separate read-only live
+installation check requiring a Discord token. Module composition can be verified
+without logging the bot in or publishing commands.
 
 See [Creating a module](creating-a-module.md) for a complete minimal example.

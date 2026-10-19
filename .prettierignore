@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.cache/
+.agents/
+.claude/
+.cursor/
+.devin/
+.codex/
+migrations/
+src/prisma/
+package-lock.json
+docs/*.cfg

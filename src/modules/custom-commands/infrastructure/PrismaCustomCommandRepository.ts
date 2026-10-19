@@ -11,10 +11,7 @@ import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
 
 type Database = Pick<typeof db, "orm">;
 const validator = new CustomCommandValidator();
-async function list(
-  database: Database,
-  guildId: string,
-): Promise<CustomCommandRecord[]> {
+async function list(database: Database, guildId: string): Promise<CustomCommandRecord[]> {
   // This Prisma version's include path does not correlate composite relations
   // on all columns. Join bounded, guild-scoped reads by commandId explicitly.
   const [rows, names, restrictions] = await Promise.all([
@@ -30,8 +27,7 @@ async function list(
   }
   const restrictionsByCommand = new Map<number, Map<string, string[]>>();
   for (const entry of restrictions) {
-    const kinds =
-      restrictionsByCommand.get(entry.commandId) ?? new Map<string, string[]>();
+    const kinds = restrictionsByCommand.get(entry.commandId) ?? new Map<string, string[]>();
     const values = kinds.get(entry.kind) ?? [];
     values.push(entry.value);
     kinds.set(entry.kind, values);
@@ -46,18 +42,13 @@ async function list(
       triggerType: row.triggerType,
       responseType: row.responseType,
       content: row.content,
-      aliases: (namesByCommand.get(row.id) ?? []).filter(
-        (name) => name !== row.name,
-      ),
+      aliases: (namesByCommand.get(row.id) ?? []).filter((name) => name !== row.name),
       cooldownSeconds: row.cooldownSeconds,
       cooldownScope: row.cooldownScope,
       deleteInvocation: row.deleteInvocation,
       replyToInvocation: row.replyToInvocation,
       ...Object.fromEntries(
-        RESTRICTION_KEYS.map((key) => [
-          key,
-          restrictionsByCommand.get(row.id)?.get(key) ?? [],
-        ]),
+        RESTRICTION_KEYS.map((key) => [key, restrictionsByCommand.get(row.id)?.get(key) ?? []]),
       ),
     });
     return {
@@ -95,15 +86,10 @@ export class PrismaCustomCommandRepository implements CustomCommandRepository {
       return operation({
         list: () => list(tx, guildId),
         legacyNames: async () =>
-          (await tx.orm.public.CustomResponse.where({ guildId }).all()).flatMap(
-            (rule) =>
-              rule.kind === "command" ? [rule.name, rule.trigger] : [rule.name],
+          (await tx.orm.public.CustomResponse.where({ guildId }).all()).flatMap((rule) =>
+            rule.kind === "command" ? [rule.name, rule.trigger] : [rule.name],
           ),
-        save: async (
-          definition: CustomCommandDefinition,
-          actorId: string,
-          id?: number,
-        ) => {
+        save: async (definition: CustomCommandDefinition, actorId: string, id?: number) => {
           const { aliases, ...rest } = definition;
           const {
             allowedRoleIds,
@@ -126,11 +112,8 @@ export class PrismaCustomCommandRepository implements CustomCommandRepository {
                   guildId,
                   createdBy: actorId,
                 })
-              : await tx.orm.public.CustomCommand.where({ guildId, id }).update(
-                  payload,
-                );
-          if (!saved)
-            throw new Error("Custom command save did not return a record.");
+              : await tx.orm.public.CustomCommand.where({ guildId, id }).update(payload);
+          if (!saved) throw new Error("Custom command save did not return a record.");
           const commandId = saved.id;
           if (id !== undefined) {
             await tx.orm.public.CustomCommandName.where({

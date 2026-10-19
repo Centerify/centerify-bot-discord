@@ -15,18 +15,9 @@ const timedWarning = {
 };
 
 test("calculates when a timed warning expires", () => {
-  assert.equal(
-    getWarningExpiresAt(timedWarning)?.toISOString(),
-    "2026-09-15T12:01:00.000Z",
-  );
-  assert.equal(
-    hasWarningDurationEnded(timedWarning, new Date("2026-09-15T12:00:59.999Z")),
-    false,
-  );
-  assert.equal(
-    hasWarningDurationEnded(timedWarning, new Date("2026-09-15T12:01:00.000Z")),
-    true,
-  );
+  assert.equal(getWarningExpiresAt(timedWarning)?.toISOString(), "2026-09-15T12:01:00.000Z");
+  assert.equal(hasWarningDurationEnded(timedWarning, new Date("2026-09-15T12:00:59.999Z")), false);
+  assert.equal(hasWarningDurationEnded(timedWarning, new Date("2026-09-15T12:01:00.000Z")), true);
 });
 
 test("expired timed warnings stop counting while permanent warnings remain active", () => {
@@ -35,10 +26,7 @@ test("expired timed warnings stop counting while permanent warnings remain activ
 
   assert.equal(isActiveWarning(timedWarning, afterExpiry), false);
   assert.equal(isActiveWarning(permanentWarning, afterExpiry), true);
-  assert.equal(
-    isActiveWarning({ ...permanentWarning, action: "NOTE" }, afterExpiry),
-    false,
-  );
+  assert.equal(isActiveWarning({ ...permanentWarning, action: "NOTE" }, afterExpiry), false);
 });
 
 test("revoked warnings stop counting even when they were permanent", () => {

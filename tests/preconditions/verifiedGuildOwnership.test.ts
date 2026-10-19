@@ -53,9 +53,7 @@ test.each(["settings", "setup", "custom"])(
       replied: false,
       deferReply: vi.fn(),
     };
-    await precondition.chatInputRun(
-      interaction as unknown as ChatInputCommandInteraction,
-    );
+    await precondition.chatInputRun(interaction as unknown as ChatInputCommandInteraction);
     expect(interaction.deferReply).not.toHaveBeenCalled();
     expect(mocks.check).toHaveBeenCalledOnce();
   },
@@ -122,12 +120,8 @@ test.each(["settings", "setup", "custom"])(
       }),
       expect.any(String),
     );
-    expect(mocks.warn.mock.calls[0][0].interactionAgeMs).toBeGreaterThanOrEqual(
-      3500,
-    );
-    expect(JSON.stringify(mocks.warn.mock.calls)).not.toContain(
-      "private-token",
-    );
+    expect(mocks.warn.mock.calls[0][0].interactionAgeMs).toBeGreaterThanOrEqual(3500);
+    expect(JSON.stringify(mocks.warn.mock.calls)).not.toContain("private-token");
   },
 );
 
@@ -160,9 +154,7 @@ test.each([new Error("Connection failed"), { code: 50013 }])(
       deferReply: vi.fn().mockRejectedValue(error),
     };
     await expect(
-      precondition.chatInputRun(
-        interaction as unknown as ChatInputCommandInteraction,
-      ),
+      precondition.chatInputRun(interaction as unknown as ChatInputCommandInteraction),
     ).rejects.toBe(error);
     expect(mocks.check).not.toHaveBeenCalled();
     expect(mocks.warn).not.toHaveBeenCalled();

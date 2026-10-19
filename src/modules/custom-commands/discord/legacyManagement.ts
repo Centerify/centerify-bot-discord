@@ -1,8 +1,5 @@
 import type { ChatInputCommandInteraction } from "discord.js";
-import {
-  customResponseService,
-  type CustomResponseKind,
-} from "./legacyService.js";
+import { customResponseService, type CustomResponseKind } from "./legacyService.js";
 import { showCommandList } from "./management.js";
 
 /** Keep pre-existing custom responses and member events editable in the shared UI. */
@@ -12,22 +9,12 @@ export async function handleLegacyCustomResponse(
   const guildId = interaction.guildId;
   const subcommand = interaction.options.getSubcommand();
   if (subcommand === "create") {
-    const name = interaction.options
-      .getString("name", true)
-      .trim()
-      .toLowerCase();
-    const kind = interaction.options.getString(
-      "kind",
-      true,
-    ) as CustomResponseKind;
-    const trigger = (interaction.options.getString("trigger") ?? name)
-      .trim()
-      .toLowerCase();
+    const name = interaction.options.getString("name", true).trim().toLowerCase();
+    const kind = interaction.options.getString("kind", true) as CustomResponseKind;
+    const trigger = (interaction.options.getString("trigger") ?? name).trim().toLowerCase();
     const channel = interaction.options.getChannel("channel");
     if (kind !== "command" && !channel) {
-      await interaction.editReply(
-        "Choose an output channel for a member event.",
-      );
+      await interaction.editReply("Choose an output channel for a member event.");
       return;
     }
     await customResponseService.create({
@@ -37,18 +24,10 @@ export async function handleLegacyCustomResponse(
       trigger,
       response: interaction.options.getString("response", true).trim(),
       channelId: channel?.id ?? null,
-      allowedRoleId:
-        kind === "command"
-          ? (interaction.options.getRole("role")?.id ?? null)
-          : null,
-      adminOnly:
-        kind === "command" &&
-        (interaction.options.getBoolean("admin_only") ?? false),
+      allowedRoleId: kind === "command" ? (interaction.options.getRole("role")?.id ?? null) : null,
+      adminOnly: kind === "command" && (interaction.options.getBoolean("admin_only") ?? false),
       exactMatch: !(interaction.options.getBoolean("allow_args") ?? false),
-      cooldownSeconds:
-        kind === "command"
-          ? (interaction.options.getInteger("cooldown") ?? 0)
-          : 0,
+      cooldownSeconds: kind === "command" ? (interaction.options.getInteger("cooldown") ?? 0) : 0,
       embed: interaction.options.getBoolean("embed") ?? false,
       createdBy: interaction.user.id,
     });
@@ -65,10 +44,7 @@ export async function handleLegacyCustomResponse(
     );
     await showCommandList(interaction, lines);
   } else {
-    const name = interaction.options
-      .getString("name", true)
-      .trim()
-      .toLowerCase();
+    const name = interaction.options.getString("name", true).trim().toLowerCase();
     let changed = false;
     if (subcommand === "edit")
       changed = await customResponseService.setResponse(
@@ -82,8 +58,7 @@ export async function handleLegacyCustomResponse(
         name,
         interaction.options.getBoolean("enabled") ?? true,
       );
-    if (subcommand === "delete")
-      changed = await customResponseService.remove(guildId, name);
+    if (subcommand === "delete") changed = await customResponseService.remove(guildId, name);
     await interaction.editReply(
       changed ? `Updated **${name}**.` : `No rule named **${name}** exists.`,
     );

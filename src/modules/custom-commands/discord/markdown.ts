@@ -13,11 +13,7 @@ import {
   COMPONENT_ACTION_FIELDS,
 } from "../domain/CustomCommandValidator.js";
 import { parseDuration } from "../../moderation/discord/index.js";
-import {
-  customVariables,
-  templateTokens,
-  TEMPLATE_VARIABLE_KEYS,
-} from "../domain/variables.js";
+import { customVariables, templateTokens, TEMPLATE_VARIABLE_KEYS } from "../domain/variables.js";
 
 export const MARKDOWN_EXAMPLE = `@var USER_ID = {user.id}
 @main
@@ -76,11 +72,8 @@ function parseAction(
       target: Number(navigation[2]),
     };
   const simple = /^(main|cancel|cancle)(?:\(\))?$/i.exec(value);
-  if (simple)
-    return { action: simple[1].toLowerCase() === "main" ? "main" : "cancel" };
-  const role = /^(setrole|addrole|removerole|togglerole)\((\d{17,20})\)$/i.exec(
-    value,
-  );
+  if (simple) return { action: simple[1].toLowerCase() === "main" ? "main" : "cancel" };
+  const role = /^(setrole|addrole|removerole|togglerole)\((\d{17,20})\)$/i.exec(value);
   if (role)
     return {
       action:
@@ -104,8 +97,7 @@ function parseAction(
           "roleId",
           ...COMPONENT_ACTION_FIELDS,
         ]);
-      else if (name === "actions")
-        data = { action: "sequence", actions: JSON.parse(call[2]) };
+      else if (name === "actions") data = { action: "sequence", actions: JSON.parse(call[2]) };
       else {
         const args: unknown[] = JSON.parse(`[${call[2]}]`);
         const fields: Record<string, string[]> = {
@@ -129,16 +121,12 @@ function parseAction(
           sendmessage: ["channelId", "text"],
         };
         if (args.length > fields[name].length)
-          throw new CustomCommandValidationError(
-            `Too many arguments for ${name}.`,
-          );
+          throw new CustomCommandValidationError(`Too many arguments for ${name}.`);
         data = { action: name };
         args.forEach((arg, index) => {
           const field = fields[name][index];
           data[field] =
-            field === "durationMs" && typeof arg === "string"
-              ? (parseDuration(arg) ?? 0)
-              : arg;
+            field === "durationMs" && typeof arg === "string" ? (parseDuration(arg) ?? 0) : arg;
         });
       }
     } catch (error) {
@@ -161,12 +149,9 @@ function serializeAction(action: ComponentAction): string {
   )
     return `${action.action}(${action.roleId})`;
   if ("target" in action) return `${action.action}(stage(${action.target}))`;
-  if (action.action === "main" || action.action === "cancel")
-    return action.action;
+  if (action.action === "main" || action.action === "cancel") return action.action;
   const data = Object.fromEntries(
-    Object.entries(action).filter(
-      ([key]) => !["label", "description", "style"].includes(key),
-    ),
+    Object.entries(action).filter(([key]) => !["label", "description", "style"].includes(key)),
   );
   return `Action(${JSON.stringify(data)})`;
 }
@@ -180,9 +165,7 @@ function scalar(input: string, line: number): string {
   } catch {
     /* Report an actionable source location below. */
   }
-  throw new CustomCommandValidationError(
-    `Markdown line ${line}: invalid quoted value.`,
-  );
+  throw new CustomCommandValidationError(`Markdown line ${line}: invalid quoted value.`);
 }
 
 /** Parse a small declarative dialect. No expressions, HTML or code are executed. */
@@ -215,21 +198,14 @@ export function parseCommandMarkdown(
     headerEnd = index;
   }
   customVariables([{ variables }]);
-  const keys = new Set<string>([
-    ...TEMPLATE_VARIABLE_KEYS,
-    ...Object.keys(variables),
-  ]);
+  const keys = new Set<string>([...TEMPLATE_VARIABLE_KEYS, ...Object.keys(variables)]);
   const validator = new CustomCommandValidator({
     validate: (value) => {
       templateTokens(value, keys);
     },
   });
-  const stagedShorthand = /^@(?:main|stage\(\d+\))$/.test(
-    lines.find((line) => line.trim()) ?? "",
-  );
-  const explicit = /^:::(?:text|embed)\s*$/.test(
-    lines.find((line) => line.trim()) ?? "",
-  );
+  const stagedShorthand = /^@(?:main|stage\(\d+\))$/.test(lines.find((line) => line.trim()) ?? "");
+  const explicit = /^:::(?:text|embed)\s*$/.test(lines.find((line) => line.trim()) ?? "");
   let response: ResponseTemplate | undefined =
     explicit || stagedShorthand ? undefined : { type: "TEXT", text: "" };
   let body: string[] = [],
@@ -251,8 +227,7 @@ export function parseCommandMarkdown(
     if (response.type === "TEXT") response.text = text;
     else if (text.length) response.embed.description = text;
     responses.push(response);
-    if (responses.length > L.messages)
-      fail(line, `use at most ${L.messages} messages.`);
+    if (responses.length > L.messages) fail(line, `use at most ${L.messages} messages.`);
     response = undefined;
     body = [];
     seen = new Set();
@@ -262,8 +237,7 @@ export function parseCommandMarkdown(
     if (index <= headerEnd) continue;
     if (fence) {
       append(line);
-      if (new RegExp(`^ {0,3}${fence.char}{${fence.length},}\\s*$`).test(line))
-        fence = undefined;
+      if (new RegExp(`^ {0,3}${fence.char}{${fence.length},}\\s*$`).test(line)) fence = undefined;
       continue;
     }
     const stageMarker = /^@(main|stage\((\d+)\))$/.exec(line);
@@ -274,10 +248,8 @@ export function parseCommandMarkdown(
         if (index > 0) finish(number);
         response = { type: "EMBED", embed: {} };
       }
-      if (!response)
-        fail(number, "place stage markers inside a response block.");
-      if (response!.stage !== undefined)
-        fail(number, "duplicate stage marker.");
+      if (!response) fail(number, "place stage markers inside a response block.");
+      if (response!.stage !== undefined) fail(number, "duplicate stage marker.");
       response!.stage = stageMarker[1] === "main" ? 0 : Number(stageMarker[2]);
       if (stageMarker[1] !== "main" && response!.stage === 0)
         fail(number, "use @main for stage zero.");
@@ -287,9 +259,7 @@ export function parseCommandMarkdown(
       if (!line.trim()) continue;
       if (line.trimEnd() === ":::text" || line.trimEnd() === ":::embed") {
         response =
-          line.trimEnd() === ":::text"
-            ? { type: "TEXT", text: "" }
-            : { type: "EMBED", embed: {} };
+          line.trimEnd() === ":::text" ? { type: "TEXT", text: "" } : { type: "EMBED", embed: {} };
         continue;
       }
       fail(number, "expected :::text or :::embed.");
@@ -305,8 +275,7 @@ export function parseCommandMarkdown(
       continue;
     }
     if (line.trimEnd() === ":::") {
-      if (!explicit)
-        fail(number, "use :::text or :::embed before closing a block.");
+      if (!explicit) fail(number, "use :::text or :::embed before closing a block.");
       finish(number);
       continue;
     }
@@ -318,11 +287,7 @@ export function parseCommandMarkdown(
       continue;
     }
     const match = /^@([a-z-]+)(?:\s+(.*))?$/.exec(line);
-    if (!match)
-      fail(
-        number,
-        "invalid directive; escape literal @ lines with a backslash.",
-      );
+    if (!match) fail(number, "invalid directive; escape literal @ lines with a backslash.");
     const key = match![1],
       raw = match![2] ?? "";
     if (select) {
@@ -334,10 +299,7 @@ export function parseCommandMarkdown(
         const option = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(raw);
         const action = option && parseAction(option[2], validator);
         if (!option || !action)
-          fail(
-            number,
-            "use @option [Label](Action); URL options are unsupported.",
-          );
+          fail(number, "use @option [Label](Action); URL options are unsupported.");
         select.options.push({
           label: option![1].replace(/\\(.)/g, "$1"),
           ...action!,
@@ -351,25 +313,17 @@ export function parseCommandMarkdown(
         option!.description = scalar(raw, number);
         continue;
       }
-      fail(
-        number,
-        "close the select with @endselect before another directive.",
-      );
+      fail(number, "close the select with @endselect before another directive.");
     }
     if (key === "channel") {
-      const id =
-        /^(\d{17,20})$/.exec(raw)?.[1] ?? /^<#(\d{17,20})>$/.exec(raw)?.[1];
+      const id = /^(\d{17,20})$/.exec(raw)?.[1] ?? /^<#(\d{17,20})>$/.exec(raw)?.[1];
       if (!id)
-        fail(
-          number,
-          "use @channel with a Discord channel ID, e.g. @channel 123456789012345678.",
-        );
+        fail(number, "use @channel with a Discord channel ID, e.g. @channel 123456789012345678.");
       append(`<#${id}>`);
       continue;
     }
     if (key === "endfield") {
-      if (!field || raw)
-        fail(number, "@endfield must close an open field and take no value.");
+      if (!field || raw) fail(number, "@endfield must close an open field and take no value.");
       field!.value = fieldBody.join("\n");
       field = undefined;
       fieldBody = [];
@@ -381,8 +335,7 @@ export function parseCommandMarkdown(
       field!.inline = raw === "true";
       continue;
     }
-    if (field)
-      fail(number, "close the field with @endfield before another directive.");
+    if (field) fail(number, "close the field with @endfield before another directive.");
     if (key === "select" || key === "dropdown") {
       select = { placeholder: scalar(raw, number), options: [] };
       (response!.selects ??= []).push(select);
@@ -391,8 +344,7 @@ export function parseCommandMarkdown(
     if (["option", "option-description", "endselect"].includes(key))
       fail(number, `@${key} requires an open @select.`);
     if (key === "button") {
-      const styled =
-        /^(?:(primary|secondary|success|danger|link)\s+)?(.*)$/i.exec(raw)!;
+      const styled = /^(?:(primary|secondary|success|danger|link)\s+)?(.*)$/i.exec(raw)!;
       const style = styled[1]?.toLowerCase();
       const link = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(styled[2]);
       if (!link) fail(number, "use @button [Label](https://example.com).");
@@ -404,19 +356,15 @@ export function parseCommandMarkdown(
         (response!.buttons ??= []).push({
           label,
           ...action,
-          ...(style
-            ? { style: style as "primary" | "secondary" | "success" | "danger" }
-            : {}),
+          ...(style ? { style: style as "primary" | "secondary" | "success" | "danger" } : {}),
         });
       } else {
-        if (style && style !== "link")
-          fail(number, "URL buttons must use link style.");
+        if (style && style !== "link") fail(number, "URL buttons must use link style.");
         (response!.buttons ??= []).push({ label, url: target });
       }
       continue;
     }
-    if (response!.type !== "EMBED")
-      fail(number, `@${key} requires an :::embed block.`);
+    if (response!.type !== "EMBED") fail(number, `@${key} requires an :::embed block.`);
     const embed = (response as { type: "EMBED"; embed: EmbedTemplate }).embed;
     const value = scalar(raw, number);
     if (key === "field") {
@@ -440,13 +388,9 @@ export function parseCommandMarkdown(
             ([name]) => name.toLowerCase() === value.toLowerCase(),
           );
           if (named) embed.color = named[1];
-          else if (/^#[\da-f]{6}$/i.test(value))
-            embed.color = parseInt(value.slice(1), 16);
+          else if (/^#[\da-f]{6}$/i.test(value)) embed.color = parseInt(value.slice(1), 16);
           else if (/^#[\da-f]{3}$/i.test(value))
-            embed.color = parseInt(
-              [...value.slice(1)].map((c) => c + c).join(""),
-              16,
-            );
+            embed.color = parseInt([...value.slice(1)].map((c) => c + c).join(""), 16);
           else
             fail(
               number,
@@ -476,21 +420,16 @@ export function parseCommandMarkdown(
         embed.footer = { text: "", ...embed.footer, icon_url: value };
         break;
       case "timestamp":
-        embed.timestamp =
-          value === "true" ? true : value === "false" ? false : value;
+        embed.timestamp = value === "true" ? true : value === "false" ? false : value;
         break;
       default:
-        fail(
-          number,
-          `unknown directive @${key}. Escape literal @ lines with a backslash.`,
-        );
+        fail(number, `unknown directive @${key}. Escape literal @ lines with a backslash.`);
     }
   }
   if (explicit && response) fail(lines.length, "missing closing :::.");
   if (fence) fail(lines.length, "unclosed code fence.");
   finish(lines.length);
-  if (responses[0] && Object.keys(variables).length)
-    responses[0].variables = variables;
+  if (responses[0] && Object.keys(variables).length) responses[0].variables = variables;
   return new CustomCommandValidator().responses(responses);
 }
 
@@ -504,9 +443,7 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
   const body = (value: string) =>
     value
       .split("\n")
-      .map((line) =>
-        /^(?:@|:::|\\| {0,3}(?:`{3,}|~{3,}))/.test(line) ? `\\${line}` : line,
-      )
+      .map((line) => (/^(?:@|:::|\\| {0,3}(?:`{3,}|~{3,}))/.test(line) ? `\\${line}` : line))
       .join("\n");
   const definitions = Object.entries(customVariables(content)).map(
     ([key, value]) => `@var ${key} = ${quote(value)}`,
@@ -515,9 +452,7 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
     .map((response) => {
       const lines = [response.type === "TEXT" ? ":::text" : ":::embed"];
       if (response.stage !== undefined)
-        lines.push(
-          response.stage === 0 ? "@main" : `@stage(${response.stage})`,
-        );
+        lines.push(response.stage === 0 ? "@main" : `@stage(${response.stage})`);
       const add = (key: string, value: string | undefined) => {
         if (value !== undefined) lines.push(`@${key} ${quote(value)}`);
       };
@@ -526,8 +461,7 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
         const e = response.embed;
         add("title", e.title);
         add("url", e.url);
-        if (e.color !== undefined)
-          add("color", `#${e.color.toString(16).padStart(6, "0")}`);
+        if (e.color !== undefined) add("color", `#${e.color.toString(16).padStart(6, "0")}`);
         add("cover", e.image?.url);
         add("thumbnail", e.thumbnail?.url);
         add("author", e.author?.name);
@@ -545,17 +479,14 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
       }
       for (const button of response.buttons ?? []) {
         const target = "url" in button ? button.url : serializeAction(button);
-        const style =
-          "action" in button && button.style ? `${button.style} ` : "";
-        lines.push(
-          `@button ${style}[${button.label.replace(/[\\\[\]]/g, "\\$&")}](${target})`,
-        );
+        const style = "action" in button && button.style ? `${button.style} ` : "";
+        lines.push(`@button ${style}[${button.label.replace(/[\\[\]]/g, "\\$&")}](${target})`);
       }
       for (const select of response.selects ?? []) {
         add("select", select.placeholder);
         for (const option of select.options) {
           lines.push(
-            `@option [${option.label.replace(/[\\\[\]]/g, "\\$&")}](${serializeAction(option)})`,
+            `@option [${option.label.replace(/[\\[\]]/g, "\\$&")}](${serializeAction(option)})`,
           );
           add("option-description", option.description);
         }
@@ -568,24 +499,17 @@ export function serializeCommandMarkdown(content: ResponseTemplate[]): string {
   return [...definitions, source].join("\n");
 }
 
-export function parseVariableDefinitions(
-  source: string,
-): Record<string, string> {
+export function parseVariableDefinitions(source: string): Record<string, string> {
   const definitions = source
     .split(/\r?\n/)
     .filter((line) => line.trim())
     .map((line) => (line.startsWith("@var ") ? line : `@var ${line}`))
     .join("\n");
-  const content = parseCommandMarkdown(
-    `${definitions}\n:::text\nVariables\n:::`,
-  );
+  const content = parseCommandMarkdown(`${definitions}\n:::text\nVariables\n:::`);
   return customVariables(content);
 }
 
-export function markdownPatch(
-  source: string,
-  savedVariables: Record<string, string> = {},
-) {
+export function markdownPatch(source: string, savedVariables: Record<string, string> = {}) {
   const content = parseCommandMarkdown(source, savedVariables);
   return {
     content,

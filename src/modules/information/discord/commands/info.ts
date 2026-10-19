@@ -22,9 +22,7 @@ export class InfoCommand extends Command {
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const repo = await getRepositoryInfo();
     const repositoryLink = repo.repositoryUrl ?? null;
 
@@ -62,9 +60,9 @@ export class InfoCommand extends Command {
         `**Commit date**`,
         repo.commitDate
           ? [
-            time(repo.commitDate, TimestampStyles.RelativeTime),
-            `-# ${time(repo.commitDate, TimestampStyles.LongDateTime)}`,
-          ].join("\n")
+              time(repo.commitDate, TimestampStyles.RelativeTime),
+              `-# ${time(repo.commitDate, TimestampStyles.LongDateTime)}`,
+            ].join("\n")
           : "Unavailable",
       ].join("\n"),
     );
@@ -80,24 +78,18 @@ export class InfoCommand extends Command {
       .setAccentColor(Colors.Blurple)
       .addTextDisplayComponents(header)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(source)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(build);
 
     if (repositoryLink) {
       container
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
         )
         .addActionRowComponents(
           new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -111,9 +103,7 @@ export class InfoCommand extends Command {
 
     container
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(footer);
 

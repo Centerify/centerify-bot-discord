@@ -23,27 +23,23 @@ type RegistryApiCall = {
 export class HelpCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
     registry.registerChatInputCommand((builder) =>
-      builder
-        .setName("help")
-        .setDescription("See all available bot commands"),
+      builder.setName("help").setDescription("See all available bot commands"),
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const commands = this.getRegisteredChatInputCommands();
 
     const commandList =
       commands.length > 0
         ? commands
-          .map(
-            (command) =>
-              `**/${escapeMarkdown(command.name)}**\n${escapeMarkdown(
-                command.description || "No description available.",
-              )}`,
-          )
-          .join("\n\n")
+            .map(
+              (command) =>
+                `**/${escapeMarkdown(command.name)}**\n${escapeMarkdown(
+                  command.description || "No description available.",
+                )}`,
+            )
+            .join("\n\n")
         : "No commands are available yet.";
 
     const header = new TextDisplayBuilder().setContent(
@@ -66,15 +62,11 @@ export class HelpCommand extends Command {
       .setAccentColor(Colors.Blurple)
       .addTextDisplayComponents(header)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(list)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(footer);
 
@@ -96,9 +88,7 @@ export class HelpCommand extends Command {
         return (
           registry.apiCalls
             ?.map((call) => call.builtData)
-            .filter((data): data is RegisteredChatInputCommand =>
-              Boolean(data?.name),
-            ) ?? []
+            .filter((data): data is RegisteredChatInputCommand => Boolean(data?.name)) ?? []
         );
       })
       .sort((a, b) => a.name.localeCompare(b.name));

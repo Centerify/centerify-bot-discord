@@ -1,8 +1,13 @@
 import pino from "pino";
+import { serializeError } from "./errors.js";
+import { parseLoggingConfiguration } from "./config.js";
+
+const config = parseLoggingConfiguration();
 
 export const logger = pino({
   name: "centerify-bot",
-  level: process.env.LOG_LEVEL ?? "info",
+  level: config.level,
+  serializers: { err: serializeError },
   redact: {
     paths: [
       "DISCORD_TOKEN",
@@ -20,15 +25,15 @@ export const logger = pino({
   },
 
   transport:
-    process.env.NODE_ENV !== "production"
+    config.format === "pretty"
       ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-          singleLine: false,
-        },
-      }
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "SYS:standard",
+            ignore: "pid,hostname",
+            singleLine: false,
+          },
+        }
       : undefined,
 });

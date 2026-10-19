@@ -5,23 +5,34 @@
   "keywords": [
     "centerify"
   ],
-  "homepage": "https://github.com/iamaloneforever/centerify-bot-discord#readme",
+  "homepage": "https://github.com/Centerify/centerify-bot-discord#readme",
   "bugs": {
-    "url": "https://github.com/iamaloneforever/centerify-bot-discord/issues"
+    "url": "https://github.com/Centerify/centerify-bot-discord/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iamaloneforever/centerify-bot-discord.git"
+    "url": "git+https://github.com/Centerify/centerify-bot-discord.git"
   },
   "license": "ISC",
   "author": "iamaloneforever",
   "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "node scripts/prune-build.mjs && tsc",
-    "start": "node dist/src/index.js",
-    "dev": "tsc-watch --onSuccess \"node scripts/prune-build.mjs && node dist/src/index.js\"",
-    "test": "XDG_DATA_HOME=.cache vitest run",
+    "build": "node scripts/build.mjs",
+    "start": "node --enable-source-maps dist/src/index.js",
+    "dev": "tsc-watch --project tsconfig.build.json --onSuccess \"node scripts/prune-build.mjs && node dist/src/index.js\"",
+    "test": "vitest run",
+    "test:security": "vitest run tests/core/errorSecurity.test.ts tests/modules/custom-commands/validationSecurity.test.ts tests/modules/guilds/roleSecurity.test.ts tests/modules/welcome/autoRoleSecurity.test.ts tests/modules/moderation/globalAuthorization.test.ts tests/modules/moderation/globalCommandSecurity.test.ts tests/services/customCommands/roleActions.test.ts tests/services/customCommands/actionWorkflows.test.ts tests/services/customCommands/sharedActions.test.ts tests/services/moderation/warningRolesRuntime.test.ts tests/services/customCommands/attachment.test.ts",
+    "audit:production": "npm audit --omit=dev --audit-level=high",
+    "check:config": "tsx scripts/check-config.ts",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
     "test:database": "node scripts/test-database.mjs",
     "test:e2e": "node scripts/test-database.mjs --e2e",
     "check:discord": "node scripts/verify-discord.mjs",
@@ -31,24 +42,34 @@
   "dependencies": {
     "@prisma/orm-postgres": "^8.0.0-rc.9",
     "@sapphire/framework": "^5.5.1",
+    "close-with-grace": "2.5.0",
     "discord.js": "^14.27.0",
     "dotenv": "^17.4.2",
-    "pino": "^10.3.1"
+    "pino": "^10.3.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@prisma/cli-engine": "^0.2.3",
-    "@types/node": "^22.20.2",
+    "@types/node": "^24.19.2",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
     "pino-pretty": "^13.1.3",
+    "prettier": "3.9.10",
     "prisma": "^8.0.0-rc.10",
     "tsc-watch": "^7.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.2",
+    "typescript-eslint": "8.71.2",
     "vitest": "^5.0.0"
   },
   "overrides": {
     "@hono/node-server": "1.19.15",
     "hono": "4.13.8",
     "lodash": "4.18.1",
-    "valibot": "1.5.0"
+    "valibot": "1.5.0",
+    "brace-expansion": "5.0.12",
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2"
   }
 }

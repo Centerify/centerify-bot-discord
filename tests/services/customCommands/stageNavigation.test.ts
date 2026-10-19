@@ -58,17 +58,13 @@ test("execution sends only main, attaches navigation and counts usage once", asy
   expect(send).toHaveBeenCalledTimes(1);
   expect(send.mock.calls[0][1]).toBe(0);
   expect(send.mock.calls[0][0].embeds[0].toJSON().title).toBe("Welcome");
-  expect(
-    message.createMessageComponentCollector.mock.calls[0][0],
-  ).toMatchObject({ time: 900_000 });
+  expect(message.createMessageComponentCollector.mock.calls[0][0]).toMatchObject({ time: 900_000 });
   const next = await click("cc-stage:0:0");
   expect(next.update).toHaveBeenCalledWith(
     expect.objectContaining({ content: "Details", embeds: [] }),
   );
   const back = await click("cc-stage:2:0");
-  expect(back.update).toHaveBeenCalledWith(
-    expect.objectContaining({ content: null }),
-  );
+  expect(back.update).toHaveBeenCalledWith(expect.objectContaining({ content: null }));
   await click("cc-stage:0:0");
   expect((await click("cc-stage:2:1")).update).toHaveBeenCalled();
   const cancel = await click("cc-stage:0:1");
@@ -79,15 +75,9 @@ test("execution sends only main, attaches navigation and counts usage once", asy
 
 test("navigation rejects other users, stale buttons and invalid IDs; expires controls", async () => {
   const { ctx, message, click, collector } = setup();
-  attachStageNavigation(
-    message,
-    ctx,
-    await new CustomCommandRenderer().render(ctx, true),
-  );
+  attachStageNavigation(message, ctx, await new CustomCommandRenderer().render(ctx, true));
   const foreign = await click("cc-stage:0:0", "other");
-  expect(foreign.reply).toHaveBeenCalledWith(
-    expect.objectContaining({ flags: 64 }),
-  );
+  expect(foreign.reply).toHaveBeenCalledWith(expect.objectContaining({ flags: 64 }));
   expect(foreign.update).not.toHaveBeenCalled();
   for (const id of ["cc-stage:2:0", "cc-stage:0:99", "cc-stage:invalid"]) {
     const stale = await click(id);
@@ -100,14 +90,8 @@ test("navigation rejects other users, stale buttons and invalid IDs; expires con
 
 test("failed updates keep the current stage and allow a retry", async () => {
   const { ctx, message, collector, click } = setup();
-  attachStageNavigation(
-    message,
-    ctx,
-    await new CustomCommandRenderer().render(ctx, true),
-  );
-  const handler = collector.listeners("collect")[0] as (
-    value: unknown,
-  ) => Promise<void>;
+  attachStageNavigation(message, ctx, await new CustomCommandRenderer().render(ctx, true));
+  const handler = collector.listeners("collect")[0] as (value: unknown) => Promise<void>;
   await handler({
     customId: "cc-stage:0:0",
     user: { id: USER },
@@ -119,11 +103,7 @@ test("failed updates keep the current stage and allow a retry", async () => {
 
 test("concurrent clicks are acknowledged without racing stage updates", async () => {
   const { ctx, message, collector, click } = setup();
-  attachStageNavigation(
-    message,
-    ctx,
-    await new CustomCommandRenderer().render(ctx, true),
-  );
+  attachStageNavigation(message, ctx, await new CustomCommandRenderer().render(ctx, true));
   let finish!: () => void;
   const update = vi.fn(
     () =>
@@ -131,9 +111,7 @@ test("concurrent clicks are acknowledged without racing stage updates", async ()
         finish = resolve;
       }),
   );
-  const handler = collector.listeners("collect")[0] as (
-    value: unknown,
-  ) => Promise<void>;
+  const handler = collector.listeners("collect")[0] as (value: unknown) => Promise<void>;
   const pending = handler({
     customId: "cc-stage:0:0",
     user: { id: USER },

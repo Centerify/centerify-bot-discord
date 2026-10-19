@@ -11,6 +11,7 @@ export function parseModuleConfiguration(json: string | undefined): ModuleConfig
   }
   const result: Record<string, ModuleOptions> = {};
   for (const [id, options] of Object.entries(value)) {
+    if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error("Invalid module ID");
     if (typeof options === "boolean") result[id] = { enabled: options };
     else if (options && typeof options === "object" && !Array.isArray(options)) {
       const fields = options as Record<string, unknown>;

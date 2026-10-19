@@ -8,10 +8,68 @@ export const URL_VARIABLES = [
   "guild.banner",
   "bot.avatar",
 ] as const;
-export const TEMPLATE_VARIABLE_KEYS = ["user.id", "user.name", "user.displayName", "user.mention", "user.avatar", "user.defaultAvatar", "user.globalName", "user.createdAt", "user.bot", "member.avatar", "member.nickname", "member.joinedAt", "member.boostingSince", "member.color", "member.topRole", "member.roleCount", "guild.icon", "guild.banner", "guild.ownerId", "guild.createdAt", "guild.description", "guild.boostCount", "guild.boostTier", "guild.locale", "guild.id", "guild.name", "guild.memberCount", "channel.id", "channel.name", "channel.mention", "channel.topic", "channel.createdAt", "channel.type", "channel.nsfw", "channel.parentId", "bot.id", "bot.name", "bot.mention", "bot.avatar", "command.description", "command.usageCount", "command.cooldown", "command.prefix", "command.source", "args.count", "args.first", "args.last", "timestamp", "datetime", "command.name", "date", "time", "args"] as const;
+export const TEMPLATE_VARIABLE_KEYS = [
+  "user.id",
+  "user.name",
+  "user.displayName",
+  "user.mention",
+  "user.avatar",
+  "user.defaultAvatar",
+  "user.globalName",
+  "user.createdAt",
+  "user.bot",
+  "member.avatar",
+  "member.nickname",
+  "member.joinedAt",
+  "member.boostingSince",
+  "member.color",
+  "member.topRole",
+  "member.roleCount",
+  "guild.icon",
+  "guild.banner",
+  "guild.ownerId",
+  "guild.createdAt",
+  "guild.description",
+  "guild.boostCount",
+  "guild.boostTier",
+  "guild.locale",
+  "guild.id",
+  "guild.name",
+  "guild.memberCount",
+  "channel.id",
+  "channel.name",
+  "channel.mention",
+  "channel.topic",
+  "channel.createdAt",
+  "channel.type",
+  "channel.nsfw",
+  "channel.parentId",
+  "bot.id",
+  "bot.name",
+  "bot.mention",
+  "bot.avatar",
+  "command.description",
+  "command.usageCount",
+  "command.cooldown",
+  "command.prefix",
+  "command.source",
+  "args.count",
+  "args.first",
+  "args.last",
+  "timestamp",
+  "datetime",
+  "command.name",
+  "date",
+  "time",
+  "args",
+] as const;
 
-export function templateTokens(template: string, keys: ReadonlySet<string> = new Set(TEMPLATE_VARIABLE_KEYS)) {
-  if (template.length > L.templateInput) throw new CustomCommandValidationError("Template is too long.");
+export function templateTokens(
+  template: string,
+  keys: ReadonlySet<string> = new Set(TEMPLATE_VARIABLE_KEYS),
+) {
+  if (template.length > L.templateInput)
+    throw new CustomCommandValidationError("Template is too long.");
   const tokens: { start: number; end: number; key: string }[] = [];
   for (let i = 0; i < template.length; i++) {
     if (template[i] === "}") throw new CustomCommandValidationError("Unmatched template brace.");
@@ -27,7 +85,11 @@ export function templateTokens(template: string, keys: ReadonlySet<string> = new
   }
   return tokens;
 }
-export const templateSyntax = { validate(template: string) { templateTokens(template); } };
+export const templateSyntax = {
+  validate(template: string) {
+    templateTokens(template);
+  },
+};
 
 /** Definitions are command-wide and stored with the response payload. */
 export function customVariables(
@@ -40,9 +102,7 @@ export function customVariables(
       typeof response.variables !== "object" ||
       Array.isArray(response.variables)
     )
-      throw new CustomCommandValidationError(
-        "Custom variables must be an object.",
-      );
+      throw new CustomCommandValidationError("Custom variables must be an object.");
     return Object.entries(response.variables);
   });
   if (entries.length > 25)
@@ -64,14 +124,10 @@ export function customVariables(
       );
     variables[key] = value;
   }
-  const keys = new Set<string>([
-    ...TEMPLATE_VARIABLE_KEYS,
-    ...Object.keys(variables),
-  ]);
+  const keys = new Set<string>([...TEMPLATE_VARIABLE_KEYS, ...Object.keys(variables)]);
   const visited = new Set<string>();
   const visit = (key: string, path: Set<string>) => {
-    if (path.has(key))
-      throw new CustomCommandValidationError(`Circular custom variable {${key}}.`);
+    if (path.has(key)) throw new CustomCommandValidationError(`Circular custom variable {${key}}.`);
     if (visited.has(key)) return;
     const next = new Set([...path, key]);
     for (const token of templateTokens(variables[key], keys))

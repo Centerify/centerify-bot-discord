@@ -8,9 +8,7 @@ import {
 import { record } from "./fixtures.js";
 function state(): CustomSettingsState {
   return {
-    commands: Array.from({ length: 30 }, (_, id) =>
-      record({ id, name: `command-${id}` }),
-    ),
+    commands: Array.from({ length: 30 }, (_, id) => record({ id, name: `command-${id}` })),
     commandId: 26,
     commandPage: 1,
     scope: "selected",
@@ -29,9 +27,7 @@ test("settings uses a valid V2 container with paginated command, scope, and serv
   expect(view).not.toHaveProperty("embeds");
   const container = view.components[0].toJSON();
   expect(container.type).toBe(ComponentType.Container);
-  const rows = container.components.filter(
-    (item) => item.type === ComponentType.ActionRow,
-  );
+  const rows = container.components.filter((item) => item.type === ComponentType.ActionRow);
   const selects = rows.flatMap((row) =>
     row.components.filter((item) => item.type === ComponentType.StringSelect),
   );
@@ -41,35 +37,21 @@ test("settings uses a valid V2 container with paginated command, scope, and serv
   expect(rows.every((row) => row.components.length <= 5)).toBe(true);
 });
 test("expired or closed V2 sessions keep their content and disable every control", () => {
-  const container = customSettingsView(
-    state(),
-    "session",
-    true,
-  ).components[0].toJSON();
+  const container = customSettingsView(state(), "session", true).components[0].toJSON();
   const controls = container.components.flatMap((item) =>
     item.type === ComponentType.ActionRow ? item.components : [],
   );
   expect(controls.length).toBeGreaterThan(0);
-  expect(controls.every((item) => "disabled" in item && item.disabled)).toBe(
-    true,
-  );
-  expect(
-    container.components.some(
-      (item) => item.type === ComponentType.TextDisplay,
-    ),
-  ).toBe(true);
+  expect(controls.every((item) => "disabled" in item && item.disabled)).toBe(true);
+  expect(container.components.some((item) => item.type === ComponentType.TextDisplay)).toBe(true);
 });
 test("no commands or eligible servers still produce valid V2 settings", () => {
   const empty = state();
   empty.commands = [];
-  expect(() =>
-    customSettingsView(empty, "session").components[0].toJSON(),
-  ).not.toThrow();
+  expect(() => customSettingsView(empty, "session").components[0].toJSON()).not.toThrow();
   const noServers = state();
   noServers.choices = [];
-  expect(() =>
-    customSettingsView(noServers, "session").components[0].toJSON(),
-  ).not.toThrow();
+  expect(() => customSettingsView(noServers, "session").components[0].toJSON()).not.toThrow();
 });
 
 test("separate warning embeds escape server names and suppress mentions", () => {
@@ -86,9 +68,7 @@ test("separate warning embeds escape server names and suppress mentions", () => 
   const view = customSettingsWarning(warning, "session");
   expect(view.flags).toBe(MessageFlags.Ephemeral);
   expect(view.allowedMentions).toEqual({ parse: [] });
-  expect(view.embeds[0]!.toJSON().description).toContain(
-    "\\*\\*Untrusted\\*\\* @everyone",
-  );
+  expect(view.embeds[0]!.toJSON().description).toContain("\\*\\*Untrusted\\*\\* @everyone");
   expect(view.embeds[0]!.toJSON().description).toContain("92 more servers");
   expect(
     view.components[0]!.toJSON().components.map((c) =>
@@ -110,23 +90,17 @@ test("batch selection keeps the independent customization selector available", (
   batch.dirty = true;
   const controls = customSettingsView(batch, "session")
     .components[0].toJSON()
-    .components.flatMap((item) =>
-      item.type === ComponentType.ActionRow ? item.components : [],
-    );
+    .components.flatMap((item) => (item.type === ComponentType.ActionRow ? item.components : []));
   const select = controls.find(
-    (item) =>
-      item.type === ComponentType.StringSelect &&
-      item.custom_id.endsWith(":command"),
+    (item) => item.type === ComponentType.StringSelect && item.custom_id.endsWith(":command"),
   );
   expect(select).toMatchObject({ min_values: 0, max_values: 5 });
-  if (select?.type !== ComponentType.StringSelect)
-    throw new Error("Missing command input");
+  if (select?.type !== ComponentType.StringSelect) throw new Error("Missing command input");
+  expect(select.options.filter((item) => item.default).map((item) => item.value)).toEqual([
+    "26",
+    "27",
+  ]);
   expect(
-    select.options.filter((item) => item.default).map((item) => item.value),
-  ).toEqual(["26", "27"]);
-  expect(
-    controls.find(
-      (item) => "custom_id" in item && item.custom_id.endsWith(":customize"),
-    ),
+    controls.find((item) => "custom_id" in item && item.custom_id.endsWith(":customize")),
   ).toMatchObject({ disabled: false });
 });

@@ -3,15 +3,7 @@ import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { CustomCommandPermissionError } from "../domain/errors.js";
 export class CustomCommandPermissionService {
   public check(context: CustomCommandExecutionContext): void {
-    const {
-      command: c,
-      guild,
-      member,
-      channel,
-      guildId,
-      channelId,
-      userId,
-    } = context;
+    const { command: c, guild, member, channel, guildId, channelId, userId } = context;
     const deny = (message: string): never => {
       throw new CustomCommandPermissionError(message);
     };
@@ -30,16 +22,12 @@ export class CustomCommandPermissionService {
       (context.source === "slash" && c.triggerType === "MESSAGE")
     )
       deny("This command does not support that trigger.");
-    if (c.deniedChannelIds.includes(channelId))
-      deny("This command is denied in this channel.");
+    if (c.deniedChannelIds.includes(channelId)) deny("This command is denied in this channel.");
     if (c.allowedChannelIds.length && !c.allowedChannelIds.includes(channelId))
       deny("This command is restricted to other channels.");
     if (c.deniedRoleIds.some((id) => member.roles.cache.has(id)))
       deny("Your roles are denied access to this command.");
-    if (
-      c.allowedRoleIds.length &&
-      !c.allowedRoleIds.some((id) => member.roles.cache.has(id))
-    )
+    if (c.allowedRoleIds.length && !c.allowedRoleIds.some((id) => member.roles.cache.has(id)))
       deny("You do not have an allowed role for this command.");
     const userPermissions = channel.permissionsFor(member);
     if (!userPermissions?.has(c.requiredUserPermissions))
@@ -56,10 +44,7 @@ export class CustomCommandPermissionService {
       required.push(PermissionFlagsBits.EmbedLinks);
     if (context.source === "message" && c.deleteInvocation)
       required.push(PermissionFlagsBits.ManageMessages);
-    if (
-      !botPermissions?.has(required) ||
-      !botPermissions.has(c.requiredBotPermissions)
-    )
+    if (!botPermissions?.has(required) || !botPermissions.has(c.requiredBotPermissions))
       deny("I lack the required Discord permissions in this channel.");
   }
 }

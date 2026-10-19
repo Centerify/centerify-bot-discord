@@ -30,8 +30,7 @@ function guild(id: string, admin = true) {
     members: {
       fetch: vi.fn().mockResolvedValue({
         permissions: {
-          has: (bit: bigint) =>
-            admin && bit === PermissionFlagsBits.Administrator,
+          has: (bit: bigint) => admin && bit === PermissionFlagsBits.Administrator,
         },
       }),
     },
@@ -68,24 +67,44 @@ beforeEach(() => {
   } as unknown as Client;
 });
 test("available commands combine local scopes and shared definitions, including disabled commands", async () => {
-  vi.mocked(repository.available).mockResolvedValue([sharing(), sharing({ guildId: target.id, commandId: 2, scope: "selected" })]);
-  commands.listCommands.mockImplementation(async (id) => id === source.id
-    ? [record({ enabled: false })]
-    : [record({ id: 2, guildId: target.id, name: "local" })]);
+  vi.mocked(repository.available).mockResolvedValue([
+    sharing(),
+    sharing({ guildId: target.id, commandId: 2, scope: "selected" }),
+  ]);
+  commands.listCommands.mockImplementation(async (id) =>
+    id === source.id
+      ? [record({ enabled: false })]
+      : [record({ id: 2, guildId: target.id, name: "local" })],
+  );
   expect(await service.listAvailable(client, target)).toEqual([
     expect.objectContaining({ id: 2, name: "local", sharingScope: "selected" }),
-    expect.objectContaining({ id: 1, guildId: target.id, sourceGuildId: source.id, sharingScope: "all", enabled: false }),
+    expect.objectContaining({
+      id: 1,
+      guildId: target.id,
+      sourceGuildId: source.id,
+      sharingScope: "all",
+      enabled: false,
+    }),
   ]);
   verified.mockResolvedValue(false);
   expect(await service.listAvailable(client, target)).toHaveLength(1);
 });
 
 test("shared management rechecks scope and both servers before accessing the original definition", async () => {
-  vi.mocked(repository.get).mockResolvedValue(sharing({ scope: "selected", selectedGuildIds: target.id }));
+  vi.mocked(repository.get).mockResolvedValue(
+    sharing({ scope: "selected", selectedGuildIds: target.id }),
+  );
   const projected = record({ guildId: target.id, sourceGuildId: source.id });
-  expect(await service.forManagement(client, target, "admin", projected)).toMatchObject({ guildId: source.id, id: 1 });
-  vi.mocked(repository.get).mockResolvedValue(sharing({ scope: "selected", selectedGuildIds: "elsewhere" }));
-  await expect(service.forManagement(client, target, "admin", projected)).rejects.toThrow("no longer shared");
+  expect(await service.forManagement(client, target, "admin", projected)).toMatchObject({
+    guildId: source.id,
+    id: 1,
+  });
+  vi.mocked(repository.get).mockResolvedValue(
+    sharing({ scope: "selected", selectedGuildIds: "elsewhere" }),
+  );
+  await expect(service.forManagement(client, target, "admin", projected)).rejects.toThrow(
+    "no longer shared",
+  );
   vi.mocked(repository.get).mockResolvedValue(sharing());
   verified.mockImplementation(async (guild) => guild.id !== source.id);
   await expect(service.forManagement(client, target, "admin", projected)).rejects.toThrow("both");
@@ -93,8 +112,17 @@ test("shared management rechecks scope and both servers before accessing the ori
 
 test("scope changes from a destination update the original grant", async () => {
   vi.mocked(repository.get).mockResolvedValue(sharing());
-  await service.save(client, "admin", record({ guildId: target.id, sourceGuildId: source.id }), "selected", [target.id]);
-  expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ guildId: source.id }), sharing({ scope: "selected", selectedGuildIds: target.id }));
+  await service.save(
+    client,
+    "admin",
+    record({ guildId: target.id, sourceGuildId: source.id }),
+    "selected",
+    [target.id],
+  );
+  expect(repository.save).toHaveBeenCalledWith(
+    expect.objectContaining({ guildId: source.id }),
+    sharing({ scope: "selected", selectedGuildIds: target.id }),
+  );
 });
 test("one global definition resolves in an authorized server with the original identity", async () => {
   const found = await service.resolve(client, target, "HI");
@@ -110,9 +138,13 @@ test("one global definition resolves in an authorized server with the original i
 
 test("shared execution checks both servers concurrently and awaits fresh authorization", async () => {
   let finishSource!: (allowed: boolean) => void;
-  verified.mockImplementation((guild) => guild.id === source.id
-    ? new Promise<boolean>((resolve) => { finishSource = resolve; })
-    : Promise.resolve(true));
+  verified.mockImplementation((guild) =>
+    guild.id === source.id
+      ? new Promise<boolean>((resolve) => {
+          finishSource = resolve;
+        })
+      : Promise.resolve(true),
+  );
   const resolving = service.resolve(client, target, "welcome");
   try {
     await vi.waitFor(() => expect(verified).toHaveBeenCalledWith(target));
@@ -145,11 +177,7 @@ test.each(["source", "target"])(
     const revoked = guild(affected.id, false);
     client.guilds.cache.set(affected.id, revoked);
     expect(
-      await service.resolve(
-        client,
-        side === "target" ? revoked : target,
-        "welcome",
-      ),
+      await service.resolve(client, side === "target" ? revoked : target, "welcome"),
     ).toBeNull();
   },
 );
@@ -187,11 +215,7 @@ test("saving scopes writes a reference only, removing it restores local-only beh
   const command = record();
   await service.save(client, "admin", command, "all", []);
   expect(repository.save).toHaveBeenLastCalledWith(command, sharing());
-  await service.save(client, "admin", command, "selected", [
-    source.id,
-    target.id,
-    target.id,
-  ]);
+  await service.save(client, "admin", command, "selected", [source.id, target.id, target.id]);
   expect(repository.save).toHaveBeenLastCalledWith(
     command,
     sharing({ scope: "selected", selectedGuildIds: target.id }),
@@ -200,25 +224,15 @@ test("saving scopes writes a reference only, removing it restores local-only beh
   expect(repository.save).toHaveBeenLastCalledWith(command, null);
 });
 test("sharing writes reject foreign servers, missing permissions, empty selection, and server restrictions", async () => {
+  await expect(service.save(client, "admin", record(), "selected", ["foreign"])).rejects.toThrow(
+    "Every selected",
+  );
+  await expect(service.save(client, "admin", record(), "selected", [])).rejects.toThrow("Choose 1");
   await expect(
-    service.save(client, "admin", record(), "selected", ["foreign"]),
-  ).rejects.toThrow("Every selected");
-  await expect(
-    service.save(client, "admin", record(), "selected", []),
-  ).rejects.toThrow("Choose 1");
-  await expect(
-    service.save(
-      client,
-      "admin",
-      record({ deniedChannelIds: ["123456789012345678"] }),
-      "all",
-      [],
-    ),
+    service.save(client, "admin", record({ deniedChannelIds: ["123456789012345678"] }), "all", []),
   ).rejects.toThrow("Clear server-specific");
   verified.mockResolvedValue(false);
-  await expect(
-    service.save(client, "admin", record(), "all", []),
-  ).rejects.toThrow("Administrator");
+  await expect(service.save(client, "admin", record(), "all", [])).rejects.toThrow("Administrator");
   expect(repository.save).not.toHaveBeenCalled();
 });
 
@@ -226,9 +240,7 @@ test("server discovery hides unverified and inaccessible servers, then saving re
   const unverified = guild("unverified"),
     inaccessible = guild("inaccessible", false),
     unavailable = guild("unavailable");
-  vi.mocked(unavailable.members.fetch).mockRejectedValue(
-    new Error("member lookup failed"),
-  );
+  vi.mocked(unavailable.members.fetch).mockRejectedValue(new Error("member lookup failed"));
   for (const item of [unverified, inaccessible, unavailable])
     client.guilds.cache.set(item.id, item);
   verified.mockImplementation(async (guild) => guild.id !== unverified.id);
@@ -286,8 +298,7 @@ test.each(["name", "alias", "legacy", "shared"])(
     });
     commands.listCommands.mockImplementation(async (id) => {
       if (id === source.id) return [command];
-      if (id === target.id)
-        return kind === "name" || kind === "alias" ? [duplicate] : [];
+      if (id === target.id) return kind === "name" || kind === "alias" ? [duplicate] : [];
       return [record({ id: 3, guildId: id, name: "third", aliases: ["hi"] })];
     });
     if (kind === "legacy")
@@ -307,29 +318,20 @@ test.each(["name", "alias", "legacy", "shared"])(
         guildId: target.id,
         guildName: target.name,
         names: [kind === "name" ? "welcome" : "hi"],
-        replacements: kind === "name" || kind === "alias" ? [{ id: 2, updatedAt: duplicate.updatedAt }] : [],
+        replacements:
+          kind === "name" || kind === "alias" ? [{ id: 2, updatedAt: duplicate.updatedAt }] : [],
         replaceable: kind === "name" || kind === "alias",
       },
     ]);
     expect(repository.save).not.toHaveBeenCalled();
-    await service.save(
-      client,
-      "admin",
-      command,
-      "selected",
-      [target.id],
-      error.fingerprint,
-    );
+    await service.save(client, "admin", command, "selected", [target.id], error.fingerprint);
     expect(repository.save).toHaveBeenCalledExactlyOnceWith(
       command,
       sharing({ scope: "selected", selectedGuildIds: target.id }),
     );
     if (kind === "shared") {
       vi.mocked(repository.candidates).mockReturnValue(
-        Promise.resolve([
-          sharing(),
-          sharing({ guildId: "guild-c", commandId: 3 }),
-        ]),
+        Promise.resolve([sharing(), sharing({ guildId: "guild-c", commandId: 3 })]),
       );
       expect(await service.resolve(client, target, "hi")).toBeNull();
     }
@@ -341,18 +343,14 @@ test("all-server scope warns only for currently eligible destinations", async ()
   client.guilds.cache.set(denied.id, denied);
   commands.listCommands.mockResolvedValue([record({ name: "welcome" })]);
   const error = await warning(record(), "all", []);
-  expect(error.conflicts.map((conflict) => conflict.guildId)).toEqual([
-    target.id,
-  ]);
+  expect(error.conflicts.map((conflict) => conflict.guildId)).toEqual([target.id]);
   expect(commands.listCommands).not.toHaveBeenCalledWith(denied.id);
   await service.save(client, "admin", record(), "all", [], error.fingerprint);
   expect(repository.save).toHaveBeenCalledOnce();
 });
 
 test("Proceed rechecks duplicates and binds consent to the command, scope and selection", async () => {
-  commands.listCommands.mockImplementation(async (id) =>
-    id === target.id ? [record()] : [],
-  );
+  commands.listCommands.mockImplementation(async (id) => (id === target.id ? [record()] : []));
   const command = record({ aliases: ["hi"] });
   const error = await warning(command);
   await expect(
@@ -361,24 +359,10 @@ test("Proceed rechecks duplicates and binds consent to the command, scope and se
   const extra = guild("extra");
   client.guilds.cache.set(extra.id, extra);
   await expect(
-    service.save(
-      client,
-      "admin",
-      command,
-      "selected",
-      [target.id, extra.id],
-      error.fingerprint,
-    ),
+    service.save(client, "admin", command, "selected", [target.id, extra.id], error.fingerprint),
   ).rejects.toBeInstanceOf(CustomCommandSharingConflictError);
   await expect(
-    service.save(
-      client,
-      "admin",
-      record({ id: 2 }),
-      "selected",
-      [target.id],
-      error.fingerprint,
-    ),
+    service.save(client, "admin", record({ id: 2 }), "selected", [target.id], error.fingerprint),
   ).rejects.toBeInstanceOf(CustomCommandSharingConflictError);
   await expect(
     service.save(
@@ -392,42 +376,30 @@ test("Proceed rechecks duplicates and binds consent to the command, scope and se
   ).rejects.toBeInstanceOf(CustomCommandSharingConflictError);
   commands.listCommands.mockResolvedValue([record({ aliases: ["hi"] })]);
   await expect(
-    service.save(
-      client,
-      "admin",
-      command,
-      "selected",
-      [target.id],
-      error.fingerprint,
-    ),
+    service.save(client, "admin", command, "selected", [target.id], error.fingerprint),
   ).rejects.toMatchObject({ conflicts: [{ names: ["hi", "welcome"] }] });
   expect(repository.save).not.toHaveBeenCalled();
 });
 
-test.each(["source", "target"])(
-  "Proceed cannot bypass revoked %s permissions",
-  async (side) => {
-    commands.listCommands.mockResolvedValue([record()]);
-    const error = await warning();
-    client.guilds.cache.set(
-      side === "source" ? source.id : target.id,
-      guild(side === "source" ? source.id : target.id, false),
-    );
-    await expect(
-      service.save(
-        client,
-        "admin",
-        record({ aliases: ["hi"] }),
-        "selected",
-        [target.id],
-        error.fingerprint,
-      ),
-    ).rejects.toThrow(
-      side === "source" ? "source server" : "Every selected server",
-    );
-    expect(repository.save).not.toHaveBeenCalled();
-  },
-);
+test.each(["source", "target"])("Proceed cannot bypass revoked %s permissions", async (side) => {
+  commands.listCommands.mockResolvedValue([record()]);
+  const error = await warning();
+  client.guilds.cache.set(
+    side === "source" ? source.id : target.id,
+    guild(side === "source" ? source.id : target.id, false),
+  );
+  await expect(
+    service.save(
+      client,
+      "admin",
+      record({ aliases: ["hi"] }),
+      "selected",
+      [target.id],
+      error.fingerprint,
+    ),
+  ).rejects.toThrow(side === "source" ? "source server" : "Every selected server");
+  expect(repository.save).not.toHaveBeenCalled();
+});
 
 test("ineligible shared sources do not expose duplicate warnings or become runnable", async () => {
   const other = guild("guild-c", false);
@@ -441,20 +413,16 @@ test("ineligible shared sources do not expose duplicate warnings or become runna
 });
 
 test("an incomplete duplicate scan fails closed without writing", async () => {
-  vi.mocked(repository.candidates).mockResolvedValue(
-    Array.from({ length: 101 }, () => sharing()),
+  vi.mocked(repository.candidates).mockResolvedValue(Array.from({ length: 101 }, () => sharing()));
+  await expect(service.save(client, "admin", record(), "selected", [target.id])).rejects.toThrow(
+    "Too many shared commands",
   );
-  await expect(
-    service.save(client, "admin", record(), "selected", [target.id]),
-  ).rejects.toThrow("Too many shared commands");
   expect(repository.save).not.toHaveBeenCalled();
   vi.mocked(repository.candidates).mockResolvedValue([]);
-  vi.mocked(repository.hasLegacyName).mockRejectedValue(
-    new Error("database unavailable"),
+  vi.mocked(repository.hasLegacyName).mockRejectedValue(new Error("database unavailable"));
+  await expect(service.save(client, "admin", record(), "selected", [target.id])).rejects.toThrow(
+    "database unavailable",
   );
-  await expect(
-    service.save(client, "admin", record(), "selected", [target.id]),
-  ).rejects.toThrow("database unavailable");
   expect(repository.save).not.toHaveBeenCalled();
 });
 
@@ -465,42 +433,72 @@ test("all-server scope can be saved before any other server is eligible", async 
   expect(repository.candidates).not.toHaveBeenCalled();
 });
 
-
 test("Replace requires current consent, passes reviewed definitions, and invalidates destination caches", async () => {
   const existing = record({ id: 2, guildId: target.id, aliases: ["hi"] });
-  commands.listCommands.mockImplementation(async (id) => id === target.id ? [existing] : [record()]);
+  commands.listCommands.mockImplementation(async (id) =>
+    id === target.id ? [existing] : [record()],
+  );
   const command = record({ aliases: ["hi"] });
   const error = await warning(command);
-  await expect(service.save(client, "admin", command, "selected", [target.id], undefined, "replace"))
-    .rejects.toBeInstanceOf(CustomCommandSharingConflictError);
+  await expect(
+    service.save(client, "admin", command, "selected", [target.id], undefined, "replace"),
+  ).rejects.toBeInstanceOf(CustomCommandSharingConflictError);
   expect(repository.save).not.toHaveBeenCalled();
-  await service.save(client, "admin", command, "selected", [target.id], error.fingerprint, "replace");
-  expect(repository.save).toHaveBeenCalledWith(command, sharing({ scope: "selected", selectedGuildIds: target.id }), error.conflicts);
+  await service.save(
+    client,
+    "admin",
+    command,
+    "selected",
+    [target.id],
+    error.fingerprint,
+    "replace",
+  );
+  expect(repository.save).toHaveBeenCalledWith(
+    command,
+    sharing({ scope: "selected", selectedGuildIds: target.id }),
+    error.conflicts,
+  );
   expect(commands.invalidate).toHaveBeenCalledWith(target.id);
   existing.updatedAt = "changed";
-  await expect(service.save(client, "admin", command, "selected", [target.id], error.fingerprint, "replace"))
-    .rejects.toBeInstanceOf(CustomCommandSharingConflictError);
+  await expect(
+    service.save(client, "admin", command, "selected", [target.id], error.fingerprint, "replace"),
+  ).rejects.toBeInstanceOf(CustomCommandSharingConflictError);
   expect(repository.save).toHaveBeenCalledTimes(1);
 });
 
 test("Replace cannot delete legacy conflicts even with a valid confirmation", async () => {
   vi.mocked(repository.hasLegacyName).mockResolvedValue(true);
   const error = await warning();
-  await expect(service.save(client, "admin", record({ aliases: ["hi"] }), "selected", [target.id], error.fingerprint, "replace"))
-    .rejects.toThrow("Only server custom commands");
+  await expect(
+    service.save(
+      client,
+      "admin",
+      record({ aliases: ["hi"] }),
+      "selected",
+      [target.id],
+      error.fingerprint,
+      "replace",
+    ),
+  ).rejects.toThrow("Only server custom commands");
   expect(repository.save).not.toHaveBeenCalled();
 });
 
-test.each(["button", "select"])("role actions in a %s block sharing and stop remote resolution", async (component) => {
-  const sourceText = component === "button"
-    ? `Hi\n@button [Join](SetRole(${ROLE}))`
-    : `Hi\n@select Roles\n@option [Join](SetRole(${ROLE}))\n@endselect`;
-  const command = record(markdownPatch(sourceText));
-  commands.listCommands.mockImplementation(async (id) => id === source.id ? [command] : []);
-  for (const scope of ["all", "selected"] as const)
-    await expect(service.save(client, "admin", command, scope, [target.id])).rejects.toThrow("role actions");
-  expect(repository.save).not.toHaveBeenCalled();
-  expect(await service.resolve(client, target, command.name)).toBeNull();
-  await service.save(client, "admin", command, "server", []);
-  expect(repository.save).toHaveBeenCalledWith(command, null);
-});
+test.each(["button", "select"])(
+  "role actions in a %s block sharing and stop remote resolution",
+  async (component) => {
+    const sourceText =
+      component === "button"
+        ? `Hi\n@button [Join](SetRole(${ROLE}))`
+        : `Hi\n@select Roles\n@option [Join](SetRole(${ROLE}))\n@endselect`;
+    const command = record(markdownPatch(sourceText));
+    commands.listCommands.mockImplementation(async (id) => (id === source.id ? [command] : []));
+    for (const scope of ["all", "selected"] as const)
+      await expect(service.save(client, "admin", command, scope, [target.id])).rejects.toThrow(
+        "role actions",
+      );
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(await service.resolve(client, target, command.name)).toBeNull();
+    await service.save(client, "admin", command, "server", []);
+    expect(repository.save).toHaveBeenCalledWith(command, null);
+  },
+);

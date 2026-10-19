@@ -1,12 +1,10 @@
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
-import {
-  Collection,
-  PermissionFlagsBits,
-  PermissionsBitField,
-  type GuildMember,
-} from "discord.js";
+import { Collection, PermissionFlagsBits, PermissionsBitField, type GuildMember } from "discord.js";
 import { expect, test, vi } from "vitest";
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
+  guildOwnershipService: { isVerified: async () => true },
+}));
 import { silentLogger } from "../../../src/core/index.js";
 import { CustomCommandArgumentError } from "../../../src/modules/custom-commands/domain/errors.js";
 import { renderComponentAction } from "../../../src/modules/custom-commands/discord/actionTemplates.js";
@@ -39,15 +37,7 @@ import type {
   EffectAction,
   SequenceAction,
 } from "../../../src/modules/custom-commands/domain/types.js";
-import {
-  context,
-  record,
-  definition,
-  MemoryRepository,
-  USER,
-  ROLE,
-  CHANNEL,
-} from "./fixtures.js";
+import { context, record, definition, MemoryRepository, USER, ROLE } from "./fixtures.js";
 
 const TARGET = "423456789012345678";
 const OTHER_CHANNEL = "523456789012345678";
@@ -140,6 +130,7 @@ function setup(
     client: { users: { fetch: vi.fn().mockResolvedValue({ id: TARGET }) } },
   });
   const warningRole = {
+    permissions: new PermissionsBitField(),
     id: ROLE,
     name: "Warn 1",
     guild: ctx.guild,
@@ -203,8 +194,7 @@ function setup(
   const loadCommand = vi.fn().mockResolvedValue(ctx.command);
   const active = vi.fn().mockReturnValue(true),
     attempt = vi.fn();
-  const execute = () =>
-    executor.execute(ctx, action, loadCommand, active, attempt);
+  const execute = () => executor.execute(ctx, action, loadCommand, active, attempt);
   const collector = Object.assign(new EventEmitter(), { stop: vi.fn() });
   const message = {
     createMessageComponentCollector: vi.fn().mockReturnValue(collector),
@@ -222,18 +212,15 @@ function setup(
     editReply: vi.fn().mockResolvedValue(undefined),
   });
   const collect = (interaction: ReturnType<typeof click>) =>
-    (
-      collector.listeners("collect")[0] as (
-        interaction: ReturnType<typeof click>,
-      ) => Promise<void>
-    )(interaction);
-  const attach = async (preview = false) =>
-    attachStageNavigation(
-      message,
-      ctx,
-      await new CustomCommandRenderer().render(ctx, true),
-      { preview, loadCommand, actionExecutor: executor },
+    (collector.listeners("collect")[0] as (interaction: ReturnType<typeof click>) => Promise<void>)(
+      interaction,
     );
+  const attach = async (preview = false) =>
+    attachStageNavigation(message, ctx, await new CustomCommandRenderer().render(ctx, true), {
+      preview,
+      loadCommand,
+      actionExecutor: executor,
+    });
   return {
     ctx,
     target,
@@ -287,10 +274,7 @@ test("warnings use the real warning policy, assign warning roles, record actor a
       metadata: { warningRoleId: ROLE, warningCount: 1 },
     }),
   );
-  expect(s.target.roles.add).toHaveBeenCalledWith(
-    ROLE,
-    expect.stringContaining("actor"),
-  );
+  expect(s.target.roles.add).toHaveBeenCalledWith(ROLE, expect.stringContaining("actor"));
   expect(s.scheduleWarning).toHaveBeenCalledWith(s.ctx.guild.client, s.warning);
 });
 
@@ -328,14 +312,7 @@ test("unwarn preserves the warning lifecycle; notes stay private and audited", a
   expect(note.send).not.toHaveBeenCalled();
 });
 
-test.each([
-  "timeout",
-  "removetimeout",
-  "kick",
-  "ban",
-  "unban",
-  "setnickname",
-] as const)(
+test.each(["timeout", "removetimeout", "kick", "ban", "unban", "setnickname"] as const)(
   "%s applies the configured effect and records moderation cases when appropriate",
   async (name) => {
     const action: EffectAction =
@@ -362,13 +339,9 @@ test.each([
         TARGET,
         expect.objectContaining({ deleteMessageSeconds: 0 }),
       );
-    if (name === "unban")
-      expect(s.unban).toHaveBeenCalledWith(TARGET, expect.any(String));
+    if (name === "unban") expect(s.unban).toHaveBeenCalledWith(TARGET, expect.any(String));
     if (name === "setnickname") {
-      expect(s.target.setNickname).toHaveBeenCalledWith(
-        "New name",
-        expect.any(String),
-      );
+      expect(s.target.setNickname).toHaveBeenCalledWith("New name", expect.any(String));
       expect(s.createCase).not.toHaveBeenCalled();
     } else
       expect(s.createCase).toHaveBeenCalledWith(
@@ -408,10 +381,7 @@ test("reply, public message, nickname clearing and custom success text render va
     nickname: "",
   });
   await nick.execute();
-  expect(nick.target.setNickname).toHaveBeenCalledWith(
-    null,
-    expect.any(String),
-  );
+  expect(nick.target.setNickname).toHaveBeenCalledWith(null, expect.any(String));
 });
 
 test("self nickname changes use Change Nickname without requiring a role above oneself", async () => {
@@ -600,9 +570,7 @@ test("warning role assignment failure retains its audit case, rejects invalid wa
     reason: "Reason",
   });
   s.target.roles.add.mockRejectedValue(new Error("REST failure"));
-  await expect(s.execute()).rejects.toBeInstanceOf(
-    ComponentActionExecutionError,
-  );
+  await expect(s.execute()).rejects.toBeInstanceOf(ComponentActionExecutionError);
   expect(s.createCase).toHaveBeenCalledOnce();
   const denied = setup({
     action: "warn",
@@ -680,33 +648,24 @@ test("a note can follow a kick and reference a former member", async () => {
     });
   });
   await expect(s.execute()).resolves.toContain("2 actions completed");
-  expect(s.createCase.mock.calls.map(([input]) => input.action)).toEqual([
-    "KICK",
-    "NOTE",
-  ]);
+  expect(s.createCase.mock.calls.map(([input]) => input.action)).toEqual(["KICK", "NOTE"]);
 });
 
 test("notes validate the target's Discord identity before recording a case", async () => {
   const s = setup();
-  vi.spyOn(s.ctx.guild.client.users, "fetch").mockRejectedValue(
-    new Error("Unknown user"),
-  );
+  vi.spyOn(s.ctx.guild.client.users, "fetch").mockRejectedValue(new Error("Unknown user"));
   await expect(s.execute()).rejects.toThrow("Unknown user");
   expect(s.createCase).not.toHaveBeenCalled();
   expect(s.attempt).not.toHaveBeenCalled();
 });
 
 test("the guide's review, structured action and sequence examples remain valid", () => {
-  const section = readFileSync("docs/custom-commands.md", "utf8").split(
-    "### Custom actions and workflows",
-  )[1];
-  const examples = [...section.matchAll(/```text\n([\s\S]*?)\n```/g)].slice(
-    0,
-    3,
-  );
+  const section = readFileSync("docs/custom-commands.md", "utf8")
+    .replaceAll("\r\n", "\n")
+    .split("### Custom actions and workflows")[1];
+  const examples = [...section.matchAll(/```text\n([\s\S]*?)\n```/g)].slice(0, 3);
   expect(examples).toHaveLength(3);
-  for (const example of examples)
-    expect(parseCommandMarkdown(example[1])).toHaveLength(1);
+  for (const example of examples) expect(parseCommandMarkdown(example[1])).toHaveLength(1);
 });
 
 test("the member-review template gives usage guidance for missing targets and accepts a corrected invocation immediately", async () => {
@@ -731,17 +690,13 @@ test("the member-review template gives usage guidance for missing targets and ac
   );
   const send = vi.fn().mockResolvedValue(s.message);
   s.ctx.args = [];
-  await expect(executor.execute(s.ctx, { send })).rejects.toThrow(
-    "Usage: !kos @Member",
-  );
+  await expect(executor.execute(s.ctx, { send })).rejects.toThrow("Usage: !kos @Member");
   expect(send).not.toHaveBeenCalled();
   expect(repository.recordUsage).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledWith(
     expect.objectContaining({
       errorType: "CustomCommandArgumentError",
-      validationMessage: expect.stringContaining(
-        "Missing member argument {args.0}",
-      ),
+      validationMessage: expect.stringContaining("Missing member argument {args.0}"),
       sent: 0,
     }),
     "custom_command.failed",
@@ -876,30 +831,17 @@ test.each([
   `SetRole("${ROLE}", "{args.0}")`,
   `Action({"action":"note","userId":"{args.0}","reason":"Note","repeatable":true,"successMessage":"Saved!"})`,
   `Actions([{"action":"note","userId":"{args.0}","reason":"Note"},{"action":"reply","text":"Done"}])`,
-])(
-  "%s survives template download, JSON export/import and expanded rendering",
-  async (call) => {
-    const patch = markdownPatch(`Hi\n@button [Apply](${call})`);
-    expect(
-      parseCommandMarkdown(serializeCommandMarkdown(patch.content)),
-    ).toEqual(patch.content);
-    const service = new CustomCommandService(new MemoryRepository());
-    await service.createCommand("guild-a", USER, definition(patch));
-    await service.importCommands(
-      "guild-b",
-      USER,
-      await service.exportCommands("guild-a"),
-    );
-    expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(
-      patch.content,
-    );
-    const s = setup();
-    s.ctx.command = record(patch);
-    await expect(
-      new CustomCommandRenderer().render(s.ctx, true),
-    ).resolves.toHaveLength(1);
-  },
-);
+])("%s survives template download, JSON export/import and expanded rendering", async (call) => {
+  const patch = markdownPatch(`Hi\n@button [Apply](${call})`);
+  expect(parseCommandMarkdown(serializeCommandMarkdown(patch.content))).toEqual(patch.content);
+  const service = new CustomCommandService(new MemoryRepository());
+  await service.createCommand("guild-a", USER, definition(patch));
+  await service.importCommands("guild-b", USER, await service.exportCommands("guild-a"));
+  expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(patch.content);
+  const s = setup();
+  s.ctx.command = record(patch);
+  await expect(new CustomCommandRenderer().render(s.ctx, true)).resolves.toHaveLength(1);
+});
 
 test.each([
   { action: "warn", userId: TARGET, reason: "" },
@@ -938,9 +880,7 @@ test.each([
   },
   {
     action: "sequence",
-    actions: [
-      { action: "sequence", actions: [{ action: "reply", text: "Hi" }] },
-    ],
+    actions: [{ action: "sequence", actions: [{ action: "reply", text: "Hi" }] }],
   },
   { action: "sequence", actions: [{ action: "go", target: 0 }] },
   { action: "go", target: 0, repeatable: true },
@@ -990,14 +930,10 @@ test("nested guild references are validated and fixed targets block sharing; var
     ],
   });
   expect(hasServerActionReferences(s.ctx.command.content)).toBe(true);
-  await validateGuildReferences(s.ctx.guild, [
-    definition({ content: s.ctx.command.content }),
-  ]);
+  await validateGuildReferences(s.ctx.guild, [definition({ content: s.ctx.command.content })]);
   s.fetchMember.mockRejectedValue(new Error("Unknown member"));
   await expect(
-    validateGuildReferences(s.ctx.guild, [
-      definition({ content: s.ctx.command.content }),
-    ]),
+    validateGuildReferences(s.ctx.guild, [definition({ content: s.ctx.command.content })]),
   ).rejects.toThrow("does not belong");
   const reusable = setup({
     action: "note",

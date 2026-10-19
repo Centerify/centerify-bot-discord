@@ -23,7 +23,10 @@ import { buildWarningRoleScreen } from "./warningSettings.js";
 import { buildCommandAccessScreen } from "./commandAccess.js";
 
 export class SetupRenderer {
-  public constructor(private readonly entryCommand: "settings" | "setup" = "settings", public readonly isAvailable: (action: string) => boolean = () => true) {}
+  public constructor(
+    private readonly entryCommand: "settings" | "setup" = "settings",
+    public readonly isAvailable: (action: string) => boolean = () => true,
+  ) {}
 
   public buildScreen(
     screen: SetupScreen,
@@ -69,12 +72,10 @@ export class SetupRenderer {
     const embed = this.baseEmbed(guild)
       .setTitle(this.entryCommand === "setup" ? "Setup Complete" : "Settings Saved")
       .setDescription(this.setupSummary(config))
-      .addFields(
-        {
-          name: "Needs Attention",
-          value: disabled.length > 0 ? disabled.join("\n") : "All setup categories are configured.",
-        },
-      );
+      .addFields({
+        name: "Needs Attention",
+        value: disabled.length > 0 ? disabled.join("\n") : "All setup categories are configured.",
+      });
 
     return { embeds: [embed], components: [] };
   }
@@ -83,37 +84,39 @@ export class SetupRenderer {
     return {
       embeds: [
         this.baseEmbed(guild)
-          .setTitle(this.entryCommand === "setup" ? "Setup Session Expired" : "Settings Session Expired")
-          .setDescription(`${this.setupSummary(config)}\n\nRun \`/${this.entryCommand}\` again to make more changes.`),
+          .setTitle(
+            this.entryCommand === "setup" ? "Setup Session Expired" : "Settings Session Expired",
+          )
+          .setDescription(
+            `${this.setupSummary(config)}\n\nRun \`/${this.entryCommand}\` again to make more changes.`,
+          ),
       ],
       components: [],
     };
   }
 
-  private buildMainScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
+  private buildMainScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const embed = this.baseEmbed(guild)
-      .setTitle(this.entryCommand === "setup" ? "Centerify Server Setup" : "Centerify Server Settings")
+      .setTitle(
+        this.entryCommand === "setup" ? "Centerify Server Setup" : "Centerify Server Settings",
+      )
       .setDescription(this.setupSummary(config))
-      .addFields(
-        {
-          name: "Configure",
-          value: [
-            "`XP` earning methods, rewards, sharing, and multiple servers",
-            "`Welcome` join messages",
-            "`Goodbye` leave messages",
-            "`Auto Role` new member role",
-            "`Logging` server log channel",
-            "`Global Moderation` shared bans, warnings, and notes",
-            "`Warning Roles` role behavior, names, colors, and default duration",
-            "`Command Access` allowed and denied roles for each slash command",
-            ...(this.entryCommand === "settings" ? ["`Custom Commands` responses and global or selected-server scope"] : []),
-          ].join("\n"),
-        },
-      );
+      .addFields({
+        name: "Configure",
+        value: [
+          "`XP` earning methods, rewards, sharing, and multiple servers",
+          "`Welcome` join messages",
+          "`Goodbye` leave messages",
+          "`Auto Role` new member role",
+          "`Logging` server log channel",
+          "`Global Moderation` shared bans, warnings, and notes",
+          "`Warning Roles` role behavior, names, colors, and default duration",
+          "`Command Access` allowed and denied roles for each slash command",
+          ...(this.entryCommand === "settings"
+            ? ["`Custom Commands` responses and global or selected-server scope"]
+            : []),
+        ].join("\n"),
+      });
 
     return {
       embeds: [embed],
@@ -127,47 +130,89 @@ export class SetupRenderer {
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           this.button(sessionId, "xp", "XP", ButtonStyle.Primary),
-          ...(this.entryCommand === "settings" ? [this.button(sessionId, "custom-commands", "Custom Commands", ButtonStyle.Primary)] : []),
+          ...(this.entryCommand === "settings"
+            ? [this.button(sessionId, "custom-commands", "Custom Commands", ButtonStyle.Primary)]
+            : []),
           this.button(sessionId, "warning-roles", "Warning Roles", ButtonStyle.Primary),
           this.button(sessionId, "command-access", "Command Access", ButtonStyle.Primary),
           this.button(sessionId, "finish", "Done", ButtonStyle.Success),
         ),
-      ].map((row) => new ActionRowBuilder<ButtonBuilder>().addComponents(row.components.filter((button) => {
-        const data = button.toJSON();
-        return !("custom_id" in data) || this.isAvailable(data.custom_id.split(":")[2]!);
-      }))).filter((row) => row.components.length > 0),
+      ]
+        .map((row) =>
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            row.components.filter((button) => {
+              const data = button.toJSON();
+              return !("custom_id" in data) || this.isAvailable(data.custom_id.split(":")[2]!);
+            }),
+          ),
+        )
+        .filter((row) => row.components.length > 0),
     };
   }
 
   private buildXpScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const methods = (config.xpMethods || "messages").split(",");
     return {
-      embeds: [this.baseEmbed(guild).setTitle("XP Settings").setDescription(
-        `**Status:** ${config.xpEnabled ? "On" : "Off"}\n**Methods:** ${methods.join(", ")}\n` +
-        `**Rewards:** Messages ${config.xpMessageAmount} • Reactions ${config.xpReactionAmount} • Daily ${config.xpDailyAmount} XP\n` +
-        `**Cooldown:** ${config.xpCooldownSeconds}s for messages/reactions; daily claims every 24 hours\n` +
-        `**Sharing:** ${config.xpSharing}\n**Selected servers:** ${config.xpSharedGuildIds.split(",").filter(Boolean).map((id) => guild.client?.guilds.cache.get(id)?.name ?? id).join(", ") || "None"}\n\n` +
-        "Choose Servers opens a dropdown of your servers, with no IDs to copy. Sharing requires both servers to enable XP and select each other. Apply XP to Servers copies these settings to servers you manage. Daily claims use `/xp daily`.")],
+      embeds: [
+        this.baseEmbed(guild)
+          .setTitle("XP Settings")
+          .setDescription(
+            `**Status:** ${config.xpEnabled ? "On" : "Off"}\n**Methods:** ${methods.join(", ")}\n` +
+              `**Rewards:** Messages ${config.xpMessageAmount} • Reactions ${config.xpReactionAmount} • Daily ${config.xpDailyAmount} XP\n` +
+              `**Cooldown:** ${config.xpCooldownSeconds}s for messages/reactions; daily claims every 24 hours\n` +
+              `**Sharing:** ${config.xpSharing}\n**Selected servers:** ${
+                config.xpSharedGuildIds
+                  .split(",")
+                  .filter(Boolean)
+                  .map((id) => guild.client?.guilds.cache.get(id)?.name ?? id)
+                  .join(", ") || "None"
+              }\n\n` +
+              "Choose Servers opens a dropdown of your servers, with no IDs to copy. Sharing requires both servers to enable XP and select each other. Apply XP to Servers copies these settings to servers you manage. Daily claims use `/xp daily`.",
+          ),
+      ],
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          this.button(sessionId, "xp-toggle", config.xpEnabled ? "Disable XP" : "Enable XP", config.xpEnabled ? ButtonStyle.Danger : ButtonStyle.Success),
+          this.button(
+            sessionId,
+            "xp-toggle",
+            config.xpEnabled ? "Disable XP" : "Enable XP",
+            config.xpEnabled ? ButtonStyle.Danger : ButtonStyle.Success,
+          ),
           this.button(sessionId, "xp-rewards", "Edit Rewards", ButtonStyle.Primary),
           this.button(sessionId, "xp-peers", "Choose Servers", ButtonStyle.Secondary),
           this.button(sessionId, "xp-apply", "Apply XP to Servers", ButtonStyle.Primary),
           this.button(sessionId, "main", "Back", ButtonStyle.Secondary),
         ),
         new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId(`setup:${sessionId}:xp-methods`).setPlaceholder("Ways to earn XP")
-            .setMinValues(1).setMaxValues(3).addOptions(XP_METHOD_CHOICES.slice(0, 3).map((choice) => ({
-              label: choice.name, value: choice.value, default: methods.includes(choice.value),
-            }))),
+          new StringSelectMenuBuilder()
+            .setCustomId(`setup:${sessionId}:xp-methods`)
+            .setPlaceholder("Ways to earn XP")
+            .setMinValues(1)
+            .setMaxValues(3)
+            .addOptions(
+              XP_METHOD_CHOICES.slice(0, 3).map((choice) => ({
+                label: choice.name,
+                value: choice.value,
+                default: methods.includes(choice.value),
+              })),
+            ),
         ),
         new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder().setCustomId(`setup:${sessionId}:xp-sharing`).setPlaceholder("XP sharing scope")
+          new StringSelectMenuBuilder()
+            .setCustomId(`setup:${sessionId}:xp-sharing`)
+            .setPlaceholder("XP sharing scope")
             .addOptions([
               { label: "This server", value: "server", default: config.xpSharing === "server" },
-              { label: "Global (participating servers)", value: "global", default: config.xpSharing === "global" },
-              { label: "Selected servers (mutual)", value: "selected", default: config.xpSharing === "selected" },
+              {
+                label: "Global (participating servers)",
+                value: "global",
+                default: config.xpSharing === "global",
+              },
+              {
+                label: "Selected servers (mutual)",
+                value: "selected",
+                default: config.xpSharing === "selected",
+              },
             ]),
         ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -178,23 +223,19 @@ export class SetupRenderer {
     };
   }
 
-  private buildWelcomeScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
+  private buildWelcomeScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const embed = this.baseEmbed(guild)
       .setTitle("Welcome Messages")
-      .setDescription(this.featureSummary({
-        enabled: config.welcomeEnabled,
-        target: this.channelText(config.welcomeChannelId),
-      }))
-      .addFields(
-        {
-          name: "Message Preview",
-          value: this.codeBlock(config.welcomeMessage || DEFAULT_WELCOME_MESSAGE),
-        },
-      );
+      .setDescription(
+        this.featureSummary({
+          enabled: config.welcomeEnabled,
+          target: this.channelText(config.welcomeChannelId),
+        }),
+      )
+      .addFields({
+        name: "Message Preview",
+        value: this.codeBlock(config.welcomeMessage || DEFAULT_WELCOME_MESSAGE),
+      });
 
     return {
       embeds: [embed],
@@ -218,23 +259,19 @@ export class SetupRenderer {
     };
   }
 
-  private buildGoodbyeScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
+  private buildGoodbyeScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const embed = this.baseEmbed(guild)
       .setTitle("Goodbye Messages")
-      .setDescription(this.featureSummary({
-        enabled: config.goodbyeEnabled,
-        target: this.channelText(config.goodbyeChannelId),
-      }))
-      .addFields(
-        {
-          name: "Message Preview",
-          value: this.codeBlock(config.goodbyeMessage || DEFAULT_GOODBYE_MESSAGE),
-        },
-      );
+      .setDescription(
+        this.featureSummary({
+          enabled: config.goodbyeEnabled,
+          target: this.channelText(config.goodbyeChannelId),
+        }),
+      )
+      .addFields({
+        name: "Message Preview",
+        value: this.codeBlock(config.goodbyeMessage || DEFAULT_GOODBYE_MESSAGE),
+      });
 
     return {
       embeds: [embed],
@@ -282,30 +319,22 @@ export class SetupRenderer {
     };
   }
 
-  private buildAutoRoleScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
-    const selectedRole = config.autoRoleId
-      ? guild.roles.cache.get(config.autoRoleId)
-      : null;
-    const roleWarning = selectedRole
-      ? validateAssignableRole(guild, selectedRole)
-      : null;
+  private buildAutoRoleScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
+    const selectedRole = config.autoRoleId ? guild.roles.cache.get(config.autoRoleId) : null;
+    const roleWarning = selectedRole ? validateAssignableRole(guild, selectedRole) : null;
 
     const embed = this.baseEmbed(guild)
       .setTitle("Auto Role")
-      .setDescription(this.featureSummary({
-        enabled: config.autoRoleEnabled,
-        target: selectedRole ? `${selectedRole}` : "Not configured",
-      }))
-      .addFields(
-        {
-          name: "Role Check",
-          value: roleWarning ?? "Role assignment is ready once enabled.",
-        },
-      );
+      .setDescription(
+        this.featureSummary({
+          enabled: config.autoRoleEnabled,
+          target: selectedRole ? `${selectedRole}` : "Not configured",
+        }),
+      )
+      .addFields({
+        name: "Role Check",
+        value: roleWarning ?? "Role assignment is ready once enabled.",
+      });
 
     return {
       embeds: [embed],
@@ -330,17 +359,15 @@ export class SetupRenderer {
     };
   }
 
-  private buildLoggingScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
+  private buildLoggingScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const embed = this.baseEmbed(guild)
       .setTitle("Logging")
-      .setDescription(this.featureSummary({
-        enabled: config.loggingEnabled,
-        target: this.channelText(config.loggingChannelId),
-      }));
+      .setDescription(
+        this.featureSummary({
+          enabled: config.loggingEnabled,
+          target: this.channelText(config.loggingChannelId),
+        }),
+      );
 
     return {
       embeds: [embed],
@@ -361,14 +388,12 @@ export class SetupRenderer {
     };
   }
 
-  private buildModerationScreen(
-    guild: Guild,
-    config: GuildConfig,
-    sessionId: string,
-  ): SetupView {
+  private buildModerationScreen(guild: Guild, config: GuildConfig, sessionId: string): SetupView {
     const embed = this.baseEmbed(guild)
       .setTitle("Global Moderation")
-      .setDescription("Choose which moderation actions this server shares with other participating Centerify servers.")
+      .setDescription(
+        "Choose which moderation actions this server shares with other participating Centerify servers.",
+      )
       .addFields(
         { name: "Global Ban", value: this.enabledText(config.globalBanEnabled), inline: true },
         { name: "Global Warn", value: this.enabledText(config.globalWarnEnabled), inline: true },
@@ -379,9 +404,24 @@ export class SetupRenderer {
       embeds: [embed],
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          this.button(sessionId, "global-ban-toggle", config.globalBanEnabled ? "Ban: On" : "Ban: Off", config.globalBanEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
-          this.button(sessionId, "global-warn-toggle", config.globalWarnEnabled ? "Warn: On" : "Warn: Off", config.globalWarnEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
-          this.button(sessionId, "global-note-toggle", config.globalNoteEnabled ? "Note: On" : "Note: Off", config.globalNoteEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+          this.button(
+            sessionId,
+            "global-ban-toggle",
+            config.globalBanEnabled ? "Ban: On" : "Ban: Off",
+            config.globalBanEnabled ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
+          this.button(
+            sessionId,
+            "global-warn-toggle",
+            config.globalWarnEnabled ? "Warn: On" : "Warn: Off",
+            config.globalWarnEnabled ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
+          this.button(
+            sessionId,
+            "global-note-toggle",
+            config.globalNoteEnabled ? "Note: On" : "Note: Off",
+            config.globalNoteEnabled ? ButtonStyle.Success : ButtonStyle.Secondary,
+          ),
           this.button(sessionId, "main", "Back", ButtonStyle.Secondary),
         ),
       ],
@@ -397,12 +437,7 @@ export class SetupRenderer {
       .setMaxValues(1);
   }
 
-  private button(
-    sessionId: string,
-    action: string,
-    label: string,
-    style: ButtonStyle,
-  ) {
+  private button(sessionId: string, action: string, label: string, style: ButtonStyle) {
     return new ButtonBuilder()
       .setCustomId(`setup:${sessionId}:${action}`)
       .setLabel(label)
@@ -465,13 +500,7 @@ export class SetupRenderer {
     return `**${label}:** ${target === "Not configured" ? "Needs target" : target}`;
   }
 
-  private featureSummary({
-    enabled,
-    target,
-  }: {
-    enabled: boolean;
-    target: string;
-  }) {
+  private featureSummary({ enabled, target }: { enabled: boolean; target: string }) {
     return [`**Status:** ${this.enabledText(enabled)}`, `**Target:** ${target}`].join("\n");
   }
 

@@ -21,14 +21,19 @@ vi.mock("../../src/adapters/prisma/client.js", () => ({
         },
       },
     },
-    raw: { sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      returnsRow: () => ({ build: () => ({ sql: strings.join("?"), values }) }),
-    }) },
+    raw: {
+      sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
+        returnsRow: () => ({ build: () => ({ sql: strings.join("?"), values }) }),
+      }),
+    },
     transaction: mocks.transaction,
   },
 }));
 
-import { CustomResponseService, type CustomResponseKind } from "../../src/modules/custom-commands/application/CustomResponseService.js";
+import {
+  CustomResponseService,
+  type CustomResponseKind,
+} from "../../src/modules/custom-commands/application/CustomResponseService.js";
 
 import { PrismaLegacyResponseRepository } from "../../src/modules/custom-commands/infrastructure/PrismaLegacyResponseRepository.js";
 const service = new CustomResponseService(new PrismaLegacyResponseRepository());
@@ -57,10 +62,17 @@ beforeEach(() => {
   });
   mocks.all.mockResolvedValue([]);
   mocks.create.mockResolvedValue({ id: 1, ...validInput, enabled: true });
-  mocks.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn({
-    query: mocks.query,
-    orm: { public: { CustomResponse: { where: mocks.where, create: mocks.create }, CustomCommandName: { where: () => ({ all: async () => [] }) } } },
-  }));
+  mocks.transaction.mockImplementation((fn: (tx: unknown) => unknown) =>
+    fn({
+      query: mocks.query,
+      orm: {
+        public: {
+          CustomResponse: { where: mocks.where, create: mocks.create },
+          CustomCommandName: { where: () => ({ all: async () => [] }) },
+        },
+      },
+    }),
+  );
 });
 
 test("creates a guild-scoped rule after validating its fields", async () => {
@@ -70,8 +82,12 @@ test("creates a guild-scoped rule after validating its fields", async () => {
   const lock = mocks.query.mock.calls[0]![0];
   expect(lock.sql).toContain("pg_advisory_xact_lock");
   expect(lock.values).toEqual(["centerify:custom-responses:guild-a"]);
-  expect(mocks.query.mock.invocationCallOrder[0]).toBeLessThan(mocks.all.mock.invocationCallOrder[0]!);
-  expect(mocks.all.mock.invocationCallOrder[0]).toBeLessThan(mocks.create.mock.invocationCallOrder[0]!);
+  expect(mocks.query.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.all.mock.invocationCallOrder[0]!,
+  );
+  expect(mocks.all.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.create.mock.invocationCallOrder[0]!,
+  );
 });
 
 test.each([
@@ -113,7 +129,10 @@ test("rejects duplicate names and command triggers within a guild", async () => 
 });
 
 test("turns a concurrent database name conflict into a user-facing error", async () => {
-  mocks.create.mockRejectedValue({ sqlState: "23505", constraint: "custom_response_guildId_name_key" });
+  mocks.create.mockRejectedValue({
+    sqlState: "23505",
+    constraint: "custom_response_guildId_name_key",
+  });
   await expect(service.create(validInput)).rejects.toThrow("name already exists");
 });
 

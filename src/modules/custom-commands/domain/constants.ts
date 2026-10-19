@@ -42,12 +42,7 @@ export const CUSTOM_COMMAND_LIMITS = {
 } as const;
 export const TRIGGER_TYPES = ["SLASH", "MESSAGE", "BOTH"] as const;
 export const RESPONSE_TYPES = ["TEXT", "EMBED", "MULTI"] as const;
-export const COOLDOWN_SCOPES = [
-  "USER",
-  "CHANNEL",
-  "GUILD",
-  "GLOBAL_COMMAND",
-] as const;
+export const COOLDOWN_SCOPES = ["USER", "CHANNEL", "GUILD", "GLOBAL_COMMAND"] as const;
 export const RESTRICTION_KEYS = [
   "allowedRoleIds",
   "deniedRoleIds",

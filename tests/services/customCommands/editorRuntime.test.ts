@@ -19,7 +19,9 @@ function fixture() {
   let collect!: (interaction: unknown) => Promise<void>;
   const collector = {
     ended: false,
-    stop() { collector.ended = true; },
+    stop() {
+      collector.ended = true;
+    },
     on: (event: string, listener: (interaction: unknown) => Promise<void>) => {
       if (event === "collect") collect = listener;
     },
@@ -28,18 +30,14 @@ function fixture() {
     id: "guild-a",
     ownerId: USER,
     members: {
-      fetch: vi
-        .fn()
-        .mockResolvedValue({ id: USER, permissions: { has: () => true } }),
+      fetch: vi.fn().mockResolvedValue({ id: USER, permissions: { has: () => true } }),
     },
   };
   const root = {
     user: { id: USER },
     guildId: guild.id,
     guild,
-    editReply: vi
-      .fn()
-      .mockResolvedValue({ createMessageComponentCollector: () => collector }),
+    editReply: vi.fn().mockResolvedValue({ createMessageComponentCollector: () => collector }),
   };
   const button = {
     user: { id: USER },
@@ -73,11 +71,7 @@ test("editing a shared command writes to its original server and preserves share
   mocks.shared.mockResolvedValue(original);
   mocks.update.mockResolvedValue(original);
   const saved = vi.fn();
-  await openCustomCommandEditor(
-    f.root as never,
-    record({ sourceGuildId: "source" }),
-    saved,
-  );
+  await openCustomCommandEditor(f.root as never, record({ sourceGuildId: "source" }), saved);
   f.button.customId = "cc:session:add-text";
   await f.collect(f.button);
   expect(mocks.shared).toHaveBeenCalledOnce();
@@ -187,9 +181,7 @@ test("modal saves use the observed revision and never revive expired controls", 
     command.updatedAt,
   );
   expect(onSaved).toHaveBeenCalledWith(record());
-  expect(f.root.editReply).toHaveBeenLastCalledWith(
-    expect.objectContaining({ components: [] }),
-  );
+  expect(f.root.editReply).toHaveBeenLastCalledWith(expect.objectContaining({ components: [] }));
 });
 
 test("component saves notify settings with the updated command", async () => {
@@ -303,21 +295,37 @@ test("Markdown modal saves parsed responses with the observed revision", async (
 
 test("Edit Template keeps saved custom variables when the pasted source omits definitions", async () => {
   const f = fixture();
-  const initial = record({ content: [{
-    type: "TEXT", text: "{GREETING}", variables: { GREETING: "Hello {user.mention}!" },
-  }] });
+  const initial = record({
+    content: [
+      {
+        type: "TEXT",
+        text: "{GREETING}",
+        variables: { GREETING: "Hello {user.mention}!" },
+      },
+    ],
+  });
   await openCustomCommandEditor(f.root as never, initial);
   f.button.customId = "cc:session:markdown";
   const submission = {
-    user: { id: USER }, guildId: f.guild.id, guild: f.guild,
-    inCachedGuild: () => true, deferReply: vi.fn(), editReply: vi.fn().mockResolvedValue(undefined),
+    user: { id: USER },
+    guildId: f.guild.id,
+    guild: f.guild,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    editReply: vi.fn().mockResolvedValue(undefined),
     fields: { getTextInputValue: () => "@main\n@title Welcome\n{GREETING}" },
   };
   f.button.awaitModalSubmit.mockResolvedValue(submission);
   await f.collect(f.button);
-  expect(mocks.update).toHaveBeenCalledWith(f.guild.id, USER, initial.name,
-    expect.objectContaining({ content: [expect.objectContaining({ variables: initial.content[0].variables })] }),
-    "updated", initial.updatedAt,
+  expect(mocks.update).toHaveBeenCalledWith(
+    f.guild.id,
+    USER,
+    initial.name,
+    expect.objectContaining({
+      content: [expect.objectContaining({ variables: initial.content[0].variables })],
+    }),
+    "updated",
+    initial.updatedAt,
   );
 });
 
@@ -376,8 +384,7 @@ test("the custom variable modal saves definitions while preserving responses", a
     deferReply: vi.fn(),
     editReply: vi.fn(),
     fields: {
-      getTextInputValue: () =>
-        "USER_ID = {user.id}\nGREETING = Hello {user.name}",
+      getTextInputValue: () => "USER_ID = {user.id}\nGREETING = Hello {user.name}",
     },
   };
   f.button.awaitModalSubmit.mockResolvedValue(submission);

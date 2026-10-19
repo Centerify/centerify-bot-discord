@@ -13,13 +13,7 @@ import { CustomCommandValidator } from "../../../src/modules/custom-commands/dom
 import { CustomCommandService } from "../../../src/modules/custom-commands/application/CustomCommandService.js";
 import { validateGuildReferences } from "../../../src/modules/custom-commands/discord/CustomCommandGuildValidator.js";
 import { hasServerRestrictions } from "../../../src/modules/custom-commands/application/CommandSharingService.js";
-import {
-  context,
-  record,
-  definition,
-  MemoryRepository,
-  ROLE,
-} from "./fixtures.js";
+import { context, record, definition, MemoryRepository, ROLE } from "./fixtures.js";
 import type { Guild } from "discord.js";
 
 const source = `@main
@@ -42,9 +36,7 @@ Rules
 
 test("role buttons and dropdowns parse, round-trip and render with Discord limits", async () => {
   const patch = markdownPatch(source);
-  expect(parseCommandMarkdown(serializeCommandMarkdown(patch.content))).toEqual(
-    patch.content,
-  );
+  expect(parseCommandMarkdown(serializeCommandMarkdown(patch.content))).toEqual(patch.content);
   expect(patch.content[0].buttons).toMatchObject([
     { action: "addrole", roleId: ROLE },
     { action: "removerole", roleId: ROLE },
@@ -81,20 +73,12 @@ test("role components work on unstaged messages and preserve JSON export/import"
   );
   const service = new CustomCommandService(new MemoryRepository());
   await service.createCommand("guild-a", "admin", definition(patch));
-  await service.importCommands(
-    "guild-b",
-    "admin",
-    await service.exportCommands("guild-a"),
+  await service.importCommands("guild-b", "admin", await service.exportCommands("guild-a"));
+  expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(patch.content);
+  const [payload] = await new CustomCommandRenderer().render(context({ command: record(patch) }));
+  expect(JSON.parse(JSON.stringify(payload.components))[0].components[0].custom_id).toBe(
+    "cc-response:0:0",
   );
-  expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(
-    patch.content,
-  );
-  const [payload] = await new CustomCommandRenderer().render(
-    context({ command: record(patch) }),
-  );
-  expect(
-    JSON.parse(JSON.stringify(payload.components))[0].components[0].custom_id,
-  ).toBe("cc-response:0:0");
 });
 
 test.each([
@@ -131,24 +115,17 @@ test.each([
     selects: [{ ...select, options: [{ ...option, label: "x".repeat(101) }] }],
   },
   {
-    selects: [
-      { ...select, options: [{ ...option, description: "x".repeat(101) }] },
-    ],
+    selects: [{ ...select, options: [{ ...option, description: "x".repeat(101) }] }],
   },
   { selects: [{ ...select, options: [{ ...option, label: "a\nb" }] }] },
   { selects: [{ ...select, options: [{ ...option, label: "{unknown}" }] }] },
   { selects: Array(6).fill(select) },
   { buttons: [option], selects: Array(5).fill(select) },
-])(
-  "JSON validation rejects invalid or oversized components: %j",
-  (components) => {
-    expect(() =>
-      new CustomCommandValidator().responses([
-        { type: "TEXT", text: "Hi", stage: 0, ...components },
-      ]),
-    ).toThrow();
-  },
-);
+])("JSON validation rejects invalid or oversized components: %j", (components) => {
+  expect(() =>
+    new CustomCommandValidator().responses([{ type: "TEXT", text: "Hi", stage: 0, ...components }]),
+  ).toThrow();
+});
 
 test("five select rows and 25 options are allowed; expanded text is validated", async () => {
   const content = new CustomCommandValidator().responses([
@@ -159,11 +136,8 @@ test("five select rows and 25 options are allowed; expanded text is validated", 
     },
   ]);
   expect(
-    (
-      await new CustomCommandRenderer().render(
-        context({ command: record({ content }) }),
-      )
-    )[0].components,
+    (await new CustomCommandRenderer().render(context({ command: record({ content }) })))[0]
+      .components,
   ).toHaveLength(5);
   for (const property of ["label", "description"] as const) {
     const patch = {
@@ -174,9 +148,7 @@ test("five select rows and 25 options are allowed; expanded text is validated", 
           selects: [
             {
               ...select,
-              options: [
-                { ...option, action: "addrole" as const, [property]: "{args}" },
-              ],
+              options: [{ ...option, action: "addrole" as const, [property]: "{args}" }],
             },
           ],
         },
@@ -188,9 +160,7 @@ test("five select rows and 25 options are allowed; expanded text is validated", 
       ),
     ).rejects.toThrow("100");
   }
-  const patch = markdownPatch(
-    `Hi\n@select {args}\n@option [Join](SetRole(${ROLE}))\n@endselect`,
-  );
+  const patch = markdownPatch(`Hi\n@select {args}\n@option [Join](SetRole(${ROLE}))\n@endselect`);
   await expect(
     new CustomCommandRenderer().render(
       context({ command: record(patch), args: ["x".repeat(151)] }),
@@ -208,35 +178,27 @@ test("guild validation refreshes role references in buttons and selects, rejecti
   await validateGuildReferences(guild as unknown as Guild, [command]);
   expect(guild.roles.fetch).toHaveBeenCalledOnce();
   guild.roles.cache.set(ROLE, { managed: true });
-  await expect(
-    validateGuildReferences(guild as unknown as Guild, [command]),
-  ).rejects.toThrow("managed");
+  await expect(validateGuildReferences(guild as unknown as Guild, [command])).rejects.toThrow(
+    "managed",
+  );
   guild.roles.cache.clear();
-  await expect(
-    validateGuildReferences(guild as unknown as Guild, [command]),
-  ).rejects.toThrow("does not belong");
+  await expect(validateGuildReferences(guild as unknown as Guild, [command])).rejects.toThrow(
+    "does not belong",
+  );
   guild.id = ROLE;
   guild.roles.cache.set(ROLE, { managed: false });
-  await expect(
-    validateGuildReferences(guild as unknown as Guild, [command]),
-  ).rejects.toThrow("@everyone");
+  await expect(validateGuildReferences(guild as unknown as Guild, [command])).rejects.toThrow(
+    "@everyone",
+  );
   expect(hasServerRestrictions(record(markdownPatch(source)))).toBe(true);
   expect(
     hasServerRestrictions(
-      record(
-        markdownPatch(
-          `Hi\n@select Roles\n@option [Join](SetRole(${ROLE}))\n@endselect`,
-        ),
-      ),
+      record(markdownPatch(`Hi\n@select Roles\n@option [Join](SetRole(${ROLE}))\n@endselect`)),
     ),
   ).toBe(true);
   expect(
     hasServerRestrictions(
-      record(
-        markdownPatch(
-          "@main\nHi\n@select Pages\n@option [Home](Main)\n@endselect",
-        ),
-      ),
+      record(markdownPatch("@main\nHi\n@select Pages\n@option [Home](Main)\n@endselect")),
     ),
   ).toBe(false);
 });

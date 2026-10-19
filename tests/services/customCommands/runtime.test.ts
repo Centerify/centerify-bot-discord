@@ -11,12 +11,7 @@ vi.mock("../../../src/adapters/prisma/client.js", () => ({ db: {} }));
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
-import {
-  customCommandExecutor,
-  customCommandService,
-  customCommandSharingService,
-  runDomainCustomCommand,
-} from "../../../src/modules/custom-commands/discord/runtime.js";
+import { runDomainCustomCommand } from "../../../src/modules/custom-commands/discord/runtime.js";
 import { isBuiltInCommand } from "../../../src/modules/custom-commands/discord/reservedNames.js";
 import { context, record } from "./fixtures.js";
 import {
@@ -52,18 +47,13 @@ test("message fast paths do not access the repository", async () => {
     { ...fixture(), system: true },
     fixture(`!${"x".repeat(2200)}`),
   ])
-    expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
-      false,
-    );
+    expect(await runDomainCustomCommand(message as unknown as Message)).toBe(false);
   expect(lookup).not.toHaveBeenCalled();
 });
 test("prefix arguments normalize whitespace; canonical executor handles reply and deletion", async () => {
   const command = record();
   const lookup = vi
-    .spyOn(
-      currentApplication().resolve(customCommandsToken),
-      "getCommandByNameOrAlias",
-    )
+    .spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias")
     .mockResolvedValue(command);
   const executor = vi
     .spyOn(currentApplication().resolve(executorToken), "execute")
@@ -71,9 +61,7 @@ test("prefix arguments normalize whitespace; canonical executor handles reply an
       await transport.send({ content: "ok" }, 0);
     });
   const message = fixture("!welcome\tJohn\nDoe");
-  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
-    true,
-  );
+  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(true);
   expect(lookup).toHaveBeenCalledWith("guild-a", "welcome");
   expect(executor).toHaveBeenCalledWith(
     expect.objectContaining({ args: ["John", "Doe"], source: "message" }),
@@ -85,17 +73,12 @@ test("prefix arguments normalize whitespace; canonical executor handles reply an
   expect(message.channel.send).toHaveBeenCalledOnce();
 });
 test("unknown commands fall through; Sapphire registry names and aliases are protected", async () => {
-  vi.spyOn(
-    currentApplication().resolve(sharingToken),
-    "resolve",
-  ).mockResolvedValue(null);
+  vi.spyOn(currentApplication().resolve(sharingToken), "resolve").mockResolvedValue(null);
   vi.spyOn(
     currentApplication().resolve(customCommandsToken),
     "getCommandByNameOrAlias",
   ).mockResolvedValue(null);
-  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(
-    false,
-  );
+  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(false);
   const descriptor = Object.getOwnPropertyDescriptor(container, "stores");
   Object.defineProperty(container, "stores", {
     configurable: true,
@@ -127,10 +110,7 @@ test("unknown commands fall through; Sapphire registry names and aliases are pro
 
 test("local commands take precedence and unknown local names fall back to authorized sharing", async () => {
   const local = vi
-    .spyOn(
-      currentApplication().resolve(customCommandsToken),
-      "getCommandByNameOrAlias",
-    )
+    .spyOn(currentApplication().resolve(customCommandsToken), "getCommandByNameOrAlias")
     .mockResolvedValue(record({ enabled: false }));
   const shared = vi
     .spyOn(currentApplication().resolve(sharingToken), "resolve")
@@ -138,14 +118,10 @@ test("local commands take precedence and unknown local names fall back to author
   const executor = vi
     .spyOn(currentApplication().resolve(executorToken), "execute")
     .mockResolvedValue(undefined);
-  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(
-    true,
-  );
+  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(true);
   expect(shared).not.toHaveBeenCalled();
   local.mockResolvedValue(null);
-  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(
-    true,
-  );
+  expect(await runDomainCustomCommand(fixture() as unknown as Message)).toBe(true);
   expect(shared).toHaveBeenCalledOnce();
   expect(executor).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -160,18 +136,11 @@ test("missing member arguments reply with usage help without mentions or fallbac
     currentApplication().resolve(customCommandsToken),
     "getCommandByNameOrAlias",
   ).mockResolvedValue(record({ name: "kos" }));
-  vi.spyOn(
-    currentApplication().resolve(executorToken),
-    "execute",
-  ).mockRejectedValue(
-    new CustomCommandArgumentError(
-      "Missing member argument {args.0}. Usage: !kos @Member.",
-    ),
+  vi.spyOn(currentApplication().resolve(executorToken), "execute").mockRejectedValue(
+    new CustomCommandArgumentError("Missing member argument {args.0}. Usage: !kos @Member."),
   );
   const message = fixture("!kos");
-  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
-    true,
-  );
+  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(true);
   expect(message.reply).toHaveBeenCalledExactlyOnceWith({
     content: "Missing member argument {args.0}. Usage: !kos @Member.",
     allowedMentions: { parse: [], repliedUser: false },
@@ -182,22 +151,14 @@ test("missing member arguments reply with usage help without mentions or fallbac
 test.each([
   new CustomCommandPermissionError("Only moderators may run this command."),
   new CustomCommandValidationError("Private template configuration issue."),
-])(
-  "access denials and template configuration errors remain quiet",
-  async (error) => {
-    vi.spyOn(
-      currentApplication().resolve(customCommandsToken),
-      "getCommandByNameOrAlias",
-    ).mockResolvedValue(record());
-    vi.spyOn(
-      currentApplication().resolve(executorToken),
-      "execute",
-    ).mockRejectedValue(error);
-    const message = fixture();
-    expect(await runDomainCustomCommand(message as unknown as Message)).toBe(
-      true,
-    );
-    expect(message.reply).not.toHaveBeenCalled();
-    expect(message.channel.send).not.toHaveBeenCalled();
-  },
-);
+])("access denials and template configuration errors remain quiet", async (error) => {
+  vi.spyOn(
+    currentApplication().resolve(customCommandsToken),
+    "getCommandByNameOrAlias",
+  ).mockResolvedValue(record());
+  vi.spyOn(currentApplication().resolve(executorToken), "execute").mockRejectedValue(error);
+  const message = fixture();
+  expect(await runDomainCustomCommand(message as unknown as Message)).toBe(true);
+  expect(message.reply).not.toHaveBeenCalled();
+  expect(message.channel.send).not.toHaveBeenCalled();
+});

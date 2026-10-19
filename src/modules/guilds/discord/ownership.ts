@@ -8,7 +8,11 @@ export const OWNERSHIP_REQUIRED_MESSAGE =
   "The server owner must run `/verify` before Centerify can work in this server.";
 
 export class GuildOwnershipService {
-  constructor(private readonly ownership: Pick<VerifyGuildOwnership, keyof VerifyGuildOwnership> = serviceRef(guildOwnershipToken)) {}
+  constructor(
+    private readonly ownership: Pick<VerifyGuildOwnership, keyof VerifyGuildOwnership> = serviceRef(
+      guildOwnershipToken,
+    ),
+  ) {}
   public async isVerified(guild: Guild): Promise<boolean> {
     try {
       // Refresh Discord ownership so a transfer invalidates the old approval.
@@ -33,8 +37,10 @@ export class GuildOwnershipService {
 
 export const guildOwnershipService = new GuildOwnershipService();
 
-export async function requireVerifiedOwnership(interaction: RepliableInteraction | ContextMenuCommandInteraction) {
-  if (interaction.guild && await guildOwnershipService.isVerified(interaction.guild)) {
+export async function requireVerifiedOwnership(
+  interaction: RepliableInteraction | ContextMenuCommandInteraction,
+) {
+  if (interaction.guild && (await guildOwnershipService.isVerified(interaction.guild))) {
     return true;
   }
   const response = { content: OWNERSHIP_REQUIRED_MESSAGE, flags: MessageFlags.Ephemeral as const };

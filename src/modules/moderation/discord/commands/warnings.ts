@@ -27,12 +27,18 @@ export class WarningsCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({ content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: "This command can only be used inside a server.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await interaction.reply({ content: missingPermissionMessage("ModerateMembers"), flags: MessageFlags.Ephemeral });
+      await interaction.reply({
+        content: missingPermissionMessage("ModerateMembers"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
@@ -40,7 +46,11 @@ export class WarningsCommand extends Command {
 
     const user = interaction.options.getUser("user", true);
     try {
-      const warnings = await moderationCaseService.recentWarningsForUser(interaction.guildId, user.id, 10);
+      const warnings = await moderationCaseService.recentWarningsForUser(
+        interaction.guildId,
+        user.id,
+        10,
+      );
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -51,12 +61,17 @@ export class WarningsCommand extends Command {
                 ? warnings.map(formatCaseLine).join("\n")
                 : "No active warnings found. Expired timed warnings remain visible in `/history`.",
             )
-            .setFooter({ text: `${warnings.length} active warning${warnings.length === 1 ? "" : "s"}` })
+            .setFooter({
+              text: `${warnings.length} active warning${warnings.length === 1 ? "" : "s"}`,
+            })
             .setTimestamp(),
         ],
       });
     } catch (error) {
-      logger.error({ err: error, guildId: interaction.guildId, userId: user.id }, "Warnings command failed");
+      logger.error(
+        { err: error, guildId: interaction.guildId, userId: user.id },
+        "Warnings command failed",
+      );
       await interaction.editReply({ content: "I could not load warnings right now." });
     }
   }

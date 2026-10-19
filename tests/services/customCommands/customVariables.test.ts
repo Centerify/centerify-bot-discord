@@ -15,14 +15,7 @@ import { renderComponentAction } from "../../../src/modules/custom-commands/disc
 import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
 import { hasServerActionReferences } from "../../../src/modules/custom-commands/domain/components.js";
 import { CustomCommandService } from "../../../src/modules/custom-commands/application/CustomCommandService.js";
-import {
-  context,
-  definition,
-  record,
-  MemoryRepository,
-  USER,
-  CHANNEL,
-} from "./fixtures.js";
+import { context, definition, record, MemoryRepository, USER, CHANNEL } from "./fixtures.js";
 
 test("custom variables render across pages, labels, dropdowns and actions, and survive cfg round trips", async () => {
   const source = `@var USER_ID = {user.id}
@@ -37,16 +30,12 @@ test("custom variables render across pages, labels, dropdowns and actions, and s
 @option [Reply to {USER_ID}](Reply("{GREETING}"))
 @endselect`;
   const patch = markdownPatch(source);
-  expect(parseCommandMarkdown(serializeCommandMarkdown(patch.content))).toEqual(
-    patch.content,
-  );
+  expect(parseCommandMarkdown(serializeCommandMarkdown(patch.content))).toEqual(patch.content);
   const ctx = context({ command: record(patch) });
   const payloads = await new CustomCommandRenderer().render(ctx, true);
   expect(JSON.stringify(payloads[0].embeds)).toContain(`Hello Alex (${USER})!`);
   expect(JSON.stringify(payloads[1].components)).toContain(`Reply to ${USER}`);
-  expect(
-    await renderComponentAction(patch.content[1].selects![0].options[0], ctx),
-  ).toMatchObject({
+  expect(await renderComponentAction(patch.content[1].selects![0].options[0], ctx)).toMatchObject({
     action: "reply",
     text: `Hello Alex (${USER})!`,
   });
@@ -56,26 +45,19 @@ test("the complete welcome example saves, reopens and renders GREETING and its d
   const source = readFileSync("docs/welcome-example.cfg", "utf8");
   const service = new CustomCommandService(new MemoryRepository());
   await service.createCommand("guild-a", USER, definition());
-  await service.updateCommand(
-    "guild-a",
-    USER,
-    "welcome",
-    markdownPatch(source),
-  );
+  await service.updateCommand("guild-a", USER, "welcome", markdownPatch(source));
   const command = (await service.getCommand("guild-a", "welcome"))!;
-  expect(
-    parseCommandMarkdown(serializeCommandMarkdown(command.content)),
-  ).toEqual(command.content);
+  expect(parseCommandMarkdown(serializeCommandMarkdown(command.content))).toEqual(command.content);
   const ctx = context({ command });
   ctx.member.user.displayAvatarURL = () => "https://example.com/avatar.png";
   const payloads = await new CustomCommandRenderer().render(ctx, true);
   expect(JSON.stringify(payloads[0].embeds)).toContain(`Hello <@${USER}>!`);
-  expect(
-    await renderComponentAction(command.content[0].selects![0].options[1], ctx),
-  ).toMatchObject({
-    action: "reply",
-    text: `Your user ID is ${USER}`,
-  });
+  expect(await renderComponentAction(command.content[0].selects![0].options[1], ctx)).toMatchObject(
+    {
+      action: "reply",
+      text: `Your user ID is ${USER}`,
+    },
+  );
 });
 
 test("editing a template can use saved variables without repeating their definitions", () => {
@@ -89,8 +71,7 @@ test("editing a template can use saved variables without repeating their definit
     embed: { description: "{GREETING}" },
   });
   expect(
-    markdownPatch("@var GREETING = Hi {user.name}!\n@main\n{GREETING}", saved)
-      .content[0].variables,
+    markdownPatch("@var GREETING = Hi {user.name}!\n@main\n{GREETING}", saved).content[0].variables,
   ).toEqual({
     USER_ID: "{user.id}",
     GREETING: "Hi {user.name}!",
@@ -103,9 +84,10 @@ test("custom action target aliases resolve invocation arguments", async () => {
     '@var USER_ID = {args.0}\nHello\n@button [Warn](Warn("{USER_ID}", "Reason"))',
   );
   const ctx = context({ command: record(patch), args: [USER] });
-  expect(
-    await renderComponentAction(patch.content[0].buttons![0] as never, ctx),
-  ).toMatchObject({ action: "warn", userId: USER });
+  expect(await renderComponentAction(patch.content[0].buttons![0] as never, ctx)).toMatchObject({
+    action: "warn",
+    userId: USER,
+  });
   expect(hasServerActionReferences(patch.content)).toBe(false);
   expect(patch.content[0]).toMatchObject({ text: "Hello" });
 });
@@ -117,41 +99,32 @@ test("fixed action targets in nested custom aliases retain guild-local validatio
   expect(hasServerActionReferences(patch.content)).toBe(true);
   expect(
     hasServerActionReferences(
-      markdownPatch(
-        `@var TARGET = <@${USER}>\nHello\n@button [Warn](Warn("{TARGET}", "Reason"))`,
-      ).content,
+      markdownPatch(`@var TARGET = <@${USER}>\nHello\n@button [Warn](Warn("{TARGET}", "Reason"))`)
+        .content,
     ),
   ).toBe(true);
 });
 
 test("variables persist through service updates and JSON export/import", async () => {
   const service = new CustomCommandService(new MemoryRepository());
-  const patch = markdownPatch(
-    "@var USER_ID = {user.id}\n:::text\nID: {USER_ID}\n:::",
-  );
+  const patch = markdownPatch("@var USER_ID = {user.id}\n:::text\nID: {USER_ID}\n:::");
   await service.createCommand("guild-a", USER, definition(patch));
   await service.updateCommand("guild-a", USER, "welcome", {
     description: "Updated",
   });
-  await service.importCommands(
-    "guild-b",
-    USER,
-    await service.exportCommands("guild-a"),
-  );
+  await service.importCommands("guild-b", USER, await service.exportCommands("guild-a"));
   const loaded = (await service.getCommand("guild-b", "welcome"))!;
   expect(loaded.content[0].variables).toEqual({ USER_ID: "{user.id}" });
-  expect(
-    (await new CustomCommandRenderer().render(context({ command: loaded })))[0]
-      .content,
-  ).toBe(`ID: ${USER}`);
+  expect((await new CustomCommandRenderer().render(context({ command: loaded })))[0].content).toBe(
+    `ID: ${USER}`,
+  );
 });
 
 test("variable editor accepts definitions, quoted values and clearing", () => {
-  expect(
-    parseVariableDefinitions(
-      'USER_ID = {user.id}\nMESSAGE = " Hello\\n{USER_ID} "',
-    ),
-  ).toEqual({ USER_ID: "{user.id}", MESSAGE: " Hello\n{USER_ID} " });
+  expect(parseVariableDefinitions('USER_ID = {user.id}\nMESSAGE = " Hello\\n{USER_ID} "')).toEqual({
+    USER_ID: "{user.id}",
+    MESSAGE: " Hello\n{USER_ID} ",
+  });
   expect(parseVariableDefinitions("")).toEqual({});
   expect(parseVariableDefinitions("@var USER_ID = {user.id}")).toEqual({
     USER_ID: "{user.id}",
@@ -167,9 +140,7 @@ test.each([
   "@var USER_ID = " + "x".repeat(2001),
   Array.from({ length: 26 }, (_, i) => `@var VAR_${i} = value`).join("\n"),
 ])("invalid custom definitions fail before saving: %s", (header) => {
-  expect(() =>
-    parseCommandMarkdown(`${header}\n:::text\nHello\n:::`),
-  ).toThrow();
+  expect(() => parseCommandMarkdown(`${header}\n:::text\nHello\n:::`)).toThrow();
 });
 
 test("JSON definitions reject duplicates, unknown uses, malformed maps and custom URL placeholders", () => {
@@ -180,19 +151,11 @@ test("JSON definitions reject duplicates, unknown uses, malformed maps and custo
       { type: "TEXT", text: "Two", variables: { USER_ID: "second" } },
     ]),
   ).toThrow("unique");
-  for (const variables of [
-    null,
-    [],
-    "bad",
-    { USER_ID: 123 },
-    { lower: "value" },
-  ])
-    expect(() =>
-      validator.responses([{ type: "TEXT", text: "Hello", variables }]),
-    ).toThrow();
-  expect(() =>
-    validator.responses([{ type: "TEXT", text: "{USER_ID}" }]),
-  ).toThrow("Unknown variable");
+  for (const variables of [null, [], "bad", { USER_ID: 123 }, { lower: "value" }])
+    expect(() => validator.responses([{ type: "TEXT", text: "Hello", variables }])).toThrow();
+  expect(() => validator.responses([{ type: "TEXT", text: "{USER_ID}" }])).toThrow(
+    "Unknown variable",
+  );
   expect(() =>
     validator.responses([
       {
@@ -217,9 +180,7 @@ test("expanded variable values are bounded and invocation values stay literal", 
     },
   ];
   await expect(
-    new CustomCommandRenderer().render(
-      context({ command: record({ content }) }),
-    ),
+    new CustomCommandRenderer().render(context({ command: record({ content }) })),
   ).rejects.toThrow("too long");
   const patch = markdownPatch("@var INPUT = {args.0}\n:::text\n{INPUT}\n:::");
   expect(

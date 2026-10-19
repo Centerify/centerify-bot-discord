@@ -1,0 +1,16 @@
+.git
+.github
+.agents
+.claude
+.cursor
+.devin
+.codex
+.env
+.env.*
+node_modules
+dist
+.cache
+tests
+migrations
+docs
+*.log

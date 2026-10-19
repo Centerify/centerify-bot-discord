@@ -40,9 +40,18 @@ export class GreetingService {
     return plan ? this.sendGreeting({ guild: member.guild, ...plan, kind: "goodbye" }) : false;
   }
   private variables(member: GreetingMember, includeUserMention: boolean) {
-    return new Map(greetingTemplateVariables.map((variable) => [variable.key, variable.resolve({ member, includeUserMention })]));
+    return new Map(
+      greetingTemplateVariables.map((variable) => [
+        variable.key,
+        variable.resolve({ member, includeUserMention }),
+      ]),
+    );
   }
-  private renderTemplate(template: string, member: GreetingMember, options: { includeMention: boolean }) {
+  private renderTemplate(
+    template: string,
+    member: GreetingMember,
+    options: { includeMention: boolean },
+  ) {
     return this.planner.render(template, this.variables(member, options.includeMention));
   }
 
@@ -58,24 +67,25 @@ export class GreetingService {
     kind: GreetingKind;
   }) {
     const channel = await guild.channels.fetch(channelId).catch((error) => {
-      logger.warn({ err: error, guildId: guild.id, channelId, kind }, "Failed to fetch greeting channel");
+      logger.warn(
+        { err: error, guildId: guild.id, channelId, kind },
+        "Failed to fetch greeting channel",
+      );
       return null;
     });
 
     if (!channel || !this.isSendableGuildTextChannel(channel)) {
-      logger.warn({ guildId: guild.id, channelId, kind }, "Greeting channel is unavailable or not text based");
+      logger.warn(
+        { guildId: guild.id, channelId, kind },
+        "Greeting channel is unavailable or not text based",
+      );
       return false;
     }
 
     const me = guild.members.me;
     if (me && "permissionsFor" in channel) {
       const permissions = channel.permissionsFor(me);
-      if (
-        !permissions?.has([
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-        ])
-      ) {
+      if (!permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
         logger.warn({ guildId: guild.id, channelId, kind }, "Missing permission to send greeting");
         return false;
       }
@@ -100,11 +110,11 @@ export class GreetingService {
     }
 
     return (
-      channel?.type === ChannelType.GuildText ||
-      channel?.type === ChannelType.GuildAnnouncement
+      channel?.type === ChannelType.GuildText || channel?.type === ChannelType.GuildAnnouncement
     );
   }
 }
 
-export const greetingAdapterToken = serviceToken<Pick<GreetingService, keyof GreetingService>>("welcome.discord");
+export const greetingAdapterToken =
+  serviceToken<Pick<GreetingService, keyof GreetingService>>("welcome.discord");
 export const greetingService = serviceRef(greetingAdapterToken);

@@ -2,6 +2,7 @@ import type { Client, Guild } from "discord.js";
 import { guildOwnershipService } from "../../guilds/discord/index.js";
 import { serviceRef } from "../../../adapters/discord/context.js";
 import { globalModerationToken } from "../index.js";
+export { authorizeGlobalModerator } from "./globalAuthorization.js";
 export const globalModeration = serviceRef(globalModerationToken);
 
 export type GlobalModerationTargets = {
@@ -20,7 +21,12 @@ export async function getGlobalModerationTargets(
       return guild ? guildOwnershipService.isVerified(guild) : false;
     },
   });
-  return { enabled: targets.enabled, guilds: targets.guildIds.map((id) => client.guilds.cache.get(id)).filter((guild): guild is Guild => Boolean(guild)) };
+  return {
+    enabled: targets.enabled,
+    guilds: targets.guildIds
+      .map((id) => client.guilds.cache.get(id))
+      .filter((guild): guild is Guild => Boolean(guild)),
+  };
 }
 
 export function globalModerationDisabledMessage() {

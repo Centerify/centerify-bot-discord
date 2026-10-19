@@ -4,9 +4,16 @@ import type { XpMethod } from "../domain/policy.js";
 
 export class PrismaXpRepository implements XpRepository {
   constructor(private readonly database: typeof db = db) {}
-  async award(guildId: string, userId: string, method: XpMethod, amount: number, cooldownSeconds: number) {
+  async award(
+    guildId: string,
+    userId: string,
+    method: XpMethod,
+    amount: number,
+    cooldownSeconds: number,
+  ) {
     return this.database.transaction(async (tx) => {
-      const rows = await tx.query(this.database.raw.sql`
+      const rows = await tx.query(
+        this.database.raw.sql`
         INSERT INTO member_xp ("guildId", "userId", xp, "lastAwardedAt", "lastReactionAwardedAt", "lastDailyAwardedAt")
         VALUES (${guildId}, ${userId}, ${amount},
           CASE WHEN ${method} = 'messages' THEN now() ELSE '1970-01-01'::timestamptz END,
@@ -23,7 +30,10 @@ export class PrismaXpRepository implements XpRepository {
           WHEN 'daily' THEN member_xp."lastDailyAwardedAt"
         END, '1970-01-01'::timestamptz) <= now() - (${cooldownSeconds} * interval '1 second')
         RETURNING xp
-      `.returnsRow({ xp: "pg/int4@1" }).build());
+      `
+          .returnsRow({ xp: "pg/int4@1" })
+          .build(),
+      );
       return rows.length > 0;
     });
   }

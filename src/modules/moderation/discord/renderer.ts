@@ -1,10 +1,4 @@
-import {
-  Colors,
-  EmbedBuilder,
-  TimestampStyles,
-  escapeMarkdown,
-  time,
-} from "discord.js";
+import { Colors, EmbedBuilder, TimestampStyles, escapeMarkdown, time } from "discord.js";
 import { formatDuration } from "./durationParser.js";
 import {
   getWarningExpiresAt,
@@ -62,7 +56,9 @@ export function buildCaseEmbed(moderationCase: ModerationCaseView) {
                 ? "Warning expired"
                 : revocation
                   ? "Original expiry"
-                  : roleId ? "Role removal" : "Warning expires",
+                  : roleId
+                    ? "Role removal"
+                    : "Warning expires",
               value: `${time(expiresAt, TimestampStyles.ShortDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)})`,
               inline: true,
             },
@@ -107,7 +103,9 @@ export function formatCaseLine(moderationCase: ModerationCaseView) {
     `by <@${moderationCase.moderatorUserId}>`,
     `- ${cleanFieldValue(moderationCase.reason, 120)}`,
     warningTiming ? `\n${warningTiming}` : null,
-  ].filter((part): part is string => part !== null).join(" ");
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" ");
 }
 
 export function formatDetailedCaseField(
@@ -164,10 +162,7 @@ function actionColor(action: string) {
   }
 }
 
-function formatWarningTiming(
-  moderationCase: ModerationCaseView,
-  now: Date | number = Date.now(),
-) {
+function formatWarningTiming(moderationCase: ModerationCaseView, now: Date | number = Date.now()) {
   if (moderationCase.action !== "WARNING") {
     return null;
   }
@@ -193,10 +188,7 @@ function formatWarningTiming(
   return `**${timingLabel}:** ${time(expiresAt, TimestampStyles.ShortDateTime)} (${time(expiresAt, TimestampStyles.RelativeTime)}) • counts until then`;
 }
 
-function caseStatus(
-  moderationCase: ModerationCaseView,
-  now: Date | number = Date.now(),
-) {
+function caseStatus(moderationCase: ModerationCaseView, now: Date | number = Date.now()) {
   if (moderationCase.action !== "WARNING") {
     return "Recorded";
   }

@@ -11,13 +11,18 @@ if (!token) {
 // No Sapphire command loading, message listeners, or command registration runs
 // here. This session only connects, reads the application commands, and exits.
 const client = new Client({ ...gatewayOptions, rest: { timeout: 10_000, retries: 0 } });
-client.on("error", (error) => { console.error(`Discord client error: ${error.message}`); });
+client.on("error", (error) => {
+  console.error(`Discord client error: ${error.message}`);
+});
 let timer;
 try {
   await Promise.race([
     client.login(token),
     new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error("Discord Gateway did not become ready within 30 seconds.")), 30_000);
+      timer = setTimeout(
+        () => reject(new Error("Discord Gateway did not become ready within 30 seconds.")),
+        30_000,
+      );
     }),
   ]);
   clearTimeout(timer);
@@ -26,13 +31,19 @@ try {
   const required = ["verify", "unverify", "setup", "settings", "custom", "xp"];
   const missingCommands = required.filter((name) => !names.includes(name));
   const serverCount = client.guilds.cache.size;
-  console.log(JSON.stringify({
-    gatewayConnected: client.isReady(),
-    serverCount,
-    multiServerInstallation: serverCount >= 2,
-    registeredCommands: names,
-    missingCommands,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        gatewayConnected: client.isReady(),
+        serverCount,
+        multiServerInstallation: serverCount >= 2,
+        registeredCommands: names,
+        missingCommands,
+      },
+      null,
+      2,
+    ),
+  );
   if (missingCommands.length) {
     console.error("Start the built bot to register the missing slash commands.");
     process.exitCode = 1;
@@ -42,7 +53,9 @@ try {
     process.exitCode = 1;
   }
 } catch (error) {
-  console.error(`Discord check failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  console.error(
+    `Discord check failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+  );
   process.exitCode = 1;
 } finally {
   clearTimeout(timer);

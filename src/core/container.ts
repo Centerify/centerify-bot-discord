@@ -16,12 +16,16 @@ export class ServiceContainer {
     this.values.set(token.key, value);
   }
 
-  has<T>(token: ServiceToken<T>) { return this.values.has(token.key); }
+  has<T>(token: ServiceToken<T>) {
+    return this.values.has(token.key);
+  }
 
   resolve<T>(token: ServiceToken<T>): T {
     if (!this.values.has(token.key)) throw new Error(`Service is not registered: ${token.name}`);
     return this.values.get(token.key) as T;
   }
 
-  clear() { this.values.clear(); }
+  clear() {
+    this.values.clear();
+  }
 }

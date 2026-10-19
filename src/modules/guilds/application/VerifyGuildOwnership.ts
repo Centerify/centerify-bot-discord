@@ -8,7 +8,7 @@ export class VerifyGuildOwnership {
   constructor(private readonly repository: OwnershipRepository) {}
 
   async isVerified(guildId: string, currentOwnerId: string) {
-    return await this.repository.ownerFor(guildId) === currentOwnerId;
+    return (await this.repository.ownerFor(guildId)) === currentOwnerId;
   }
 
   async verify(guildId: string, currentOwnerId: string, actorId: string) {

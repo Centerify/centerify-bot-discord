@@ -6,13 +6,7 @@ export type GreetingTemplateContext = {
   includeUserMention: boolean;
 };
 
-type TemplateVariableCategory =
-  | "User"
-  | "Server"
-  | "Counts"
-  | "Dates"
-  | "Roles"
-  | "Images";
+type TemplateVariableCategory = "User" | "Server" | "Counts" | "Dates" | "Roles" | "Images";
 
 export type TemplateVariable = {
   key: string;
@@ -249,15 +243,9 @@ export const greetingTemplateVariables: readonly TemplateVariable[] = [
   },
 ] as const;
 
-export function renderGreetingTemplate(
-  template: string,
-  context: GreetingTemplateContext,
-) {
+export function renderGreetingTemplate(template: string, context: GreetingTemplateContext) {
   const replacements = new Map(
-    greetingTemplateVariables.map((variable) => [
-      variable.key,
-      variable.resolve(context),
-    ]),
+    greetingTemplateVariables.map((variable) => [variable.key, variable.resolve(context)]),
   );
 
   return new PlanGreeting().render(template, replacements);

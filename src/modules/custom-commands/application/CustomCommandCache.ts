@@ -24,8 +24,7 @@ export class CustomCommandCache<T> {
     const now = this.now();
     const hit = this.entries.get(guildId);
     if (hit && hit.expiresAt > now) return hit.promise;
-    for (const [id, entry] of this.entries)
-      if (entry.expiresAt <= now) this.entries.delete(id);
+    for (const [id, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(id);
     if (this.entries.size >= this.maxEntries)
       this.entries.delete(this.entries.keys().next().value!);
     const entry: Entry<T> = {

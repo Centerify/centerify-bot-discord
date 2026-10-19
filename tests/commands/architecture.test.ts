@@ -37,7 +37,11 @@ test("all Discord commands belong to module adapters", async () => {
   for (const file of await moduleCommandFiles()) {
     assert.match(file, /^[a-z-]+\/discord\/commands\/[^/]+\.ts$/);
     const source = await readFile(join(modulesRoot, file), "utf8");
-    assert.doesNotMatch(source, /(?:prisma|infrastructure)\//, `${file} must use its module API for persistence`);
+    assert.doesNotMatch(
+      source,
+      /(?:prisma|infrastructure)\//,
+      `${file} must use its module API for persistence`,
+    );
   }
 });
 
@@ -46,12 +50,7 @@ test("dedicated tests cover every module command", async () => {
   assert.deepEqual(commandFiles, expectedCommands.map((file) => basename(file)).sort());
 
   for (const file of expectedCommands) {
-    const testFile = join(
-      root,
-      "tests",
-      "commands",
-      file.replace(/\.ts$/, ".test.ts"),
-    );
+    const testFile = join(root, "tests", "commands", file.replace(/\.ts$/, ".test.ts"));
     await assert.doesNotReject(() => readFile(testFile, "utf8"), `${file} needs a dedicated test`);
   }
 });
@@ -75,5 +74,7 @@ async function listCommandFiles(dir: string, prefix = ""): Promise<string[]> {
 }
 
 async function moduleCommandFiles() {
-  return (await listCommandFiles(modulesRoot)).filter((file) => file.includes("/discord/commands/"));
+  return (await listCommandFiles(modulesRoot)).filter((file) =>
+    file.includes("/discord/commands/"),
+  );
 }

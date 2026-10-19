@@ -7,17 +7,21 @@ vi.mock("../../src/adapters/prisma/client.js", () => ({ db: {} }));
 
 test("module command contributions serialize valid unique names and stay within option limits", () => {
   const names: string[] = [];
-  for (const { value: { definition } } of currentApplication().extensions(discordModuleToken)) {
+  for (const {
+    value: { definition },
+  } of currentApplication().extensions(discordModuleToken)) {
     for (const command of Object.values(definition.commands ?? {})) {
-      const registry = { registerChatInputCommand(build: (builder: SlashCommandBuilder) => void) {
-        const builder = new SlashCommandBuilder();
-        build(builder);
-        const data = builder.toJSON();
-        expect(data.options?.length ?? 0).toBeLessThanOrEqual(25);
-        const options = data.options?.map((option) => option.name) ?? [];
-        expect(new Set(options).size).toBe(options.length);
-        names.push(data.name);
-      } };
+      const registry = {
+        registerChatInputCommand(build: (builder: SlashCommandBuilder) => void) {
+          const builder = new SlashCommandBuilder();
+          build(builder);
+          const data = builder.toJSON();
+          expect(data.options?.length ?? 0).toBeLessThanOrEqual(25);
+          const options = data.options?.map((option) => option.name) ?? [];
+          expect(new Set(options).size).toBe(options.length);
+          names.push(data.name);
+        },
+      };
       command.prototype.registerApplicationCommands?.(registry as unknown as Command.Registry);
     }
   }

@@ -7,7 +7,9 @@ beforeAll(async () => {
   const { startTestApplication } = await import("./helpers/application.js");
   ({ stop, application } = await startTestApplication());
 });
-afterAll(async () => { await stop?.(); });
+afterAll(async () => {
+  await stop?.();
+});
 
 afterEach(async () => {
   if (!application) return;

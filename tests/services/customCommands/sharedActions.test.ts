@@ -1,13 +1,16 @@
 import { EventEmitter } from "node:events";
 import { expect, test, vi } from "vitest";
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
+  guildOwnershipService: { isVerified: async () => true },
+}));
 const mocks = vi.hoisted(() => ({ resolve: vi.fn() }));
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
 vi.mock("../../../src/adapters/discord/context.js", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/adapters/discord/context.js")
-  >("../../../src/adapters/discord/context.js");
+  const actual = await vi.importActual<typeof import("../../../src/adapters/discord/context.js")>(
+    "../../../src/adapters/discord/context.js",
+  );
   return {
     ...actual,
     serviceRef: (token: { name: string }) =>
@@ -66,11 +69,9 @@ async function setup() {
       reply: vi.fn().mockResolvedValue(undefined),
       deferUpdate: vi.fn().mockResolvedValue(undefined),
     };
-    await (
-      collector.listeners("collect")[0] as (
-        value: typeof interaction,
-      ) => Promise<void>
-    )(interaction);
+    await (collector.listeners("collect")[0] as (value: typeof interaction) => Promise<void>)(
+      interaction,
+    );
     return interaction;
   };
   return { repository, projected, ctx, click };
@@ -83,11 +84,7 @@ test("shared action clicks reauthorize sharing while loading fresh source defini
     content: "Hello Alex",
     allowedMentions: { parse: [] },
   });
-  expect(mocks.resolve).toHaveBeenCalledWith(
-    s.ctx.guild.client,
-    s.ctx.guild,
-    "welcome",
-  );
+  expect(mocks.resolve).toHaveBeenCalledWith(s.ctx.guild.client, s.ctx.guild, "welcome");
   expect(s.repository.list).toHaveBeenCalledWith("source");
   expect(s.repository.recordUsage).toHaveBeenCalledExactlyOnceWith("source", 1);
   mocks.resolve.mockResolvedValue(null);

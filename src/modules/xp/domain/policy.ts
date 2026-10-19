@@ -1,9 +1,15 @@
-export type XpConfig = { guildId: string; xpEnabled: boolean; xpSharing: string; xpSharedGuildIds: string };
+export type XpConfig = {
+  guildId: string;
+  xpEnabled: boolean;
+  xpSharing: string;
+  xpSharedGuildIds: string;
+};
 
 export function parseSharedGuildIds(value: string): string[] {
   if (value.trim().toLowerCase() === "clear") return [];
   const ids = [...new Set(value.split(",").map((id) => id.trim()))];
-  if (ids.length > 25 || ids.some((id) => !/^\d{17,20}$/.test(id))) throw new Error("Invalid server IDs");
+  if (ids.length > 25 || ids.some((id) => !/^\d{17,20}$/.test(id)))
+    throw new Error("Invalid server IDs");
   return ids;
 }
 
@@ -14,8 +20,13 @@ export function sharedXpGuildIds(source: XpConfig, configs: XpConfig[]): string[
   for (const target of configs) {
     if (!target.xpEnabled) continue;
     if (source.xpSharing === "global" && target.xpSharing === "global") ids.add(target.guildId);
-    if (source.xpSharing === "selected" && target.xpSharing === "selected"
-      && selected.includes(target.guildId) && target.xpSharedGuildIds.split(",").includes(source.guildId)) ids.add(target.guildId);
+    if (
+      source.xpSharing === "selected" &&
+      target.xpSharing === "selected" &&
+      selected.includes(target.guildId) &&
+      target.xpSharedGuildIds.split(",").includes(source.guildId)
+    )
+      ids.add(target.guildId);
   }
   return [...ids];
 }
@@ -37,15 +48,33 @@ export const XP_METHOD_CHOICES = [
 
 export type XpMethod = "messages" | "reactions" | "daily";
 
-export function earningRule(config: {
-  xpEnabled: boolean; xpMethods: string; xpMessageAmount: number;
-  xpReactionAmount: number; xpDailyAmount: number; xpCooldownSeconds: number;
-}, method: XpMethod) {
+export function earningRule(
+  config: {
+    xpEnabled: boolean;
+    xpMethods: string;
+    xpMessageAmount: number;
+    xpReactionAmount: number;
+    xpDailyAmount: number;
+    xpCooldownSeconds: number;
+  },
+  method: XpMethod,
+) {
   if (!config.xpEnabled || !config.xpMethods.split(",").includes(method)) return null;
-  const amount = method === "messages" ? config.xpMessageAmount
-    : method === "reactions" ? config.xpReactionAmount : config.xpDailyAmount;
+  const amount =
+    method === "messages"
+      ? config.xpMessageAmount
+      : method === "reactions"
+        ? config.xpReactionAmount
+        : config.xpDailyAmount;
   const cooldownSeconds = method === "daily" ? 86_400 : config.xpCooldownSeconds;
-  if (!Number.isInteger(amount) || amount < 1 || amount > 10_000
-    || !Number.isInteger(cooldownSeconds) || cooldownSeconds < 10 || cooldownSeconds > 86_400) return null;
+  if (
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > 10_000 ||
+    !Number.isInteger(cooldownSeconds) ||
+    cooldownSeconds < 10 ||
+    cooldownSeconds > 86_400
+  )
+    return null;
   return { amount, cooldownSeconds };
 }

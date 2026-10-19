@@ -45,9 +45,7 @@ export async function renderComponentAction(
   }
   if (action.action === "sequence")
     data.actions = await Promise.all(
-      action.actions.map((step) =>
-        renderComponentAction(step, context, variables),
-      ),
+      action.actions.map((step) => renderComponentAction(step, context, variables)),
     );
   return new CustomCommandValidator(variables).action(data, false);
 }

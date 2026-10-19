@@ -43,7 +43,9 @@ export class PrismaReportRepository {
         SET "nextReportNumber" = report_counter."nextReportNumber" + 1,
             "updatedAt" = now()
         RETURNING "nextReportNumber" - 1 AS "reportNumber"
-      `.returnsRow({ reportNumber: "pg/int4@1" }).build(),
+      `
+        .returnsRow({ reportNumber: "pg/int4@1" })
+        .build(),
     );
 
     const row = rows[0];
@@ -69,13 +71,15 @@ export class PrismaReportRepository {
     status: Exclude<ReportStatus, "PENDING">;
     reviewedBy: string;
   }) {
-    const report = await this.database.orm.public.MemberReport
-      .where({ guildId, reportNumber, status: "PENDING" })
-      .update({
-        status,
-        reviewedBy,
-        reviewedAt: new Date().toISOString(),
-      });
+    const report = await this.database.orm.public.MemberReport.where({
+      guildId,
+      reportNumber,
+      status: "PENDING",
+    }).update({
+      status,
+      reviewedBy,
+      reviewedAt: new Date().toISOString(),
+    });
 
     return report;
   }

@@ -1,8 +1,4 @@
-import {
-  Events,
-  SapphireClient,
-  type ChatInputCommand,
-} from "@sapphire/framework";
+import { Events, SapphireClient, type ChatInputCommand } from "@sapphire/framework";
 import { once } from "node:events";
 import { expect, test, vi } from "vitest";
 import { silentLogger } from "../../src/core/index.js";
@@ -33,9 +29,7 @@ test("Sapphire denies an expired interaction without running the command or emit
   const listenerError = vi.fn();
   discord.on(Events.ListenerError, listenerError);
   try {
-    const command = discord.stores
-      .get("commands")
-      .get("settings")! as ChatInputCommand;
+    const command = discord.stores.get("commands").get("settings")! as ChatInputCommand;
     const run = vi.spyOn(command, "chatInputRun");
     const interaction = {
       commandName: "settings",

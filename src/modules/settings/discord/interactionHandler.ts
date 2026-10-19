@@ -26,10 +26,7 @@ import type { SetupComponentInteraction } from "./types.js";
 import { handleWarningSettings } from "./warningSettings.js";
 import { CommandAccessEditor } from "./commandAccess.js";
 
-type UpdateConfig = (
-  guildId: string,
-  data: GuildConfigUpdate,
-) => Promise<GuildConfig>;
+type UpdateConfig = (guildId: string, data: GuildConfigUpdate) => Promise<GuildConfig>;
 
 export class SetupInteractionHandler {
   private readonly commandAccess = new CommandAccessEditor();
@@ -49,16 +46,35 @@ export class SetupInteractionHandler {
     config: GuildConfig;
     sessionId: string;
   }) {
-    if (componentInteraction.user.id !== rootInteraction.user.id || !canManageServer(componentInteraction.member)) {
-      await componentInteraction.reply({ content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral });
+    if (
+      componentInteraction.user.id !== rootInteraction.user.id ||
+      !canManageServer(componentInteraction.member)
+    ) {
+      await componentInteraction.reply({
+        content:
+          "Only the administrator who opened settings can use these controls, and Manage Server permission is required.",
+        flags: MessageFlags.Ephemeral,
+      });
       return config;
     }
     const action = componentInteraction.customId.split(":").at(2);
     if (action && !this.renderer.isAvailable(action)) {
-      await componentInteraction.reply({ content: "This module is disabled.", flags: MessageFlags.Ephemeral });
+      await componentInteraction.reply({
+        content: "This module is disabled.",
+        flags: MessageFlags.Ephemeral,
+      });
       return config;
     }
-    const opensModal = componentInteraction.isButton() && ["welcome-edit", "goodbye-edit", "xp-rewards", "xp-peers-id", "xp-apply-id", "warning-edit"].includes(action ?? "");
+    const opensModal =
+      componentInteraction.isButton() &&
+      [
+        "welcome-edit",
+        "goodbye-edit",
+        "xp-rewards",
+        "xp-peers-id",
+        "xp-apply-id",
+        "warning-edit",
+      ].includes(action ?? "");
     if (!opensModal) {
       // Acknowledge before the ownership check's network and database requests.
       if (componentInteraction.isButton() && (action === "xp-peers" || action === "xp-apply")) {
@@ -66,7 +82,7 @@ export class SetupInteractionHandler {
       } else {
         await componentInteraction.deferUpdate();
       }
-      if (!await requireVerifiedOwnership(componentInteraction)) return config;
+      if (!(await requireVerifiedOwnership(componentInteraction))) return config;
     }
     // Modal submissions recheck ownership before saving; showing a modal must
     // itself be the initial response to its button interaction.
@@ -74,24 +90,50 @@ export class SetupInteractionHandler {
     if (action?.startsWith("command-access"))
       return this.commandAccess.handle(componentInteraction, config, sessionId, this.updateConfig);
     if (action?.startsWith("warning-") && action !== "warning-roles") {
-      const next = await handleWarningSettings(componentInteraction, config, sessionId, this.updateConfig);
-      await rootInteraction.editReply(this.renderer.buildScreen("warning-roles", componentInteraction.guild, next, sessionId));
+      const next = await handleWarningSettings(
+        componentInteraction,
+        config,
+        sessionId,
+        this.updateConfig,
+      );
+      await rootInteraction.editReply(
+        this.renderer.buildScreen("warning-roles", componentInteraction.guild, next, sessionId),
+      );
       return next;
     }
 
     if (componentInteraction.isStringSelectMenu()) {
       let data: GuildConfigUpdate;
-      if (action === "xp-methods" && componentInteraction.values.length > 0 && componentInteraction.values.every((value) => ["messages", "reactions", "daily"].includes(value))) {
-        data = { xpMethods: ["messages", "reactions", "daily"].filter((method) => componentInteraction.values.includes(method)).join(",") };
-      } else if (action === "xp-sharing" && componentInteraction.values.length === 1 && ["server", "global", "selected"].includes(componentInteraction.values[0])) {
+      if (
+        action === "xp-methods" &&
+        componentInteraction.values.length > 0 &&
+        componentInteraction.values.every((value) =>
+          ["messages", "reactions", "daily"].includes(value),
+        )
+      ) {
+        data = {
+          xpMethods: ["messages", "reactions", "daily"]
+            .filter((method) => componentInteraction.values.includes(method))
+            .join(","),
+        };
+      } else if (
+        action === "xp-sharing" &&
+        componentInteraction.values.length === 1 &&
+        ["server", "global", "selected"].includes(componentInteraction.values[0])
+      ) {
         data = { xpSharing: componentInteraction.values[0] };
       } else {
-        await componentInteraction.followUp({ content: "Choose valid XP options.", flags: MessageFlags.Ephemeral });
+        await componentInteraction.followUp({
+          content: "Choose valid XP options.",
+          flags: MessageFlags.Ephemeral,
+        });
         return config;
       }
       if (!componentInteraction.deferred) await componentInteraction.deferUpdate();
       const next = await this.updateConfig(componentInteraction.guildId, data);
-      await rootInteraction.editReply(this.renderer.buildScreen("xp", componentInteraction.guild, next, sessionId));
+      await rootInteraction.editReply(
+        this.renderer.buildScreen("xp", componentInteraction.guild, next, sessionId),
+      );
       return next;
     }
     if (componentInteraction.isButton()) {
@@ -168,17 +210,43 @@ export class SetupInteractionHandler {
       case "xp-toggle": {
         if (!interaction.deferred) await interaction.deferUpdate();
         const next = await this.updateConfig(interaction.guildId, { xpEnabled: !config.xpEnabled });
-        await rootInteraction.editReply(this.renderer.buildScreen("xp", interaction.guild, next, sessionId));
+        await rootInteraction.editReply(
+          this.renderer.buildScreen("xp", interaction.guild, next, sessionId),
+        );
         return next;
       }
       case "xp-rewards":
-        return handleXpModal(interaction, rootInteraction, config, sessionId, action, this.renderer, this.updateConfig);
+        return handleXpModal(
+          interaction,
+          rootInteraction,
+          config,
+          sessionId,
+          action,
+          this.renderer,
+          this.updateConfig,
+        );
       case "xp-peers":
       case "xp-apply":
-        return handleXpServerPicker(interaction, rootInteraction, config, sessionId, action === "xp-apply", this.renderer, this.updateConfig);
+        return handleXpServerPicker(
+          interaction,
+          rootInteraction,
+          config,
+          sessionId,
+          action === "xp-apply",
+          this.renderer,
+          this.updateConfig,
+        );
       case "xp-peers-id":
       case "xp-apply-id":
-        return handleXpModal(interaction, rootInteraction, config, sessionId, action === "xp-peers-id" ? "xp-peers" : "xp-apply", this.renderer, this.updateConfig);
+        return handleXpModal(
+          interaction,
+          rootInteraction,
+          config,
+          sessionId,
+          action === "xp-peers-id" ? "xp-peers" : "xp-apply",
+          this.renderer,
+          this.updateConfig,
+        );
 
       case "welcome-toggle": {
         if (!interaction.deferred) await interaction.deferUpdate();
@@ -228,11 +296,12 @@ export class SetupInteractionHandler {
       case "global-warn-toggle":
       case "global-note-toggle": {
         if (!interaction.deferred) await interaction.deferUpdate();
-        const update = action === "global-ban-toggle"
-          ? { globalBanEnabled: !config.globalBanEnabled }
-          : action === "global-warn-toggle"
-            ? { globalWarnEnabled: !config.globalWarnEnabled }
-            : { globalNoteEnabled: !config.globalNoteEnabled };
+        const update =
+          action === "global-ban-toggle"
+            ? { globalBanEnabled: !config.globalBanEnabled }
+            : action === "global-warn-toggle"
+              ? { globalWarnEnabled: !config.globalWarnEnabled }
+              : { globalNoteEnabled: !config.globalNoteEnabled };
         const next = await this.updateConfig(interaction.guildId, update);
         await rootInteraction.editReply(
           this.renderer.buildScreen("moderation", interaction.guild, next, sessionId),
@@ -373,7 +442,16 @@ export class SetupInteractionHandler {
       return config;
     }
 
-    const validation = validateAssignableRole(interaction.guild, role);
+    const member = await interaction.guild.members.fetch({
+      user: interaction.user.id,
+      force: true,
+    });
+    const currentRole = await interaction.guild.roles.fetch(role.id, { force: true });
+    const validation = !canManageServer(member)
+      ? "Manage Server permission is required."
+      : !currentRole
+        ? "That role no longer exists."
+        : validateAssignableRole(interaction.guild, currentRole, member);
     if (validation) {
       await interaction.followUp({
         content: validation,
@@ -421,11 +499,7 @@ export class SetupInteractionHandler {
             .setStyle(TextInputStyle.Paragraph)
             .setMinLength(1)
             .setMaxLength(1_500)
-            .setValue(
-              type === "welcome"
-                ? config.welcomeMessage
-                : config.goodbyeMessage,
-            )
+            .setValue(type === "welcome" ? config.welcomeMessage : config.goodbyeMessage)
             .setRequired(true),
         ),
       );
@@ -434,8 +508,7 @@ export class SetupInteractionHandler {
 
     const modalSubmit = await interaction
       .awaitModalSubmit({
-        filter: (submit) =>
-          submit.customId === modalId && submit.user.id === interaction.user.id,
+        filter: (submit) => submit.customId === modalId && submit.user.id === interaction.user.id,
         time: 120_000,
       })
       .catch(() => null);
@@ -467,11 +540,13 @@ export class SetupInteractionHandler {
     type: "welcome" | "goodbye";
   }) {
     await modalSubmit.deferReply({ flags: MessageFlags.Ephemeral });
-    if (!await requireVerifiedOwnership(modalSubmit)) {
+    if (!(await requireVerifiedOwnership(modalSubmit))) {
       throw new Error("Server ownership is no longer verified");
     }
     if (!canManageServer(modalSubmit.member)) {
-      await modalSubmit.editReply({ content: "You need Manage Server permission to save settings." });
+      await modalSubmit.editReply({
+        content: "You need Manage Server permission to save settings.",
+      });
       throw new Error("Manage Server permission was revoked");
     }
     const message = modalSubmit.fields.getTextInputValue(fieldId).trim();

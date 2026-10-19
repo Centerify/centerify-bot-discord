@@ -3,16 +3,32 @@ import { loggerToken } from "../../src/core/index.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Message } from "discord.js";
 
-const mocks = vi.hoisted(() => ({ verified: vi.fn(), award: vi.fn(), custom: vi.fn(), error: vi.fn() }));
-vi.mock("../../src/modules/guilds/discord/ownership.js", () => ({ guildOwnershipService: { isVerified: mocks.verified } }));
+const mocks = vi.hoisted(() => ({
+  verified: vi.fn(),
+  award: vi.fn(),
+  custom: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock("../../src/modules/guilds/discord/ownership.js", () => ({
+  guildOwnershipService: { isVerified: mocks.verified },
+}));
 vi.mock("../../src/modules/xp/discord/services.js", () => ({ xpService: { award: mocks.award } }));
-vi.mock("../../src/modules/custom-commands/discord/legacyRunner.js", async (importOriginal) => ({ ...await importOriginal<typeof import("../../src/modules/custom-commands/discord/legacyRunner.js")>(), runCustomCommand: mocks.custom }));
+vi.mock("../../src/modules/custom-commands/discord/legacyRunner.js", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../src/modules/custom-commands/discord/legacyRunner.js")
+  >()),
+  runCustomCommand: mocks.custom,
+}));
 vi.mock("../../src/adapters/logging/runtime.js", () => ({ logger: { error: mocks.error } }));
 
 import { dispatchDiscordEvent } from "../../src/adapters/discord/modules.js";
 
-
-const message = { guild: { id: "guild-a" }, author: { id: "member-a", bot: false }, webhookId: null, system: false };
+const message = {
+  guild: { id: "guild-a" },
+  author: { id: "member-a", bot: false },
+  webhookId: null,
+  system: false,
+};
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -28,8 +44,16 @@ test("verified guild messages award XP and run custom commands", async () => {
 
 test("custom command delivery does not wait for XP storage", async () => {
   let finishXp!: () => void;
-  mocks.award.mockReturnValue(new Promise<void>((resolve) => { finishXp = resolve; }));
-  const running = dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message);
+  mocks.award.mockReturnValue(
+    new Promise<void>((resolve) => {
+      finishXp = resolve;
+    }),
+  );
+  const running = dispatchDiscordEvent(
+    currentApplication(),
+    "messageCreate",
+    message as unknown as Message,
+  );
   try {
     await vi.waitFor(() => expect(mocks.custom).toHaveBeenCalledWith(message));
   } finally {
@@ -59,7 +83,9 @@ test("unverified guilds cannot earn XP or dispatch custom commands", async () =>
 
 test("ownership check failures stop all automatic message actions", async () => {
   mocks.verified.mockRejectedValue(new Error("Database unavailable"));
-  await expect(dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message)).resolves.toBeUndefined();
+  await expect(
+    dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message),
+  ).resolves.toBeUndefined();
   expect(mocks.award).not.toHaveBeenCalled();
   expect(mocks.custom).not.toHaveBeenCalled();
   expect(mocks.error).toHaveBeenCalledTimes(2);
@@ -67,12 +93,16 @@ test("ownership check failures stop all automatic message actions", async () => 
 
 test("XP failures do not prevent custom commands in an authorized server", async () => {
   mocks.award.mockRejectedValue(new Error("XP unavailable"));
-  await expect(dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message)).resolves.toBeUndefined();
+  await expect(
+    dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message),
+  ).resolves.toBeUndefined();
   expect(mocks.custom).toHaveBeenCalledWith(message);
 });
 
 test("custom command errors are contained and logged", async () => {
   mocks.custom.mockRejectedValue(new Error("Missing Access"));
-  await expect(dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message)).resolves.toBeUndefined();
+  await expect(
+    dispatchDiscordEvent(currentApplication(), "messageCreate", message as unknown as Message),
+  ).resolves.toBeUndefined();
   expect(mocks.error).toHaveBeenCalledOnce();
 });

@@ -6,10 +6,7 @@ import {
   CUSTOM_COMMAND_PREFIX as PREFIX,
   CUSTOM_COMMAND_LIMITS as L,
 } from "../domain/constants.js";
-import {
-  CustomCommandArgumentError,
-  CustomCommandError,
-} from "../domain/errors.js";
+import { CustomCommandArgumentError, CustomCommandError } from "../domain/errors.js";
 import { parseArguments } from "./CustomCommandVariableResolver.js";
 
 import type { Client, Guild } from "discord.js";
@@ -17,22 +14,13 @@ export const customCommandService = serviceRef(customCommandsToken);
 export const customCommandExecutor = serviceRef(executorToken);
 export const customCommandSharingService = serviceRef(sharingToken);
 
-export async function resolveExecutableCustomCommand(
-  client: Client,
-  guild: Guild,
-  name: string,
-) {
-  const local = await customCommandService.getCommandByNameOrAlias(
-    guild.id,
-    name,
-  );
+export async function resolveExecutableCustomCommand(client: Client, guild: Guild, name: string) {
+  const local = await customCommandService.getCommandByNameOrAlias(guild.id, name);
   return local ?? customCommandSharingService.resolve(client, guild, name);
 }
 
 /** Called only after the existing message listener has checked guild ownership. */
-export async function runDomainCustomCommand(
-  message: Message,
-): Promise<boolean> {
+export async function runDomainCustomCommand(message: Message): Promise<boolean> {
   if (
     !message.guild ||
     !message.member ||
@@ -42,8 +30,7 @@ export async function runDomainCustomCommand(
     !message.content.startsWith(PREFIX)
   )
     return false;
-  if (message.content.length > L.argumentInput + L.name + PREFIX.length + 1)
-    return false;
+  if (message.content.length > L.argumentInput + L.name + PREFIX.length + 1) return false;
   let space = -1;
   for (let i = PREFIX.length; i < message.content.length; i++) {
     const char = message.content.charCodeAt(i);
@@ -56,19 +43,13 @@ export async function runDomainCustomCommand(
   const end = space < 0 ? message.content.length : space;
   const rawName = message.content.slice(PREFIX.length, end);
   if (!rawName || rawName.length > L.name) return false;
-  const command = await resolveExecutableCustomCommand(
-    message.client,
-    message.guild,
-    rawName,
-  );
+  const command = await resolveExecutableCustomCommand(message.client, message.guild, rawName);
   if (!command) return false;
   const member = message.member;
   const channel = message.channel;
   if (channel.isDMBased() || !("send" in channel)) return true;
   try {
-    const args = parseArguments(
-      space < 0 ? "" : message.content.slice(space + 1),
-    );
+    const args = parseArguments(space < 0 ? "" : message.content.slice(space + 1));
     await customCommandExecutor.execute(
       {
         guildId: message.guild.id,

@@ -6,6 +6,9 @@ export * from "./configuration.js";
 import { onXpMessage, onXpReaction } from "./events.js";
 
 export const discordModule: DiscordModule = {
-  commands: { "xp": XpCommand },
-  events: [discordEvent("messageCreate", onXpMessage), discordEvent("messageReactionAdd", onXpReaction)],
+  commands: { xp: XpCommand },
+  events: [
+    discordEvent("messageCreate", onXpMessage),
+    discordEvent("messageReactionAdd", onXpReaction),
+  ],
 };

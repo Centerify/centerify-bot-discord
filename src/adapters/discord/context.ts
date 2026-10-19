@@ -9,7 +9,9 @@ const applications = new WeakMap<Client, ModuleRegistry>();
 export function bindApplication(client: Client, application: ModuleRegistry) {
   if (applications.has(client)) throw new Error("Discord client already has an application");
   applications.set(client, application);
-  return () => { applications.delete(client); };
+  return () => {
+    applications.delete(client);
+  };
 }
 
 export function withApplication<T>(application: ModuleRegistry, run: () => T): T {

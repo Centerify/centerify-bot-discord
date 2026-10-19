@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { hasServerActionReferences } from "../domain/components.js";
-export interface SharingGuild { id: string; name: string }
+export interface SharingGuild {
+  id: string;
+  name: string;
+}
 export interface SharingDirectory {
   get(id: string): SharingGuild | undefined;
   list(): SharingGuild[];
@@ -22,9 +25,7 @@ export class CustomCommandSharingConflictError extends CustomCommandValidationEr
     public readonly conflicts: SharingConflict[],
     public readonly fingerprint: string,
   ) {
-    super(
-      "Duplicate command names or aliases found. Review the warning before proceeding.",
-    );
+    super("Duplicate command names or aliases found. Review the warning before proceeding.");
   }
 }
 export interface CommandSharing {
@@ -64,33 +65,27 @@ export class CommandSharingService {
   ) {}
 
   public async canManage(guild: SharingGuild, actorId: string): Promise<boolean> {
-    try { return await this.authorize(guild, actorId); } catch { return false; }
+    try {
+      return await this.authorize(guild, actorId);
+    } catch {
+      return false;
+    }
   }
 
   public async discover(client: SharingDirectory, actorId: string, sourceId: string) {
-    const guilds = client.list().filter(
-      (guild) => guild.id !== sourceId,
-    );
+    const guilds = client.list().filter((guild) => guild.id !== sourceId);
     const choices: { id: string; name: string }[] = [];
     for (let offset = 0; offset < guilds.length; offset += 5) {
       const batch = await Promise.all(
         guilds
           .slice(offset, offset + 5)
           .map(async (guild) =>
-            (await this.canManage(guild, actorId))
-              ? { id: guild.id, name: guild.name }
-              : null,
+            (await this.canManage(guild, actorId)) ? { id: guild.id, name: guild.name } : null,
           ),
       );
-      choices.push(
-        ...batch.filter(
-          (item): item is { id: string; name: string } => item !== null,
-        ),
-      );
+      choices.push(...batch.filter((item): item is { id: string; name: string } => item !== null));
     }
-    return choices.sort(
-      (a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
-    );
+    return choices.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }
 
   public get(command: CustomCommandRecord) {
@@ -98,18 +93,26 @@ export class CommandSharingService {
   }
 
   private includes(sharing: CommandSharing, targetId: string): boolean {
-    return sharing.scope === "all" ||
-      (sharing.scope === "selected" && sharing.selectedGuildIds.split(",").includes(targetId));
+    return (
+      sharing.scope === "all" ||
+      (sharing.scope === "selected" && sharing.selectedGuildIds.split(",").includes(targetId))
+    );
   }
 
   /** Include disabled and conflicting commands so administrators can repair them. */
-  public async listAvailable(client: SharingDirectory, target: SharingGuild): Promise<CustomCommandRecord[]> {
+  public async listAvailable(
+    client: SharingDirectory,
+    target: SharingGuild,
+  ): Promise<CustomCommandRecord[]> {
     const [local, grants] = await Promise.all([
       this.commands.listCommands(target.id),
       this.repository.available(target.id),
     ]);
-    const result = local.map((command) => ({ ...command,
-      sharingScope: grants.find((grant) => grant.guildId === target.id && grant.commandId === command.id)?.scope ?? "server" as const,
+    const result = local.map((command) => ({
+      ...command,
+      sharingScope:
+        grants.find((grant) => grant.guildId === target.id && grant.commandId === command.id)
+          ?.scope ?? ("server" as const),
     }));
     const access = new Map<string, Promise<boolean>>();
     const canManage = (guild: SharingGuild, actor: string) => {
@@ -122,38 +125,64 @@ export class CommandSharingService {
       if (grant.guildId === target.id || !this.includes(grant, target.id)) continue;
       const source = client.get(grant.guildId);
       if (!source) continue;
-      const allowed = await Promise.all([canManage(source, grant.actorId), canManage(target, grant.actorId)]);
+      const allowed = await Promise.all([
+        canManage(source, grant.actorId),
+        canManage(target, grant.actorId),
+      ]);
       if (!allowed.every(Boolean)) continue;
       if (!records.has(source.id)) {
         this.commands.invalidate(source.id);
         records.set(source.id, this.commands.listCommands(source.id));
       }
       const command = (await records.get(source.id)!).find((row) => row.id === grant.commandId);
-      if (command) result.push({ ...command, guildId: target.id, sourceGuildId: source.id, sharingScope: grant.scope });
+      if (command)
+        result.push({
+          ...command,
+          guildId: target.id,
+          sourceGuildId: source.id,
+          sharingScope: grant.scope,
+        });
     }
     return result;
   }
 
   /** Recheck the grant and the editor's access on every shared mutation. */
-  public async forManagement(client: SharingDirectory, target: SharingGuild, actorId: string, command: CustomCommandRecord) {
+  public async forManagement(
+    client: SharingDirectory,
+    target: SharingGuild,
+    actorId: string,
+    command: CustomCommandRecord,
+  ) {
     const sourceId = command.sourceGuildId ?? command.guildId;
     const source = client.get(sourceId);
     if (!source || command.guildId !== target.id)
-      throw new CustomCommandValidationError("This shared command is no longer available. Refresh settings.");
+      throw new CustomCommandValidationError(
+        "This shared command is no longer available. Refresh settings.",
+      );
     const allowed = await Promise.all([
-      this.canManage(source, actorId), this.canManage(target, actorId),
+      this.canManage(source, actorId),
+      this.canManage(target, actorId),
     ]);
     if (!allowed.every(Boolean))
-      throw new CustomCommandValidationError("Administrator permission and verified ownership are required in both the original and current servers to edit a shared command.");
+      throw new CustomCommandValidationError(
+        "Administrator permission and verified ownership are required in both the original and current servers to edit a shared command.",
+      );
     if (sourceId !== target.id) {
       const grant = await this.repository.get(sourceId, command.id);
-      if (!grant || !this.includes(grant, target.id) ||
-          !(await this.canManage(source, grant.actorId)) ||
-          !(await this.canManage(target, grant.actorId)))
-        throw new CustomCommandValidationError("This command is no longer shared with this server. Refresh settings.");
+      if (
+        !grant ||
+        !this.includes(grant, target.id) ||
+        !(await this.canManage(source, grant.actorId)) ||
+        !(await this.canManage(target, grant.actorId))
+      )
+        throw new CustomCommandValidationError(
+          "This command is no longer shared with this server. Refresh settings.",
+        );
     }
     this.commands.invalidate(sourceId);
-    const current = (await this.commands.listCommands(sourceId)).find((row) => row.id === command.id);
+    const current = (await this.commands.listCommands(sourceId)).find(
+      (row) => row.id === command.id,
+    );
     if (!current)
       throw new CustomCommandValidationError("This command was removed. Refresh settings.");
     return current;
@@ -192,13 +221,12 @@ export class CommandSharingService {
     const conflicts: SharingConflict[] = [];
     for (const target of targets) {
       const guild = client.get(target.id);
-      if (!guild)
-        throw new CustomCommandValidationError(
-          "Refresh the server list before saving.",
-        );
+      if (!guild) throw new CustomCommandValidationError("Refresh the server list before saving.");
       const locals = await load(target.id);
       const localNames = new Set(locals.flatMap((row) => [row.name, ...row.aliases]));
-      const replacements = locals.filter((row) => [row.name, ...row.aliases].some((name) => names.includes(name)));
+      const replacements = locals.filter((row) =>
+        [row.name, ...row.aliases].some((name) => names.includes(name)),
+      );
       let replaceable = true;
       for (const local of replacements) {
         if (await this.repository.get(target.id, local.id)) replaceable = false;
@@ -210,8 +238,7 @@ export class CommandSharingService {
         let duplicate = localNames.has(name) || legacy;
         for (const sharing of candidates.get(name)!) {
           if (
-            (sharing.guildId === command.guildId &&
-              sharing.commandId === command.id) ||
+            (sharing.guildId === command.guildId && sharing.commandId === command.id) ||
             sharing.guildId === target.id ||
             (sharing.scope !== "all" && sharing.scope !== "selected") ||
             (sharing.scope === "selected" &&
@@ -225,9 +252,7 @@ export class CommandSharingService {
             !(await canManage(guild, sharing.actorId))
           )
             continue;
-          const shared = (await load(source.id)).find(
-            (row) => row.id === sharing.commandId,
-          );
+          const shared = (await load(source.id)).find((row) => row.id === sharing.commandId);
           if (
             shared?.enabled &&
             !hasServerRestrictions(shared) &&
@@ -271,7 +296,9 @@ export class CommandSharingService {
       if (!target) throw new CustomCommandValidationError("Refresh settings before saving.");
       const current = await this.forManagement(client, target, actorId, command);
       if (current.updatedAt !== command.updatedAt)
-        throw new CustomCommandValidationError("This command changed. Refresh settings before saving its scope.");
+        throw new CustomCommandValidationError(
+          "This command changed. Refresh settings before saving its scope.",
+        );
       command = current;
     }
     const source = client.get(command.guildId);
@@ -318,7 +345,9 @@ export class CommandSharingService {
           throw new CustomCommandSharingConflictError(conflicts, fingerprint);
         if (resolution === "replace") {
           if (conflicts.some((conflict) => !conflict.replaceable))
-            throw new CustomCommandValidationError("Only server custom commands can be replaced here. Rename or remove conflicting legacy or shared commands, or remove their sharing scope first.");
+            throw new CustomCommandValidationError(
+              "Only server custom commands can be replaced here. Rename or remove conflicting legacy or shared commands, or remove their sharing scope first.",
+            );
           replacements = conflicts;
         }
       }
@@ -359,10 +388,7 @@ export class CommandSharingService {
         (sharing.scope !== "all" && sharing.scope !== "selected")
       )
         continue;
-      if (
-        sharing.scope === "selected" &&
-        !sharing.selectedGuildIds.split(",").includes(target.id)
-      )
+      if (sharing.scope === "selected" && !sharing.selectedGuildIds.split(",").includes(target.id))
         continue;
       const source = client.get(sharing.guildId);
       if (!source) continue;
