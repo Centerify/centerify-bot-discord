@@ -74,3 +74,23 @@ test("ownership denial completes a deferred reply", async () => {
   expect(interaction.followUp).not.toHaveBeenCalled();
   expect(interaction.reply).not.toHaveBeenCalled();
 });
+
+test("overlapping ownership checks share I/O and the next check refreshes ownership", async () => {
+  mocks.first.mockResolvedValue({ ownerUserId: "current-owner" });
+  expect(await Promise.all(Array.from({ length: 100 }, () => service.isVerified(guild)))).toEqual(Array(100).fill(true));
+  expect(fetchGuild).toHaveBeenCalledOnce();
+  expect(mocks.first).toHaveBeenCalledOnce();
+  fetchGuild.mockResolvedValue({ ownerId: "new-owner" });
+  expect(await service.isVerified(guild)).toBe(false);
+  expect(fetchGuild).toHaveBeenCalledTimes(2);
+});
+
+test("failed shared checks are retried and never authorize another guild", async () => {
+  fetchGuild.mockRejectedValueOnce(new Error("offline"));
+  expect(await Promise.all([service.isVerified(guild), service.isVerified(guild)])).toEqual([false, false]);
+  mocks.first.mockResolvedValue({ ownerUserId: "current-owner" });
+  expect(await service.isVerified(guild)).toBe(true);
+  const other = { id: "other", fetch: vi.fn().mockResolvedValue({ ownerId: "other-owner" }) } as unknown as Guild;
+  expect(await service.isVerified(other)).toBe(false);
+  expect(other.fetch).toHaveBeenCalledOnce();
+});

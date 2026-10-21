@@ -8,11 +8,25 @@ export type TriggerType = (typeof TRIGGER_TYPES)[number];
 export type ResponseType = (typeof RESPONSE_TYPES)[number];
 export type CooldownScope = (typeof COOLDOWN_SCOPES)[number];
 export interface EmbedTemplate {
-  title?: string; description?: string; url?: string; color?: number; timestamp?: boolean | string;
+  title?: string;
+  description?: string;
+  url?: string;
+  color?: number;
+  timestamp?: boolean | string;
   footer?: { text: string; icon_url?: string; proxy_icon_url?: string };
   image?: { url: string; proxy_url?: string; height?: number; width?: number };
-  thumbnail?: { url: string; proxy_url?: string; height?: number; width?: number };
-  author?: { name: string; url?: string; icon_url?: string; proxy_icon_url?: string };
+  thumbnail?: {
+    url: string;
+    proxy_url?: string;
+    height?: number;
+    width?: number;
+  };
+  author?: {
+    name: string;
+    url?: string;
+    icon_url?: string;
+    proxy_icon_url?: string;
+  };
   fields?: { name: string; value: string; inline?: boolean }[];
 }
 export interface LinkButtonTemplate {
@@ -20,27 +34,55 @@ export interface LinkButtonTemplate {
   url: string;
 }
 export type NavigationAction =
-  | { action: "go" | "back"; target: number }
-  | { action: "main" | "cancel" };
+  { action: "go" | "back"; target: number } | { action: "main" | "cancel" };
 export interface EffectOptions {
   /** Override the private acknowledgement with a variable-enabled template. */
   successMessage?: string;
   /** Roles repeat by default; other effects run once per control by default. */
   repeatable?: boolean;
 }
-export type RoleAction = { action: "addrole" | "removerole" | "togglerole"; roleId: string; userId?: string } & EffectOptions;
+export type RoleAction = {
+  action: "addrole" | "removerole" | "togglerole";
+  roleId: string;
+  userId?: string;
+} & EffectOptions;
+export type ChannelAction = (
+  | { action: "setchannelname"; channelId: string; name: string }
+  | { action: "setchanneltopic"; channelId: string; topic: string }
+  | { action: "setslowmode"; channelId: string; seconds: number }
+  | {
+      action: "setchannelcategory";
+      channelId: string;
+      categoryId: string | null;
+    }
+) &
+  EffectOptions;
 export type EffectAction = (
   | RoleAction
+  | ChannelAction
   | { action: "warn"; userId: string; reason: string; durationMs?: number }
   | { action: "unwarn"; userId: string; reason: string; caseNumber?: number }
-  | { action: "note" | "kick" | "unban" | "removetimeout"; userId: string; reason: string }
+  | {
+      action: "note" | "kick" | "unban" | "removetimeout";
+      userId: string;
+      reason: string;
+    }
   | { action: "timeout"; userId: string; reason: string; durationMs: number }
-  | { action: "ban"; userId: string; reason: string; deleteMessageSeconds?: number }
+  | {
+      action: "ban";
+      userId: string;
+      reason: string;
+      deleteMessageSeconds?: number;
+    }
   | { action: "setnickname"; userId: string; nickname: string }
   | { action: "reply"; text: string }
   | { action: "sendmessage"; text: string; channelId?: string }
-) & EffectOptions;
-export type SequenceAction = { action: "sequence"; actions: EffectAction[] } & EffectOptions;
+) &
+  EffectOptions;
+export type SequenceAction = {
+  action: "sequence";
+  actions: EffectAction[];
+} & EffectOptions;
 export type ComponentAction = NavigationAction | EffectAction | SequenceAction;
 export type ActionButtonTemplate = ComponentAction & {
   label: string;
@@ -57,7 +99,12 @@ export interface SelectTemplate {
 export type ButtonTemplate = LinkButtonTemplate | ActionButtonTemplate;
 export type ResponseTemplate = (
   { type: "TEXT"; text: string } | { type: "EMBED"; embed: EmbedTemplate }
-) & { buttons?: ButtonTemplate[]; selects?: SelectTemplate[]; stage?: number; variables?: Record<string, string> };
+) & {
+  buttons?: ButtonTemplate[];
+  selects?: SelectTemplate[];
+  stage?: number;
+  variables?: Record<string, string>;
+};
 export interface CustomCommandDefinition {
   name: string;
   description: string;
@@ -91,7 +138,10 @@ export interface CustomCommandRecord extends CustomCommandDefinition {
   lastUsedAt: string | null;
 }
 export interface CommandExecutionIdentity {
-  guildId: string; channelId: string; userId: string; command: CustomCommandRecord;
+  guildId: string;
+  channelId: string;
+  userId: string;
+  command: CustomCommandRecord;
 }
 export interface CustomCommandTransaction {
   list(): Promise<CustomCommandRecord[]>;

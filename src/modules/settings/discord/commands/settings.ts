@@ -1,4 +1,5 @@
 import { trackCollector } from "../../../../adapters/discord/resources.js";
+import { interactionErrorDetails, interactionUnavailable, replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { settingsActionAvailable } from "../availability.js";
 import { Command } from "@sapphire/framework";
 import {
@@ -74,20 +75,21 @@ export class SettingsCommand extends Command {
       if (!button.customId.startsWith(`setup:${interaction.id}:`)) return;
       if (!button.isButton() && !button.isStringSelectMenu() && !button.isChannelSelectMenu() && !button.isRoleSelectMenu()) return;
       if (button.user.id !== interaction.user.id || !button.inCachedGuild() || !canManageServer(button.member)) {
-        await button.reply({ content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral });
+        await replyToCommand(button, { content: "Only the administrator who opened settings can use these controls, and Manage Server permission is required.", flags: MessageFlags.Ephemeral }).catch(() => null);
         return;
       }
       if (busy || finished) {
-        await button.reply({ content: finished ? "This settings session is closed. Run /settings again." : "Finish the current settings action first.", flags: MessageFlags.Ephemeral });
+        await replyToCommand(button, { content: finished ? "This settings session is closed. Run /settings again." : "Finish the current settings action first.", flags: MessageFlags.Ephemeral }).catch(() => null);
         return;
       }
       const action = button.customId.split(":").at(2);
       if (action && !settingsActionAvailable(action)) {
-        await button.reply({ content: "This module is disabled.", flags: MessageFlags.Ephemeral });
+        await replyToCommand(button, { content: "This module is disabled.", flags: MessageFlags.Ephemeral }).catch(() => null);
         return;
       }
       busy = true;
-      collector.resetTimer();
+      // Keep the fixed deadline inside the original reply token's 15-minute life.
+      const receivedAt = Date.now();
       try {
         if (action === "custom-commands" && button.isButton()) {
           await button.deferReply({ flags: MessageFlags.Ephemeral });
@@ -101,7 +103,13 @@ export class SettingsCommand extends Command {
           collector.stop("finished");
         }
       } catch (error) {
-        logger.error({ err: error, guildId: interaction.guildId }, "Settings interaction failed");
+        logger.error({ ...interactionErrorDetails(error), guildId: interaction.guildId,
+          action, interactionAgeMs: receivedAt - button.createdTimestamp,
+          handlerDurationMs: Date.now() - receivedAt }, "Settings interaction failed");
+        if (interactionUnavailable(error)) {
+          if (!finished) await interaction.editReply({ content: "Discord could not accept that click. Please try the control again. If this keeps happening, reopen /settings." }).catch(() => null);
+          return;
+        }
         if (button.deferred || button.replied) {
           await button.followUp({ content: "I could not load or save settings right now. Please try again.", flags: MessageFlags.Ephemeral }).catch(() => null);
         } else {
@@ -112,6 +120,7 @@ export class SettingsCommand extends Command {
       }
     });
     collector.on("end", () => {
+      finished = true;
       void interaction.editReply({ components: [] }).catch(() => null);
     });
   }

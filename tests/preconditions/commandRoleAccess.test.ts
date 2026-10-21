@@ -10,7 +10,7 @@ const role = "123456789012345678";
 function fixture(roles: string[] = []) {
   return { commandName: "warn", guildId: "guild", user: { id: "user" }, inCachedGuild: () => true,
     guild: { members: { fetch: vi.fn().mockResolvedValue({ roles: { cache: new Map(roles.map((id) => [id, {}])) } }) } },
-    deferred: false, replied: false, reply: vi.fn(), followUp: vi.fn() };
+    deferred: false, replied: false, reply: vi.fn(), editReply: vi.fn(), followUp: vi.fn() };
 }
 beforeEach(() => { vi.resetAllMocks(); mocks.load.mockResolvedValue({}); });
 test("unrestricted commands avoid a member fetch", async () => {
@@ -26,12 +26,13 @@ test("role restrictions use fresh membership and reject missing roles before com
   expect(denied.guild.members.fetch).toHaveBeenCalledWith({ user: "user", force: true });
   expect((await precondition.chatInputRun(fixture([role]) as unknown as ChatInputCommandInteraction)).isOk()).toBe(true);
 });
-test("access check failures fail closed and acknowledged interactions use followUp", async () => {
+test("access check failures fail closed and complete the deferred reply", async () => {
   mocks.load.mockRejectedValue(new Error("offline"));
   const f = { ...fixture(), deferred: true };
   expect((await precondition.chatInputRun(f as unknown as ChatInputCommandInteraction)).isErr()).toBe(true);
   expect(f.reply).not.toHaveBeenCalled();
-  expect(f.followUp).toHaveBeenCalledOnce();
+  expect(f.editReply).toHaveBeenCalledOnce();
+  expect(f.followUp).not.toHaveBeenCalled();
 });
 test.each(["settings", "setup", "verify", "unverify"])("/%s stays available for recovery", async (commandName) => {
   expect((await precondition.chatInputRun({ ...fixture(), commandName } as unknown as ChatInputCommandInteraction)).isOk()).toBe(true);

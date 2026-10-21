@@ -111,3 +111,29 @@ test("custom command settings opens from the existing layout in a separate ephem
   expect(mocks.handle).not.toHaveBeenCalled();
   expect(f.editReply).toHaveBeenCalledOnce();
 });
+
+test("an expired custom-settings click recovers through the existing panel and releases the session", async () => {
+  const f = fixture();
+  await command.chatInputRun(f as never);
+  const b = { ...button(), customId: "setup:settings-session:custom-commands", followUp: vi.fn() };
+  b.deferReply.mockRejectedValueOnce({ code: 10062, url: "private-token" });
+  await f.callbacks.collect(b);
+  expect(mocks.customSettings).not.toHaveBeenCalled();
+  expect(b.reply).not.toHaveBeenCalled();
+  expect(b.followUp).not.toHaveBeenCalled();
+  expect(f.editReply).toHaveBeenLastCalledWith({ content: expect.stringContaining("try the control again") });
+  expect(f.collector.resetTimer).not.toHaveBeenCalled();
+  await f.callbacks.collect(b);
+  expect(mocks.customSettings).toHaveBeenCalledOnce();
+});
+
+test("expiry prevents further actions and does not resurrect settings after a failed click", async () => {
+  const f = fixture();
+  await command.chatInputRun(f as never);
+  f.callbacks.end();
+  const b = { ...button(), customId: "setup:settings-session:custom-commands" };
+  await f.callbacks.collect(b);
+  expect(b.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("session is closed") }));
+  expect(mocks.customSettings).not.toHaveBeenCalled();
+  expect(f.editReply).toHaveBeenLastCalledWith({ components: [] });
+});

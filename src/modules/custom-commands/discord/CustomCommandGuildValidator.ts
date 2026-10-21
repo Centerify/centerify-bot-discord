@@ -1,10 +1,11 @@
-import type { Guild } from "discord.js";
+import { ChannelType, type Guild } from "discord.js";
 import type { CustomCommandDefinition } from "../domain/types.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
 import {
   responseRoleIds,
   responseChannelIds,
   responseUserIds,
+  responseCategoryIds,
 } from "../domain/components.js";
 export async function validateGuildReferences(
   guild: Guild,
@@ -26,7 +27,10 @@ export async function validateGuildReferences(
   );
   // Refresh before administrative writes; don't trust submitted select/attachment IDs.
   if (roles.size) await guild.roles.fetch();
-  if (channels.size) await guild.channels.fetch();
+  const categories = new Set(
+    commands.flatMap((command) => responseCategoryIds(command.content)),
+  );
+  if (channels.size || categories.size) await guild.channels.fetch();
   for (const id of roles)
     if (!guild.roles.cache.has(id))
       throw new CustomCommandValidationError(
@@ -46,6 +50,17 @@ export async function validateGuildReferences(
     if (!channel || channel.guildId !== guild.id || !channel.isTextBased())
       throw new CustomCommandValidationError(
         `Channel ${id} is not a text channel in this server.`,
+      );
+  }
+  for (const id of categories) {
+    const channel = guild.channels.cache.get(id);
+    if (
+      !channel ||
+      channel.guildId !== guild.id ||
+      channel.type !== ChannelType.GuildCategory
+    )
+      throw new CustomCommandValidationError(
+        `Category ${id} does not belong to this server.`,
       );
   }
   for (const id of new Set(

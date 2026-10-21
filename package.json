@@ -26,6 +26,7 @@
     "test:e2e": "node scripts/test-database.mjs --e2e",
     "check:discord": "node scripts/verify-discord.mjs",
     "typecheck": "tsc --noEmit",
+    "benchmark:performance": "tsx scripts/benchmark-performance.mts",
     "contract:emit": "prisma contract emit"
   },
   "dependencies": {
@@ -33,7 +34,8 @@
     "@sapphire/framework": "^5.5.1",
     "discord.js": "^14.27.0",
     "dotenv": "^17.4.2",
-    "pino": "^10.3.1"
+    "pino": "^10.3.1",
+    "undici": "^6.29.0"
   },
   "devDependencies": {
     "@prisma/cli-engine": "^0.2.3",

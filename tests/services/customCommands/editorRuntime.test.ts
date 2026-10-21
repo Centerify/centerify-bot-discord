@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   ownership: vi.fn(),
   shared: vi.fn(),
+  error: vi.fn(),
 }));
 vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
   customCommandService: { updateCommand: mocks.update },
@@ -12,7 +13,7 @@ vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
 vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   requireVerifiedOwnership: mocks.ownership,
 }));
-vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
+vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: mocks.error } }));
 import { openCustomCommandEditor } from "../../../src/modules/custom-commands/discord/editor.js";
 import { record, USER } from "./fixtures.js";
 function fixture() {
@@ -66,6 +67,56 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.ownership.mockResolvedValue(true);
   mocks.update.mockResolvedValue(record());
+});
+
+test("expired editor buttons preserve the command and recover through the original panel", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.customId = "cc:session:add-text";
+  f.button.deferUpdate.mockRejectedValueOnce(Object.assign(new Error("Unknown interaction"), { code: 10062, url: "private-token" }));
+  await f.collect(f.button);
+  expect(f.guild.members.fetch).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(f.button.followUp).not.toHaveBeenCalled();
+  expect(f.root.editReply).toHaveBeenLastCalledWith({ content: expect.stringContaining("saved command is unchanged") });
+  expect(mocks.error).toHaveBeenCalledWith(expect.objectContaining({ code: 10062 }), "custom_command.editor_acknowledgement_failed");
+  expect(JSON.stringify(mocks.error.mock.calls)).not.toContain("private-token");
+  await f.collect(f.button);
+  expect(mocks.update).toHaveBeenCalledOnce();
+});
+
+test("expired modal submissions never save or send a follow-up on the failed token", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  const submission = { id: "submission", createdTimestamp: Date.now(), deferReply: vi.fn().mockRejectedValue({ code: 10062 }), editReply: vi.fn() };
+  f.button.awaitModalSubmit.mockResolvedValue(submission);
+  await f.collect(f.button);
+  expect(f.guild.members.fetch).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(submission.editReply).not.toHaveBeenCalled();
+  expect(f.button.followUp).not.toHaveBeenCalled();
+  expect(f.root.editReply).toHaveBeenLastCalledWith({ content: expect.stringContaining("saved command is unchanged") });
+});
+
+test("failed modal acknowledgements do not revive an expired editor", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.showModal.mockRejectedValue({ code: 10062 });
+  f.collector.ended = true;
+  await f.collect(f.button);
+  expect(f.root.editReply).toHaveBeenCalledOnce();
+  expect(f.button.followUp).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test("rejected guard replies are contained without changing the command", async () => {
+  const f = fixture();
+  await openCustomCommandEditor(f.root as never, record());
+  f.button.user.id = "other";
+  f.button.reply.mockRejectedValue({ code: 10062 });
+  await expect(f.collect(f.button)).resolves.toBeUndefined();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(f.root.editReply).toHaveBeenCalledOnce();
 });
 test("editing a shared command writes to its original server and preserves shared identity", async () => {
   const f = fixture();

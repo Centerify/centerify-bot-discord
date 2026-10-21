@@ -1,4 +1,5 @@
 import { trackCollector } from "../../../../adapters/discord/resources.js";
+import { interactionErrorDetails, interactionUnavailable, replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { settingsActionAvailable } from "../availability.js";
 import { Command } from "@sapphire/framework";
 import {
@@ -94,11 +95,11 @@ export class SetupCommand extends Command {
       }
 
       if (componentInteraction.user.id !== interaction.user.id) {
-        await componentInteraction.reply({
+        await replyToCommand(componentInteraction, {
           content:
             "Only the administrator who started this setup session can use these controls.",
           flags: MessageFlags.Ephemeral,
-        });
+        }).catch(() => null);
         return;
       }
 
@@ -112,10 +113,9 @@ export class SetupCommand extends Command {
       }
 
       if (finished || busy) {
-        await componentInteraction.reply({ content: finished ? "This setup session is complete. Run /setup again." : "Finish the current setup action before starting another.", flags: MessageFlags.Ephemeral });
+        await replyToCommand(componentInteraction, { content: finished ? "This setup session is complete. Run /setup again." : "Finish the current setup action before starting another.", flags: MessageFlags.Ephemeral }).catch(() => null);
         return;
       }
-      collector.resetTimer();
       busy = true;
       try {
         config = await this.interactionHandler.handleComponent({
@@ -131,12 +131,17 @@ export class SetupCommand extends Command {
       } catch (error) {
         logger.error(
           {
-            err: error,
+            ...interactionErrorDetails(error),
             guildId: interaction.guildId,
             userId: interaction.user.id,
           },
           "Setup interaction failed",
         );
+
+        if (interactionUnavailable(error)) {
+          if (!finished) await interaction.editReply({ content: "Discord could not accept that click. Please try the control again. If this keeps happening, reopen /setup." }).catch(() => null);
+          return;
+        }
 
         await this.interactionHandler
           .respondWithError(componentInteraction)
@@ -159,6 +164,7 @@ export class SetupCommand extends Command {
       if (finished) {
         return;
       }
+      finished = true;
 
       await interaction
         .editReply(this.renderer.buildExpiredScreen(interaction.guild, config))

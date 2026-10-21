@@ -1,3 +1,4 @@
+import { replyToCommand } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 
 export class PingCommand extends Command {
@@ -13,6 +14,6 @@ export class PingCommand extends Command {
     interaction: Command.ChatInputCommandInteraction,
   ) {
     const user = interaction.user;
-    await interaction.reply(`Pong ${user.displayName} !`);
+    await replyToCommand(interaction, `Pong ${user.displayName} !`);
   }
 }

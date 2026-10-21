@@ -133,7 +133,7 @@ export class SetupInteractionHandler {
       return;
     }
 
-    await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content, flags: MessageFlags.Ephemeral });
   }
 
   private async handleButton({
