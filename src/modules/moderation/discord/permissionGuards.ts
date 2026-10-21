@@ -6,20 +6,13 @@ import {
   type PermissionsString,
 } from "discord.js";
 
-export function hasModeratorPermission(
-  member: GuildMember,
-  permission: bigint,
-) {
+export function hasModeratorPermission(member: GuildMember, permission: bigint) {
   return (
-    member.permissions.has(permission) ||
-    member.permissions.has(PermissionFlagsBits.Administrator)
+    member.permissions.has(permission) || member.permissions.has(PermissionFlagsBits.Administrator)
   );
 }
 
-export function validateBotPermissions(
-  guild: Guild,
-  permissions: readonly bigint[],
-) {
+export function validateBotPermissions(guild: Guild, permissions: readonly bigint[]) {
   const me = guild.members.me;
   if (!me) {
     return "I could not resolve my server member.";
@@ -33,10 +26,7 @@ export function validateBotPermissions(
   return null;
 }
 
-export function validateChannelSendAccess(
-  guild: Guild,
-  channel: GuildBasedChannel,
-) {
+export function validateChannelSendAccess(guild: Guild, channel: GuildBasedChannel) {
   if (!("permissionsFor" in channel)) {
     return "Please choose a text channel I can send messages in.";
   }
@@ -47,12 +37,7 @@ export function validateChannelSendAccess(
   }
 
   const permissions = channel.permissionsFor(me);
-  if (
-    !permissions?.has([
-      PermissionFlagsBits.ViewChannel,
-      PermissionFlagsBits.SendMessages,
-    ])
-  ) {
+  if (!permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
     return "I cannot view and send messages in that channel.";
   }
 
@@ -100,4 +85,17 @@ export function validateMemberAction({
 
 export function missingPermissionMessage(permissionName: PermissionsString) {
   return `You need ${permissionName} permission to use this command.`;
+}
+
+/** Only Discord's explicit Unknown Member response permits a non-member ban. */
+export async function fetchOptionalMember(
+  guild: Guild,
+  userId: string,
+): Promise<GuildMember | null> {
+  try {
+    return await guild.members.fetch({ user: userId, force: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === 10007) return null;
+    throw error;
+  }
 }

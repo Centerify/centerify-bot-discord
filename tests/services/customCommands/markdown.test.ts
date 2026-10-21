@@ -42,9 +42,7 @@ Hello {user.mention}! **Welcome to {guild.name}.**
     },
     buttons: [{ label: "Read the rules", url: "https://example.com/rules" }],
   });
-  const payloads = await new CustomCommandRenderer().render(
-    context({ command: record(patch) }),
-  );
+  const payloads = await new CustomCommandRenderer().render(context({ command: record(patch) }));
   const row = payloads[1].components![0];
   expect("toJSON" in row ? row.toJSON() : row).toMatchObject({
     type: 1,
@@ -95,10 +93,8 @@ test("the saved .cfg welcome template has navigable Rules and Server info pages"
 });
 
 test("the syntax guide's copyable example remains valid", () => {
-  const guide = readFileSync("docs/custom-commands.md", "utf8");
-  const example = /<!-- prettier-ignore -->\n```text\n([\s\S]*?)\n```/.exec(
-    guide,
-  )?.[1];
+  const guide = readFileSync("docs/custom-commands.md", "utf8").replaceAll("\r\n", "\n");
+  const example = /<!-- prettier-ignore -->\n```text\n([\s\S]*?)\n```/.exec(guide)?.[1];
   expect(example).toBeDefined();
   expect(parseCommandMarkdown(example!)).toHaveLength(2);
 });
@@ -134,18 +130,16 @@ test.each([
   "@channel 123456789012345678>",
   "@channel 123456789012345678 extra",
 ])("@channel rejects malformed IDs: %s", (source) => {
-  expect(() => parseCommandMarkdown(`:::text\n${source}\n:::`)).toThrow(
-    "Discord channel ID",
-  );
+  expect(() => parseCommandMarkdown(`:::text\n${source}\n:::`)).toThrow("Discord channel ID");
 });
 
 test("plain Markdown and code fences retain formatting; escaped directives stay literal", () => {
   const text = "# Heading\n**bold** _italic_ ||spoiler||\n- item\n> quote";
   expect(parseCommandMarkdown(text)).toEqual([{ type: "TEXT", text }]);
   const code = "```md\n@cover not-a-url\n:::\n```";
-  expect(
-    parseCommandMarkdown(`:::text\n${code}\n\\@button literal\n:::`),
-  ).toEqual([{ type: "TEXT", text: `${code}\n@button literal` }]);
+  expect(parseCommandMarkdown(`:::text\n${code}\n\\@button literal\n:::`)).toEqual([
+    { type: "TEXT", text: `${code}\n@button literal` },
+  ]);
   expect(parseCommandMarkdown("~~~\n@cover literal\n~~~")).toEqual([
     { type: "TEXT", text: "~~~\n@cover literal\n~~~" },
   ]);
@@ -156,9 +150,7 @@ test("all supported existing response properties survive Markdown download and r
     {
       type: "TEXT",
       text: "\n # Markdown\n@literal\n:::embed\n\\backslash\n```\n@code\n```\n",
-      buttons: [
-        { label: "[Rules] \\ {user.name}", url: "https://example.com/a(b)" },
-      ],
+      buttons: [{ label: "[Rules] \\ {user.name}", url: "https://example.com/a(b)" }],
     },
     {
       type: "EMBED",
@@ -183,9 +175,7 @@ test("all supported existing response properties survive Markdown download and r
       },
     },
   ]);
-  expect(parseCommandMarkdown(serializeCommandMarkdown(responses))).toEqual(
-    responses,
-  );
+  expect(parseCommandMarkdown(serializeCommandMarkdown(responses))).toEqual(responses);
 });
 
 test.each([
@@ -211,23 +201,15 @@ test.each([
 });
 
 test("message, button, URL, label and input limits are checked", async () => {
-  expect(() => parseCommandMarkdown(":::text\nHi\n:::\n".repeat(6))).toThrow(
-    "5 messages",
-  );
+  expect(() => parseCommandMarkdown(":::text\nHi\n:::\n".repeat(6))).toThrow("5 messages");
   expect(() =>
-    parseCommandMarkdown(
-      "Hi\n" + "@button [Go](https://example.com)\n".repeat(6),
-    ),
+    parseCommandMarkdown("Hi\n" + "@button [Go](https://example.com)\n".repeat(6)),
   ).toThrow("5 buttons");
   expect(() =>
-    parseCommandMarkdown(
-      `Hi\n@button [${"x".repeat(81)}](https://example.com)`,
-    ),
+    parseCommandMarkdown(`Hi\n@button [${"x".repeat(81)}](https://example.com)`),
   ).toThrow("80");
   expect(() =>
-    parseCommandMarkdown(
-      `Hi\n@button [Go](https://example.com/${"x".repeat(512)})`,
-    ),
+    parseCommandMarkdown(`Hi\n@button [Go](https://example.com/${"x".repeat(512)})`),
   ).toThrow("512");
   expect(() => parseCommandMarkdown("x".repeat(48001))).toThrow("48000");
   for (const url of [
@@ -238,9 +220,7 @@ test("message, button, URL, label and input limits are checked", async () => {
     expect(() => parseCommandMarkdown(`Hi\n@button [Go](${url})`)).toThrow();
   const patch = markdownPatch("Hi\n@button [{args}](https://example.com)");
   await expect(
-    new CustomCommandRenderer().render(
-      context({ command: record(patch), args: ["x".repeat(81)] }),
-    ),
+    new CustomCommandRenderer().render(context({ command: record(patch), args: ["x".repeat(81)] })),
   ).rejects.toThrow("80");
 });
 
@@ -266,17 +246,16 @@ test("Markdown responses persist, export, import and render through the normal s
   const loaded = await service.getCommand("guild-b", "welcome");
   expect(loaded!.content).toEqual(saved.content);
   expect(
-    (await new CustomCommandRenderer().render(context({ command: loaded! })))[0]
-      .components,
+    (await new CustomCommandRenderer().render(context({ command: loaded! })))[0].components,
   ).toHaveLength(1);
 });
 
 test("ordinary Markdown escapes remain intact outside template directives", () => {
   const text = "\\*not bold*\n\\#not a heading\n\\[not a link]";
   expect(parseCommandMarkdown(text)).toEqual([{ type: "TEXT", text }]);
-  expect(
-    parseCommandMarkdown(serializeCommandMarkdown([{ type: "TEXT", text }])),
-  ).toEqual([{ type: "TEXT", text }]);
+  expect(parseCommandMarkdown(serializeCommandMarkdown([{ type: "TEXT", text }]))).toEqual([
+    { type: "TEXT", text },
+  ]);
 });
 
 test("stages, button variants and named/short hex colors round-trip", async () => {
@@ -295,9 +274,7 @@ test("stages, button variants and named/short hex colors round-trip", async () =
   const content = parseCommandMarkdown(source);
   expect(content[0]).toMatchObject({ stage: 0, embed: { color: 0x5865f2 } });
   expect(content[1]).toMatchObject({ stage: 2, embed: { color: 0xaabbcc } });
-  expect(parseCommandMarkdown(serializeCommandMarkdown(content))).toEqual(
-    content,
-  );
+  expect(parseCommandMarkdown(serializeCommandMarkdown(content))).toEqual(content);
   const ctx = context({ command: record({ content, responseType: "MULTI" }) });
   const renderer = new CustomCommandRenderer();
   expect(await renderer.render(ctx)).toHaveLength(1);
@@ -328,9 +305,9 @@ test.each([
 });
 
 test("stage syntax in code and escaped text remains literal", () => {
-  expect(
-    parseCommandMarkdown(":::text\n\\@main\n```\n@stage(1)\n```\n:::"),
-  ).toEqual([{ type: "TEXT", text: "@main\n```\n@stage(1)\n```" }]);
+  expect(parseCommandMarkdown(":::text\n\\@main\n```\n@stage(1)\n```\n:::")).toEqual([
+    { type: "TEXT", text: "@main\n```\n@stage(1)\n```" },
+  ]);
 });
 
 test("staged templates survive service export/import", async () => {
@@ -339,20 +316,12 @@ test("staged templates survive service export/import", async () => {
     "@main\nHello\n@button success [Next](Go(stage(1)))\n@stage(1)\nDone\n@button danger [Close](Cancel)",
   );
   await service.createCommand("guild-a", "admin", definition(patch));
-  await service.importCommands(
-    "guild-b",
-    "admin",
-    await service.exportCommands("guild-a"),
-  );
-  expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(
-    patch.content,
-  );
+  await service.importCommands("guild-b", "admin", await service.exportCommands("guild-a"));
+  expect((await service.getCommand("guild-b", "welcome"))!.content).toEqual(patch.content);
 });
 
 test("shorthand stages preserve block markers inside code fences", () => {
-  expect(
-    parseCommandMarkdown("@main\n```md\n:::embed\n@stage(9)\n```"),
-  ).toEqual([
+  expect(parseCommandMarkdown("@main\n```md\n:::embed\n@stage(9)\n```")).toEqual([
     {
       type: "EMBED",
       stage: 0,

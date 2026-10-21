@@ -11,7 +11,10 @@ export const OWNERSHIP_REQUIRED_MESSAGE =
 type Ownership = Pick<VerifyGuildOwnership, keyof VerifyGuildOwnership>;
 
 export class GuildOwnershipService {
-  private readonly pendingChecks = new WeakMap<Guild, { ownership: Ownership; promise: Promise<boolean> }>();
+  private readonly pendingChecks = new WeakMap<
+    Guild,
+    { ownership: Ownership; promise: Promise<boolean> }
+  >();
   constructor(private readonly ownership?: Ownership) {}
   public isVerified(guild: Guild): Promise<boolean> {
     const ownership = this.ownership ?? currentApplication().resolve(guildOwnershipToken);
@@ -56,14 +59,17 @@ export class GuildOwnershipService {
 
 export const guildOwnershipService = new GuildOwnershipService();
 
-export async function requireVerifiedOwnership(interaction: RepliableInteraction | ContextMenuCommandInteraction) {
-  if (interaction.guild && await guildOwnershipService.isVerified(interaction.guild)) {
+export async function requireVerifiedOwnership(
+  interaction: RepliableInteraction | ContextMenuCommandInteraction,
+) {
+  if (interaction.guild && (await guildOwnershipService.isVerified(interaction.guild))) {
     return true;
   }
   const response = { content: OWNERSHIP_REQUIRED_MESSAGE, flags: MessageFlags.Ephemeral as const };
   // A component deferUpdate targets its panel, rather than a loading reply.
   // Denial must not delete or overwrite that panel.
-  if (interaction.deferred && interaction.isMessageComponent?.()) await interaction.followUp(response);
+  if (interaction.deferred && interaction.isMessageComponent?.())
+    await interaction.followUp(response);
   else await replyToCommand(interaction, response);
   return false;
 }

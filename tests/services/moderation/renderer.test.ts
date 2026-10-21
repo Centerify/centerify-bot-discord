@@ -14,10 +14,7 @@ const warning = {
 };
 
 test("history details show when an active warning role will be removed", () => {
-  const field = formatDetailedCaseField(
-    warning,
-    new Date("2026-09-15T12:00:30.000Z"),
-  );
+  const field = formatDetailedCaseField(warning, new Date("2026-09-15T12:00:30.000Z"));
 
   assert.match(field.name, /Warning • Active/);
   assert.match(field.value, /Role removal/);
@@ -26,17 +23,17 @@ test("history details show when an active warning role will be removed", () => {
 });
 
 test("history details identify expired warnings as no longer counted", () => {
-  const field = formatDetailedCaseField(
-    warning,
-    new Date("2026-09-15T12:02:00.000Z"),
-  );
+  const field = formatDetailedCaseField(warning, new Date("2026-09-15T12:02:00.000Z"));
 
   assert.match(field.name, /Warning • Expired/);
   assert.match(field.value, /no longer counts/);
 });
 
 test("warnings without a role show warning expiration instead of role removal", () => {
-  const field = formatDetailedCaseField({ ...warning, metadata: { warningRoleId: null } }, new Date("2026-09-15T12:00:30.000Z"));
+  const field = formatDetailedCaseField(
+    { ...warning, metadata: { warningRoleId: null } },
+    new Date("2026-09-15T12:00:30.000Z"),
+  );
   assert.match(field.value, /Warning expires/);
   assert.doesNotMatch(field.value, /Role removal/);
 });
@@ -68,7 +65,8 @@ test("history details label global moderation cases", () => {
 });
 
 test("markdown-heavy reasons fit Discord embed field limits after escaping", async () => {
-  const { buildCaseEmbed, cleanFieldValue } = await import("../../../src/modules/moderation/discord/renderer.js");
+  const { buildCaseEmbed, cleanFieldValue } =
+    await import("../../../src/modules/moderation/discord/renderer.js");
   const embed = buildCaseEmbed({ ...warning, reason: "*_".repeat(500) }).toJSON();
   assert.ok(embed.fields!.every((field) => field.value.length <= 1024));
   assert.ok(cleanFieldValue("*".repeat(1000), 120).length <= 120);

@@ -12,31 +12,20 @@ function submit(values: Record<string, string>) {
 }
 test("text and embed editors serialize valid modals and bounded controls", () => {
   const text = record();
-  expect(
-    responseModal("id", "response", text.content[0]!).toJSON().components,
-  ).toHaveLength(1);
+  expect(responseModal("id", "response", text.content[0]!).toJSON().components).toHaveLength(1);
   const embed = record({
     content: [{ type: "EMBED", embed: { title: "Title" } }],
   });
-  expect(
-    responseModal("id", "response", embed.content[0]!).toJSON().components,
-  ).toHaveLength(5);
-  expect(
-    responseModal("id", "media", embed.content[0]!).toJSON().components,
-  ).toHaveLength(5);
-  expect(
-    responseModal("id", "field", embed.content[0]!).toJSON().components,
-  ).toHaveLength(3);
+  expect(responseModal("id", "response", embed.content[0]!).toJSON().components).toHaveLength(5);
+  expect(responseModal("id", "media", embed.content[0]!).toJSON().components).toHaveLength(5);
+  expect(responseModal("id", "field", embed.content[0]!).toJSON().components).toHaveLength(3);
   for (const section of ["responses", "access"] as const) {
     const view = editorView(text, "session", section, 0, "allowedRoleIds");
     expect(view.components.length).toBeLessThanOrEqual(5);
-    for (const component of view.components)
-      expect(() => component.toJSON()).not.toThrow();
+    for (const component of view.components) expect(() => component.toJSON()).not.toThrow();
   }
   expect(() =>
-    editorModal("id", "Title", [
-      { id: "text", label: "Response", max: 2000 },
-    ]).toJSON(),
+    editorModal("id", "Title", [{ id: "text", label: "Response", max: 2000 }]).toJSON(),
   ).not.toThrow();
 });
 test("response edits are structured, preserve unrelated fields and never mutate the original", () => {
@@ -83,12 +72,7 @@ test("media and fields are validated; malformed colors, flags and field overflow
     content: [{ type: "EMBED", embed: { title: "Title" } }],
   });
   expect(() =>
-    applyResponseModal(
-      initial,
-      0,
-      "response",
-      submit({ color: "bad" }) as never,
-    ),
+    applyResponseModal(initial, 0, "response", submit({ color: "bad" }) as never),
   ).toThrow("six-digit");
   expect(() =>
     applyResponseModal(
@@ -143,11 +127,7 @@ test("individual fields can be prefilled, replaced and deleted without losing si
       },
     ],
   });
-  const modal = responseModal(
-    "id",
-    "edit-field-1",
-    initial.content[0],
-  ).toJSON();
+  const modal = responseModal("id", "edit-field-1", initial.content[0]).toJSON();
   expect(JSON.stringify(modal)).toContain('"value":"Second"');
   const content = applyResponseModal(
     initial,
@@ -169,19 +149,14 @@ test("individual fields can be prefilled, replaced and deleted without losing si
     },
   });
   expect(
-    applyResponseModal(
-      initial,
-      0,
-      "edit-field-0",
-      submit({ remove: "true" }) as never,
-    )[0],
+    applyResponseModal(initial, 0, "edit-field-0", submit({ remove: "true" }) as never)[0],
   ).toMatchObject({ embed: { fields: [{ name: "Second" }] } });
   expect(initial.content[0]).toMatchObject({
     embed: { fields: [{ name: "First" }, { name: "Second" }] },
   });
-  expect(() =>
-    responseModal("id", "edit-field-20", initial.content[0]),
-  ).toThrow("no longer exists");
+  expect(() => responseModal("id", "edit-field-20", initial.content[0])).toThrow(
+    "no longer exists",
+  );
   const view = editorView(initial, "session", "responses", 0, "allowedRoleIds");
   expect(view.components).toHaveLength(2);
   for (const row of view.components) expect(() => row.toJSON()).not.toThrow();
@@ -197,12 +172,7 @@ test("embed links preserve media and require author text", () => {
     ],
   });
   expect(() =>
-    applyResponseModal(
-      initial,
-      0,
-      "links",
-      submit({ author_url: "https://example.com" }) as never,
-    ),
+    applyResponseModal(initial, 0, "links", submit({ author_url: "https://example.com" }) as never),
   ).toThrow("author text");
   const content = applyResponseModal(
     initial,

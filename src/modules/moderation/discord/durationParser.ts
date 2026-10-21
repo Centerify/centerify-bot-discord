@@ -14,8 +14,7 @@ export function parseDuration(input: string) {
   const amount = Number(match[1]);
   const unit = match[2]?.toLowerCase();
 
-  const multiplier =
-    unit === "m" ? minuteMs : unit === "h" ? hourMs : unit === "d" ? dayMs : 0;
+  const multiplier = unit === "m" ? minuteMs : unit === "h" ? hourMs : unit === "d" ? dayMs : 0;
 
   const durationMs = amount * multiplier;
   if (!Number.isSafeInteger(durationMs) || durationMs <= 0) {

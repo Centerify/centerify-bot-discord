@@ -8,7 +8,9 @@ import type { Guild } from "discord.js";
 const databaseUrl = process.env.TEST_DATABASE_URL;
 let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefined;
 const prefix = `integration-${randomUUID()}`;
-const guilds = ["a", "b", "duplicates", "limit", "moderation", "reports"].map((name) => `${prefix}-${name}`);
+const guilds = ["a", "b", "duplicates", "limit", "moderation", "reports"].map(
+  (name) => `${prefix}-${name}`,
+);
 const [guildA, guildB, duplicateGuild, limitGuild, moderationGuild, reportGuild] = guilds;
 let db: typeof import("../../src/adapters/prisma/client.js").db;
 let config: typeof import("../../src/modules/guilds/discord/config.js").guildConfigService;
@@ -20,22 +22,34 @@ let reports: typeof import("../../src/modules/moderation/discord/services.js").r
 
 function rule(guildId: string, name: string, trigger = name) {
   return {
-    guildId, name, trigger, kind: "command" as const, response: "Integration response",
-    channelId: null, allowedRoleId: null, adminOnly: false, exactMatch: true,
-    embed: false, cooldownSeconds: 0, createdBy: `${prefix}-owner`,
+    guildId,
+    name,
+    trigger,
+    kind: "command" as const,
+    response: "Integration response",
+    channelId: null,
+    allowedRoleId: null,
+    adminOnly: false,
+    exactMatch: true,
+    embed: false,
+    cooldownSeconds: 0,
+    createdBy: `${prefix}-owner`,
   };
 }
 
 describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = databaseUrl!;
-      testApplication = await startTestApplication();
+    testApplication = await startTestApplication();
     ({ db } = await import("../../src/adapters/prisma/client.js"));
     ({ guildConfigService: config } = await import("../../src/modules/guilds/discord/config.js"));
-    ({ customResponseService: custom } = await import("../../src/modules/custom-commands/discord/legacyService.js"));
+    ({ customResponseService: custom } =
+      await import("../../src/modules/custom-commands/discord/legacyService.js"));
     ({ xpService: xp } = await import("../../src/modules/xp/discord/services.js"));
-    ({ guildOwnershipService: ownership } = await import("../../src/modules/guilds/discord/ownership.js"));
-    ({ moderationCaseService: cases } = await import("../../src/modules/moderation/discord/services.js"));
+    ({ guildOwnershipService: ownership } =
+      await import("../../src/modules/guilds/discord/ownership.js"));
+    ({ moderationCaseService: cases } =
+      await import("../../src/modules/moderation/discord/services.js"));
     ({ reportService: reports } = await import("../../src/modules/moderation/discord/services.js"));
   });
 
@@ -81,16 +95,28 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
     ]);
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((result) => result.status === "rejected");
-    expect(rejected?.status === "rejected" && rejected.reason.message).toContain("trigger is already in use");
+    expect(rejected?.status === "rejected" && rejected.reason.message).toContain(
+      "trigger is already in use",
+    );
     expect(await custom.list(duplicateGuild)).toHaveLength(1);
   });
 
   test("warning modes and command role rules persist independently for each server", async () => {
     const { warningRoleSettings } = await import("../../src/modules/guilds/domain/settings.js");
     const roles = { warn: { allowedRoleIds: ["123456789012345678"], deniedRoleIds: [] } };
-    await config.update(guildA, { warningRoleSettings: warningRoleSettings({ mode: "single", singleName: "Warned", color: 0xff0000 }), commandRoleAccess: roles });
+    await config.update(guildA, {
+      warningRoleSettings: warningRoleSettings({
+        mode: "single",
+        singleName: "Warned",
+        color: 0xff0000,
+      }),
+      commandRoleAccess: roles,
+    });
     await config.update(guildB, { warningRoleSettings: warningRoleSettings({ mode: "none" }) });
-    expect((await config.getOrCreate(guildA)).warningRoleSettings).toMatchObject({ mode: "single", color: 0xff0000 });
+    expect((await config.getOrCreate(guildA)).warningRoleSettings).toMatchObject({
+      mode: "single",
+      color: 0xff0000,
+    });
     expect((await config.getOrCreate(guildA)).commandRoleAccess).toEqual(roles);
     expect((await config.getOrCreate(guildB)).warningRoleSettings).toMatchObject({ mode: "none" });
     expect((await config.getOrCreate(guildB)).commandRoleAccess).toBeNull();
@@ -98,8 +124,26 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
     expect((await config.getOrCreate(guildA)).commandRoleAccess).toEqual(roles);
   });
 
+  test("ticket settings persist independently and survive unrelated settings updates", async () => {
+    const tickets = {
+      enabled: true,
+      categoryId: "123456789012345678",
+      supportRoleId: "223456789012345678",
+    };
+    await config.update(guildA, { ticketSettings: tickets });
+    await config.update(guildB, { ticketSettings: { ...tickets, enabled: false } });
+    await config.update(guildA, { welcomeMessage: "Ticket settings remain saved" });
+    expect((await config.getOrCreate(guildA)).ticketSettings).toEqual(tickets);
+    expect((await config.getOrCreate(guildB)).ticketSettings).toEqual({
+      ...tickets,
+      enabled: false,
+    });
+  });
+
   test("concurrent creations enforce the 25-rule server limit", async () => {
-    await Promise.all(Array.from({ length: 24 }, (_, index) => custom.create(rule(limitGuild, `rule-${index}`))));
+    await Promise.all(
+      Array.from({ length: 24 }, (_, index) => custom.create(rule(limitGuild, `rule-${index}`))),
+    );
     const results = await Promise.allSettled([
       custom.create(rule(limitGuild, "last-one")),
       custom.create(rule(limitGuild, "last-two")),
@@ -128,12 +172,19 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
 
   test("independent XP service instances enforce persisted cooldowns atomically", async () => {
     const { XpService } = await import("../../src/modules/xp/index.js");
-    const { PrismaXpRepository } = await import("../../src/modules/xp/infrastructure/PrismaXpRepository.js");
+    const { PrismaXpRepository } =
+      await import("../../src/modules/xp/infrastructure/PrismaXpRepository.js");
     const repository = new PrismaXpRepository(db);
     const userId = `${prefix}-independent-member`;
-    await config.update(guildA, { xpEnabled: true, xpMethods: "messages,reactions,daily", xpMessageAmount: 15, xpSharing: "server" });
-    const results = await Promise.all(Array.from({ length: 10 }, () =>
-      new XpService(repository, config).award(guildA, userId)));
+    await config.update(guildA, {
+      xpEnabled: true,
+      xpMethods: "messages,reactions,daily",
+      xpMessageAmount: 15,
+      xpSharing: "server",
+    });
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => new XpService(repository, config).award(guildA, userId)),
+    );
     expect(results.filter(Boolean)).toHaveLength(1);
     const restarted = new XpService(repository, config);
     expect(await restarted.award(guildA, userId)).toBe(false);
@@ -164,8 +215,15 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
   });
 
   test("moderation case numbers are unique under concurrency and restart per server", async () => {
-    const input = { targetUserId: `${prefix}-member`, moderatorUserId: `${prefix}-moderator`, action: "NOTE" as const, reason: "Integration test" };
-    const created = await Promise.all(Array.from({ length: 5 }, () => cases.createCase({ ...input, guildId: moderationGuild })));
+    const input = {
+      targetUserId: `${prefix}-member`,
+      moderatorUserId: `${prefix}-moderator`,
+      action: "NOTE" as const,
+      reason: "Integration test",
+    };
+    const created = await Promise.all(
+      Array.from({ length: 5 }, () => cases.createCase({ ...input, guildId: moderationGuild })),
+    );
     expect(created.map((item) => item.caseNumber).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
     const other = await cases.createCase({ ...input, guildId: guildB });
     expect(other.caseNumber).toBe(1);
@@ -173,10 +231,29 @@ describe.skipIf(!databaseUrl)("live PostgreSQL multi-server behavior", () => {
   });
 
   test("report review is atomic and preserves the first decision", async () => {
-    const created = await reports.createReport({ guildId: reportGuild, reportedUserId: `${prefix}-member`, reporterUserId: `${prefix}-reporter`, reason: "Integration test" });
-    const first = await reports.updateStatus({ guildId: reportGuild, reportNumber: created.reportNumber, status: "ACCEPTED", reviewedBy: "first" });
+    const created = await reports.createReport({
+      guildId: reportGuild,
+      reportedUserId: `${prefix}-member`,
+      reporterUserId: `${prefix}-reporter`,
+      reason: "Integration test",
+    });
+    const first = await reports.updateStatus({
+      guildId: reportGuild,
+      reportNumber: created.reportNumber,
+      status: "ACCEPTED",
+      reviewedBy: "first",
+    });
     expect(first?.status).toBe("ACCEPTED");
-    expect(await reports.updateStatus({ guildId: reportGuild, reportNumber: created.reportNumber, status: "REJECTED", reviewedBy: "second" })).toBeNull();
-    expect((await reports.findByReportNumber(reportGuild, created.reportNumber))?.reviewedBy).toBe("first");
+    expect(
+      await reports.updateStatus({
+        guildId: reportGuild,
+        reportNumber: created.reportNumber,
+        status: "REJECTED",
+        reviewedBy: "second",
+      }),
+    ).toBeNull();
+    expect((await reports.findByReportNumber(reportGuild, created.reportNumber))?.reviewedBy).toBe(
+      "first",
+    );
   });
 });

@@ -2,14 +2,23 @@ import type { GuildConfigStore } from "../../guilds/index.js";
 import { earningRule, sharedXpGuildIds, type XpConfig, type XpMethod } from "../domain/policy.js";
 
 export interface XpRepository {
-  award(guildId: string, userId: string, method: XpMethod, amount: number, cooldownSeconds: number): Promise<boolean>;
+  award(
+    guildId: string,
+    userId: string,
+    method: XpMethod,
+    amount: number,
+    cooldownSeconds: number,
+  ): Promise<boolean>;
   sharingConfigurations(): Promise<XpConfig[]>;
   totals(guildIds: string[], userId?: string): Promise<{ userId: string; xp: number | null }[]>;
 }
 
 export class XpService {
   private readonly lastAwards = new Map<string, number>();
-  private readonly pendingAwards = new Map<string, { startedAt: number; promise: Promise<boolean> }>();
+  private readonly pendingAwards = new Map<
+    string,
+    { startedAt: number; promise: Promise<boolean> }
+  >();
 
   constructor(
     private readonly repository: XpRepository,
@@ -51,16 +60,22 @@ export class XpService {
           this.lastAwards.delete(this.lastAwards.keys().next().value!);
         this.lastAwards.set(key, latestAward);
       }
-      return { status: awarded ? "awarded" as const : "cooldown" as const, amount: rule.amount };
+      return {
+        status: awarded ? ("awarded" as const) : ("cooldown" as const),
+        amount: rule.amount,
+      };
     } finally {
-      if (this.pendingAwards.get(pendingKey)?.promise === write) this.pendingAwards.delete(pendingKey);
+      if (this.pendingAwards.get(pendingKey)?.promise === write)
+        this.pendingAwards.delete(pendingKey);
     }
   }
   async totals(guildId: string, userId?: string) {
     const config = await this.config.getOrCreate(guildId);
-    const configs = config.xpSharing === "server" ? [] : await this.repository.sharingConfigurations();
+    const configs =
+      config.xpSharing === "server" ? [] : await this.repository.sharingConfigurations();
     const totals = await this.repository.totals(sharedXpGuildIds(config, configs), userId);
-    return totals.map((row) => ({ userId: row.userId, xp: row.xp ?? 0 }))
+    return totals
+      .map((row) => ({ userId: row.userId, xp: row.xp ?? 0 }))
       .sort((a, b) => b.xp - a.xp || a.userId.localeCompare(b.userId));
   }
 }

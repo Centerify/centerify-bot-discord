@@ -4,16 +4,7 @@ import { loggerToken } from "../../src/core/index.js";
 let unbindTestClient: (() => void) | undefined;
 import { startTestApplication } from "../helpers/application.js";
 import { randomUUID } from "node:crypto";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  test,
-  vi,
-} from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { container } from "@sapphire/framework";
 import {
   Collection,
@@ -34,9 +25,7 @@ let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefine
 const prefix = `sharing-e2e-${randomUUID()}`;
 const ADMIN = "323456789012345678",
   USER = "423456789012345678";
-const ids = ["source", "selected", "excluded", "future"].map(
-  (name) => `${prefix}-${name}`,
-);
+const ids = ["source", "selected", "excluded", "future"].map((name) => `${prefix}-${name}`);
 let db: typeof import("../../src/adapters/prisma/client.js").db;
 let ownership: typeof import("../../src/modules/guilds/discord/ownership.js").guildOwnershipService;
 let runtime: typeof import("../../src/modules/custom-commands/discord/runtime.js");
@@ -133,10 +122,7 @@ function interaction(guild: Guild, actor = ADMIN) {
     deferUpdate: vi.fn(async function (this: { deferred: boolean }) {
       this.deferred = true;
     }),
-    editReply: vi.fn(async function (
-      this: { replied: boolean },
-      _payload: any,
-    ) {
+    editReply: vi.fn(async function (this: { replied: boolean }, _payload: any) {
       this.replied = true;
       return message;
     }),
@@ -148,10 +134,7 @@ async function withMember(guild: Guild, actor = ADMIN) {
   fixture.root.member = await guild.members.fetch({ user: actor });
   return fixture;
 }
-function customOptions(
-  sub: string,
-  values: Record<string, string | number | boolean> = {},
-) {
+function customOptions(sub: string, values: Record<string, string | number | boolean> = {}) {
   return {
     getSubcommand: () => sub,
     getString: (key: string) => values[key] ?? null,
@@ -180,20 +163,15 @@ function controls(f: Awaited<ReturnType<typeof withMember>>) {
   const flatten = (items: any[]): any[] =>
     items.flatMap((item) => [item, ...flatten(item.components ?? [])]);
   return flatten(
-    (payload.components ?? []).map((item: any) =>
-      item.toJSON ? item.toJSON() : item,
-    ),
+    (payload.components ?? []).map((item: any) => (item.toJSON ? item.toJSON() : item)),
   );
 }
-async function click(
-  f: Awaited<ReturnType<typeof withMember>>,
-  action: string,
-  values?: string[],
-) {
-  const control = controls(f).find((item) =>
-    item.custom_id?.endsWith(`:${action}`),
-  );
-  expect(control, `Control ${action} should be rendered: ${JSON.stringify(f.root.editReply.mock.calls)}`).toBeDefined();
+async function click(f: Awaited<ReturnType<typeof withMember>>, action: string, values?: string[]) {
+  const control = controls(f).find((item) => item.custom_id?.endsWith(`:${action}`));
+  expect(
+    control,
+    `Control ${action} should be rendered: ${JSON.stringify(f.root.editReply.mock.calls)}`,
+  ).toBeDefined();
   const item = await withMember(f.root.guild);
   const component = {
     ...item.root,
@@ -210,13 +188,8 @@ async function click(
   return item;
 }
 
-async function editTemplate(
-  editor: Awaited<ReturnType<typeof withMember>>,
-  template: string,
-) {
-  const control = controls(editor).find((item) =>
-    item.custom_id?.endsWith(":markdown"),
-  );
+async function editTemplate(editor: Awaited<ReturnType<typeof withMember>>, template: string) {
+  const control = controls(editor).find((item) => item.custom_id?.endsWith(":markdown"));
   expect(control, "Edit Template should be rendered").toBeDefined();
   const modal = await withMember(editor.root.guild);
   const button = {
@@ -224,22 +197,20 @@ async function editTemplate(
     customId: control.custom_id,
     isButton: () => true,
     showModal: vi.fn(),
-    awaitModalSubmit: vi.fn(
-      async ({ filter }: { filter: (item: unknown) => boolean }) => {
-        const submitted = {
-          ...modal.root,
-          customId: button.showModal.mock.calls[0]![0].toJSON().custom_id,
-          fields: {
-            getTextInputValue: (key: string) => {
-              expect(key).toBe("markdown");
-              return template;
-            },
+    awaitModalSubmit: vi.fn(async ({ filter }: { filter: (item: unknown) => boolean }) => {
+      const submitted = {
+        ...modal.root,
+        customId: button.showModal.mock.calls[0]![0].toJSON().custom_id,
+        fields: {
+          getTextInputValue: (key: string) => {
+            expect(key).toBe("markdown");
+            return template;
           },
-        };
-        expect(filter(submitted)).toBe(true);
-        return submitted;
-      },
-    ),
+        },
+      };
+      expect(filter(submitted)).toBe(true);
+      return submitted;
+    }),
   };
   await editor.callbacks.get("collect")!(button);
   expect(button.showModal).toHaveBeenCalledOnce();
@@ -250,9 +221,7 @@ async function settings(guild: Guild) {
   const f = await withMember(guild);
   await Object.create(SettingsCommand.prototype).chatInputRun(f.root);
   const panel = await click(f, "custom-commands");
-  expect(panel.root.editReply.mock.calls[0]![0].flags).toBe(
-    MessageFlags.IsComponentsV2,
-  );
+  expect(panel.root.editReply.mock.calls[0]![0].flags).toBe(MessageFlags.IsComponentsV2);
   return panel;
 }
 async function prefixMessage(guild: Guild, content: string) {
@@ -269,7 +238,9 @@ async function prefixMessage(guild: Guild, content: string) {
     reply: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
   };
-  await dispatchDiscordEvent(testApplication!.application, "messageCreate",
+  await dispatchDiscordEvent(
+    testApplication!.application,
+    "messageCreate",
     message as unknown as Message,
   );
   return message;
@@ -288,28 +259,24 @@ describe.skipIf(!url)(
         configurable: true,
         value: client,
       });
-      unbindTestClient = bindApplication(client as unknown as import("discord.js").Client, testApplication.application);
+      unbindTestClient = bindApplication(
+        client as unknown as import("discord.js").Client,
+        testApplication.application,
+      );
       ({ db } = await import("../../src/adapters/prisma/client.js"));
       ({ guildOwnershipService: ownership } =
         await import("../../src/modules/guilds/discord/ownership.js"));
       runtime = await import("../../src/modules/custom-commands/discord/runtime.js");
-      ({ SettingsCommand } =
-        await import("../../src/modules/settings/discord/index.js"));
+      ({ SettingsCommand } = await import("../../src/modules/settings/discord/index.js"));
       ({ CustomCommand } = await import("../../src/modules/custom-commands/discord/index.js"));
     });
     beforeEach(async () => {
-      const { logger } = await import("../../src/adapters/logging/runtime.js");
       errorLog = vi.spyOn(testApplication!.application.resolve(loggerToken), "error");
       guilds.clear();
       for (const [index, id] of ids.slice(0, 3).entries()) {
         runtime.customCommandService.invalidate(id);
-        const { guild } = makeGuild(
-          id,
-          ["Source", "Selected", "Excluded"][index]!,
-        );
-        expect(await ownership.verify(guild as unknown as Guild, ADMIN)).toBe(
-          true,
-        );
+        const { guild } = makeGuild(id, ["Source", "Selected", "Excluded"][index]!);
+        expect(await ownership.verify(guild as unknown as Guild, ADMIN)).toBe(true);
       }
     });
     afterEach(async () => {
@@ -344,8 +311,7 @@ describe.skipIf(!url)(
         await testApplication?.stop();
         if (db) await db.close();
       } finally {
-        if (previousClient)
-          Object.defineProperty(container, "client", previousClient);
+        if (previousClient) Object.defineProperty(container, "client", previousClient);
         else Reflect.deleteProperty(container, "client");
       }
     });
@@ -370,9 +336,7 @@ describe.skipIf(!url)(
       await click(panel, "refresh");
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
-      const serverSelect = controls(panel).find((item) =>
-        item.custom_id?.endsWith(":servers"),
-      );
+      const serverSelect = controls(panel).find((item) => item.custom_id?.endsWith(":servers"));
       expect(serverSelect.type).toBe(ComponentType.StringSelect);
       await click(panel, "save");
       // Reopening proves persistence independently of the panel's in-memory state.
@@ -399,15 +363,8 @@ describe.skipIf(!url)(
           },
         }),
       );
-      expect(
-        (await prefixMessage(excluded, "!greet John")).reply,
-      ).not.toHaveBeenCalled();
-      const slash = await custom(
-        selected,
-        "run",
-        { command: "greet", args: "Jane" },
-        USER,
-      );
+      expect((await prefixMessage(excluded, "!greet John")).reply).not.toHaveBeenCalled();
+      const slash = await custom(selected, "run", { command: "greet", args: "Jane" }, USER);
       expect(slash.root.followUp).toHaveBeenCalledWith(
         expect.objectContaining({ content: "Hello Alex in Selected: Jane" }),
       );
@@ -419,14 +376,10 @@ describe.skipIf(!url)(
         usageCount: 2,
         content: [{ type: "TEXT", text }],
       });
-      expect(
-        await db.orm.public.CustomCommand.where({ guildId: selected.id }).all(),
-      ).toEqual([]);
+      expect(await db.orm.public.CustomCommand.where({ guildId: selected.id }).all()).toEqual([]);
       await click(reopened, "scope", ["server"]);
       await click(reopened, "save");
-      expect(
-        (await prefixMessage(selected, "!hello")).reply,
-      ).not.toHaveBeenCalled();
+      expect((await prefixMessage(selected, "!hello")).reply).not.toHaveBeenCalled();
       await click(panel, "close");
       await click(reopened, "close");
     }, 15_000);
@@ -439,15 +392,16 @@ describe.skipIf(!url)(
         response: "Shared",
       });
       await custom(selected, "create", { name: "hello", response: "Local" });
-      const command = (
-        await runtime.customCommandService.listCommands(source.id)
-      )[0]!;
+      const command = (await runtime.customCommandService.listCommands(source.id))[0]!;
       const panel = await settings(source);
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
       const warning = await click(panel, "save");
       expect(await runtime.customCommandSharingService.get(command)).toBeNull();
-      const cancel = controls(warning).find((item) => item.label === "Cancel").custom_id.split(":").at(-1);
+      const cancel = controls(warning)
+        .find((item) => item.label === "Cancel")
+        .custom_id.split(":")
+        .at(-1);
       await click(warning, cancel);
       expect(await runtime.customCommandSharingService.get(command)).toBeNull();
       const nextWarning = await click(panel, "save");
@@ -456,26 +410,28 @@ describe.skipIf(!url)(
         .custom_id.split(":")
         .at(-1);
       await click(nextWarning, proceed);
-      expect(
-        await runtime.customCommandSharingService.get(command),
-      ).toMatchObject({ scope: "selected", selectedGuildIds: selected.id });
-      expect(
-        (await prefixMessage(selected, "!hello")).reply,
-      ).toHaveBeenCalledWith(expect.objectContaining({ content: "Local" }));
-      expect(
-        (await prefixMessage(selected, "!greet")).reply,
-      ).toHaveBeenCalledWith(expect.objectContaining({ content: "Shared" }));
-      expect(
-        await runtime.customCommandService.listCommands(selected.id),
-      ).toHaveLength(1);
+      expect(await runtime.customCommandSharingService.get(command)).toMatchObject({
+        scope: "selected",
+        selectedGuildIds: selected.id,
+      });
+      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Local" }),
+      );
+      expect((await prefixMessage(selected, "!greet")).reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Shared" }),
+      );
+      expect(await runtime.customCommandService.listCommands(selected.id)).toHaveLength(1);
       await click(panel, "close");
     }, 15_000);
     test("Replace Existing removes the local definition and aliases and runs the global command", async () => {
-      const source = guilds.get(ids[0]!)!, selected = guilds.get(ids[1]!)!;
+      const source = guilds.get(ids[0]!)!,
+        selected = guilds.get(ids[1]!)!;
       await custom(source, "create", { name: "greet", aliases: "hello", response: "Shared" });
       await custom(selected, "create", { name: "hello", aliases: "oldalias", response: "Local" });
       // Populate the local execution cache before replacement.
-      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(expect.objectContaining({ content: "Local" }));
+      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Local" }),
+      );
       const panel = await settings(source);
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
@@ -484,40 +440,58 @@ describe.skipIf(!url)(
       expect(replace.disabled).toBe(false);
       await click(warning, replace.custom_id.split(":").at(-1));
       expect(await runtime.customCommandService.listCommands(selected.id)).toHaveLength(0);
-      expect(await db.orm.public.CustomCommandName.where({ guildId: selected.id }).all()).toHaveLength(0);
-      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(expect.objectContaining({ content: "Shared" }));
+      expect(
+        await db.orm.public.CustomCommandName.where({ guildId: selected.id }).all(),
+      ).toHaveLength(0);
+      expect((await prefixMessage(selected, "!hello")).reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Shared" }),
+      );
       expect((await prefixMessage(selected, "!oldalias")).reply).not.toHaveBeenCalled();
       await click(panel, "close");
     }, 15_000);
     test("destination list and options expose the shared definition for editing and individual scope changes", async () => {
-      const source = guilds.get(ids[0]!)!, selected = guilds.get(ids[1]!)!, other = guilds.get(ids[2]!)!;
+      const source = guilds.get(ids[0]!)!,
+        selected = guilds.get(ids[1]!)!,
+        other = guilds.get(ids[2]!)!;
       await custom(source, "create", { name: "shared-edit", response: "Original" });
       await custom(source, "create", { name: "unrelated", response: "Local only" });
-      const definition = (await runtime.customCommandService.listCommands(source.id)).find((row) => row.name === "shared-edit")!;
-      await runtime.customCommandSharingService.save(client, ADMIN, definition, "selected", [selected.id]);
+      const definition = (await runtime.customCommandService.listCommands(source.id)).find(
+        (row) => row.name === "shared-edit",
+      )!;
+      await runtime.customCommandSharingService.save(client, ADMIN, definition, "selected", [
+        selected.id,
+      ]);
       const listed = await custom(selected, "list", {});
-      expect(listed.root.editReply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("shared-edit") }));
-      const panel = await custom(selected, "options", {});
-      expect(controls(panel).find((item) => item.custom_id?.endsWith(":customize-command")).options)
-        .toContainEqual(expect.objectContaining({ value: String(definition.id) }));
-      const editor = await click(panel, "customize");
-      await editTemplate(
-        editor,
-        ":::text\nOriginal\n:::\n:::text\nAdded from destination\n:::",
+      expect(listed.root.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining("shared-edit") }),
       );
-      expect((await runtime.customCommandService.getCommand(source.id, "shared-edit"))?.content).toHaveLength(2);
-      expect((await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit"))?.content).toHaveLength(2);
+      const panel = await custom(selected, "options", {});
+      expect(
+        controls(panel).find((item) => item.custom_id?.endsWith(":customize-command")).options,
+      ).toContainEqual(expect.objectContaining({ value: String(definition.id) }));
+      const editor = await click(panel, "customize");
+      await editTemplate(editor, ":::text\nOriginal\n:::\n:::text\nAdded from destination\n:::");
+      expect(
+        (await runtime.customCommandService.getCommand(source.id, "shared-edit"))?.content,
+      ).toHaveLength(2);
+      expect(
+        (await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit"))?.content,
+      ).toHaveLength(2);
       expect(await db.orm.public.CustomCommand.where({ guildId: selected.id }).all()).toEqual([]);
       await click(panel, "only-command");
       await click(panel, "scope", ["all"]);
       await click(panel, "save");
-      expect(await runtime.resolveExecutableCustomCommand(client, other, "shared-edit")).toMatchObject({ id: definition.id });
+      expect(
+        await runtime.resolveExecutableCustomCommand(client, other, "shared-edit"),
+      ).toMatchObject({ id: definition.id });
       expect(await runtime.resolveExecutableCustomCommand(client, other, "unrelated")).toBeNull();
       await click(panel, "scope", ["selected"]);
       await click(panel, "servers", [selected.id]);
       await click(panel, "save");
       expect(await runtime.resolveExecutableCustomCommand(client, other, "shared-edit")).toBeNull();
-      expect(await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit")).not.toBeNull();
+      expect(
+        await runtime.resolveExecutableCustomCommand(client, selected, "shared-edit"),
+      ).not.toBeNull();
     }, 15_000);
     test("all-server scope includes later installations, shares cooldowns, and stops after ownership changes", async () => {
       const source = guilds.get(ids[0]!)!,
@@ -529,25 +503,18 @@ describe.skipIf(!url)(
         cooldown_scope: "GLOBAL_COMMAND",
       });
       const panel = await settings(source);
-      const command = (
-        await runtime.customCommandService.listCommands(source.id)
-      ).find((item) => item.name === "broadcast")!;
+      const command = (await runtime.customCommandService.listCommands(source.id)).find(
+        (item) => item.name === "broadcast",
+      )!;
       await click(panel, "command", [String(command.id)]);
       await click(panel, "scope", ["all"]);
       await click(panel, "save");
       const future = makeGuild(ids[3]!, "Future").guild as unknown as Guild;
       expect(await ownership.verify(future, ADMIN)).toBe(true);
-      expect(
-        (await prefixMessage(future, "!broadcast")).reply,
-      ).toHaveBeenCalledWith(
+      expect((await prefixMessage(future, "!broadcast")).reply).toHaveBeenCalledWith(
         expect.objectContaining({ content: "Global in Future" }),
       );
-      const blockedByCooldown = await custom(
-        selected,
-        "run",
-        { command: "broadcast" },
-        USER,
-      );
+      const blockedByCooldown = await custom(selected, "run", { command: "broadcast" }, USER);
       expect(blockedByCooldown.root.followUp).not.toHaveBeenCalled();
       expect(blockedByCooldown.root.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -559,19 +526,15 @@ describe.skipIf(!url)(
         response: "Verified",
       });
       await click(panel, "refresh");
-      const verifiedCommand = (
-        await runtime.customCommandService.listCommands(source.id)
-      ).find((item) => item.name === "verified-share")!;
+      const verifiedCommand = (await runtime.customCommandService.listCommands(source.id)).find(
+        (item) => item.name === "verified-share",
+      )!;
       await click(panel, "command", [String(verifiedCommand.id)]);
       await click(panel, "scope", ["all"]);
       await click(panel, "save");
-      expect(
-        (await prefixMessage(selected, "!verified-share")).reply,
-      ).toHaveBeenCalledOnce();
+      expect((await prefixMessage(selected, "!verified-share")).reply).toHaveBeenCalledOnce();
       source.ownerId = "new-owner";
-      expect(
-        (await prefixMessage(selected, "!verified-share")).reply,
-      ).not.toHaveBeenCalled();
+      expect((await prefixMessage(selected, "!verified-share")).reply).not.toHaveBeenCalled();
       const stored = await db.orm.public.CustomCommand.where({
         guildId: source.id,
         name: "verified-share",

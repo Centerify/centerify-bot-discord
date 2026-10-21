@@ -18,7 +18,11 @@ export class DiscordResources {
   stop() {
     const errors: unknown[] = [];
     for (const collector of this.collectors) {
-      try { if (!collector.ended) collector.stop("module-stopped"); } catch (error) { errors.push(error); }
+      try {
+        if (!collector.ended) collector.stop("module-stopped");
+      } catch (error) {
+        errors.push(error);
+      }
     }
     this.collectors.clear();
     if (errors.length) throw new AggregateError(errors, "Discord collectors failed to stop");
@@ -26,7 +30,9 @@ export class DiscordResources {
 }
 export const discordResourcesToken = serviceToken<DiscordResources>("discord.resources");
 export function trackCollector<T extends Collector>(moduleId: string, collector: T): T {
-  const resources = currentApplication().extensions(discordResourcesToken).find((entry) => entry.moduleId === moduleId)?.value;
+  const resources = currentApplication()
+    .extensions(discordResourcesToken)
+    .find((entry) => entry.moduleId === moduleId)?.value;
   if (!resources) throw new Error(`Discord module is not registered: ${moduleId}`);
   return resources.track(collector);
 }

@@ -1,5 +1,10 @@
 import { db } from "../../../adapters/prisma/client.js";
-import { DEFAULT_WELCOME_MESSAGE, DEFAULT_GOODBYE_MESSAGE, type GuildConfigStore, type GuildConfigUpdate } from "../domain/config.js";
+import {
+  DEFAULT_WELCOME_MESSAGE,
+  DEFAULT_GOODBYE_MESSAGE,
+  type GuildConfigStore,
+  type GuildConfigUpdate,
+} from "../domain/config.js";
 import { warningRoleSettings, commandRoleAccess } from "../domain/settings.js";
 
 export class PrismaGuildConfigRepository implements GuildConfigStore {
@@ -23,8 +28,10 @@ export class PrismaGuildConfigRepository implements GuildConfigStore {
 
   public async update(guildId: string, data: GuildConfigUpdate) {
     data = { ...data };
-    if (data.warningRoleSettings !== undefined) data.warningRoleSettings = warningRoleSettings(data.warningRoleSettings);
-    if (data.commandRoleAccess !== undefined) data.commandRoleAccess = commandRoleAccess(data.commandRoleAccess);
+    if (data.warningRoleSettings !== undefined)
+      data.warningRoleSettings = warningRoleSettings(data.warningRoleSettings);
+    if (data.commandRoleAccess !== undefined)
+      data.commandRoleAccess = commandRoleAccess(data.commandRoleAccess);
     try {
       return await this.database.orm.public.GuildConfig.upsert({
         create: {
@@ -44,23 +51,19 @@ export class PrismaGuildConfigRepository implements GuildConfigStore {
     }
   }
 
-  public async globalModerationGuildIds(
-    feature: "ban" | "warn" | "note",
-  ) {
-    const configs = feature === "ban"
-      ? await this.database.orm.public.GuildConfig
-          .where({ globalBanEnabled: true })
-          .select("guildId")
-          .all()
-      : feature === "warn"
-        ? await this.database.orm.public.GuildConfig
-            .where({ globalWarnEnabled: true })
+  public async globalModerationGuildIds(feature: "ban" | "warn" | "note") {
+    const configs =
+      feature === "ban"
+        ? await this.database.orm.public.GuildConfig.where({ globalBanEnabled: true })
             .select("guildId")
             .all()
-        : await this.database.orm.public.GuildConfig
-            .where({ globalNoteEnabled: true })
-            .select("guildId")
-            .all();
+        : feature === "warn"
+          ? await this.database.orm.public.GuildConfig.where({ globalWarnEnabled: true })
+              .select("guildId")
+              .all()
+          : await this.database.orm.public.GuildConfig.where({ globalNoteEnabled: true })
+              .select("guildId")
+              .all();
 
     return configs.map((config) => config.guildId);
   }

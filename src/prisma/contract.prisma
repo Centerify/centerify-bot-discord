@@ -55,6 +55,7 @@ model GuildConfig {
   globalNoteEnabled Boolean @default(false)
   warningRoleSettings Jsonb?
   commandRoleAccess Jsonb?
+  ticketSettings Jsonb?
   createdAt        TimestamptzString @default(now())
   updatedAt        temporal.updatedAtString()
 

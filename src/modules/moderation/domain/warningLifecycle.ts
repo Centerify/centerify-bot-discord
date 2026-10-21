@@ -34,10 +34,7 @@ export function hasWarningDurationEnded(
   return expiresAt !== null && expiresAt.getTime() <= nowMs;
 }
 
-export function isActiveWarning(
-  warning: WarningLifecycleView,
-  now: Date | number = Date.now(),
-) {
+export function isActiveWarning(warning: WarningLifecycleView, now: Date | number = Date.now()) {
   return (
     warning.action === "WARNING" &&
     !getWarningRevocation(warning.metadata) &&

@@ -6,13 +6,7 @@ vi.mock("../../../src/adapters/logging/runtime.js", () => ({
 import { CustomCommandPermissionService } from "../../../src/modules/custom-commands/discord/CustomCommandPermissionService.js";
 import { CustomCommandCooldownService } from "../../../src/modules/custom-commands/application/CustomCommandCooldownService.js";
 import { CustomCommandExecutor } from "../../../src/modules/custom-commands/discord/CustomCommandExecutor.js";
-import {
-  CHANNEL,
-  context,
-  MemoryRepository,
-  record,
-  ROLE,
-} from "./fixtures.js";
+import { CHANNEL, context, MemoryRepository, record, ROLE } from "./fixtures.js";
 const permissions = new CustomCommandPermissionService();
 describe("permission priority and isolation", () => {
   test("allowed roles/channels permit access with channel permissions", () => {
@@ -29,25 +23,17 @@ describe("permission priority and isolation", () => {
   });
   test.each([
     [{ enabled: false }, "disabled"],
-    [
-      { deniedChannelIds: [CHANNEL], allowedChannelIds: [CHANNEL] },
-      "denied in this channel",
-    ],
+    [{ deniedChannelIds: [CHANNEL], allowedChannelIds: [CHANNEL] }, "denied in this channel"],
     [{ allowedChannelIds: ["other"] }, "restricted to other channels"],
     [{ deniedRoleIds: [ROLE], allowedRoleIds: [ROLE] }, "roles are denied"],
     [{ allowedRoleIds: ["other"] }, "allowed role"],
-    [
-      { requiredUserPermissions: ["BanMembers"] },
-      "required Discord permissions",
-    ],
+    [{ requiredUserPermissions: ["BanMembers"] }, "required Discord permissions"],
     [{ requiredBotPermissions: ["BanMembers"] }, "I lack"],
     [{ guildId: "guild-b" }, "another server"],
     [{ triggerType: "SLASH" }, "trigger"],
   ])("rejects restricted commands %#", (patch, message) => {
     expect(() =>
-      permissions.check(
-        context({ command: record(patch as Parameters<typeof record>[0]) }),
-      ),
+      permissions.check(context({ command: record(patch as Parameters<typeof record>[0]) })),
     ).toThrow(message);
   });
   test("checks channel overwrites instead of guild-level permission grants", () => {
@@ -102,11 +88,7 @@ describe("permission priority and isolation", () => {
     }
   });
   test("mismatched member, channel or user contexts fail closed", () => {
-    for (const patch of [
-      { channelId: "other" },
-      { userId: "other" },
-      { guildId: "other" },
-    ])
+    for (const patch of [{ channelId: "other" }, { userId: "other" }, { guildId: "other" }])
       expect(() => permissions.check(context(patch))).toThrow("another server");
   });
 });
@@ -124,13 +106,10 @@ describe("scoped bounded cooldown reservations", () => {
       expect(() => cooldowns.acquire(c)).toThrow("10 seconds");
       const otherUser = { ...c, userId: "other-user" };
       const otherChannel = { ...c, channelId: "other-channel" };
-      if (scope === "USER")
-        expect(() => cooldowns.acquire(otherUser)).not.toThrow();
+      if (scope === "USER") expect(() => cooldowns.acquire(otherUser)).not.toThrow();
       else expect(() => cooldowns.acquire(otherUser)).toThrow();
       if (scope === "USER" || scope === "CHANNEL")
-        expect(() =>
-          cooldowns.acquire({ ...otherChannel, userId: "new" }),
-        ).not.toThrow();
+        expect(() => cooldowns.acquire({ ...otherChannel, userId: "new" })).not.toThrow();
       else expect(() => cooldowns.acquire(otherChannel)).toThrow();
       expect(() =>
         cooldowns.acquire({
@@ -190,10 +169,7 @@ describe("canonical execution flow", () => {
       ["Second", 1],
     ]);
     expect(remove).toHaveBeenCalledOnce();
-    await executor.execute(
-      { ...c, source: "slash" },
-      { send, deleteInvocation: remove },
-    );
+    await executor.execute({ ...c, source: "slash" }, { send, deleteInvocation: remove });
     expect(send).toHaveBeenCalledTimes(4);
     expect(remove).toHaveBeenCalledOnce();
     expect(repo.recordUsage).toHaveBeenCalledTimes(2);
@@ -244,12 +220,8 @@ describe("canonical execution flow", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("second failed"));
-    await expect(executor.execute(second, { send: partial })).rejects.toThrow(
-      "second failed",
-    );
-    await expect(executor.execute(second, { send: partial })).rejects.toThrow(
-      "60 seconds",
-    );
+    await expect(executor.execute(second, { send: partial })).rejects.toThrow("second failed");
+    await expect(executor.execute(second, { send: partial })).rejects.toThrow("60 seconds");
     expect(repo.recordUsage).toHaveBeenCalledOnce();
   });
   test("usage counter failure never retries an already delivered response", async () => {
@@ -265,10 +237,7 @@ describe("canonical execution flow", () => {
     const send = vi.fn();
     const executor = new CustomCommandExecutor(new MemoryRepository());
     await expect(
-      executor.execute(
-        context({ args: Array.from({ length: 26 }, () => "x") }),
-        { send },
-      ),
+      executor.execute(context({ args: Array.from({ length: 26 }, () => "x") }), { send }),
     ).rejects.toThrow("arguments");
     await expect(
       executor.execute(context({ command: record({ guildId: "other" }) }), {

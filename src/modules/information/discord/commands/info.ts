@@ -15,6 +15,8 @@ import {
   time,
 } from "discord.js";
 import { getRepositoryInfo } from "../services.js";
+import { botIdentityToken } from "../../../../adapters/discord/configuration.js";
+import { currentApplication } from "../../../../adapters/discord/context.js";
 
 export class InfoCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
@@ -23,16 +25,15 @@ export class InfoCommand extends Command {
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const repo = await getRepositoryInfo();
+    const identity = currentApplication().resolve(botIdentityToken);
     const repositoryLink = repo.repositoryUrl ?? null;
 
     const header = new TextDisplayBuilder().setContent(
       [
-        `## ${escapeMarkdown(repo.name)}`,
-        escapeMarkdown(repo.description),
+        `## ${escapeMarkdown(identity.name ?? repo.name)}`,
+        escapeMarkdown(identity.description ?? repo.description),
         "",
         `Version ${escapeMarkdown(repo.version)}`,
       ].join("\n"),
@@ -63,9 +64,9 @@ export class InfoCommand extends Command {
         `**Commit date**`,
         repo.commitDate
           ? [
-            time(repo.commitDate, TimestampStyles.RelativeTime),
-            `-# ${time(repo.commitDate, TimestampStyles.LongDateTime)}`,
-          ].join("\n")
+              time(repo.commitDate, TimestampStyles.RelativeTime),
+              `-# ${time(repo.commitDate, TimestampStyles.LongDateTime)}`,
+            ].join("\n")
           : "Unavailable",
       ].join("\n"),
     );
@@ -81,24 +82,18 @@ export class InfoCommand extends Command {
       .setAccentColor(Colors.Blurple)
       .addTextDisplayComponents(header)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(source)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(build);
 
     if (repositoryLink) {
       container
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
         )
         .addActionRowComponents(
           new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -112,9 +107,7 @@ export class InfoCommand extends Command {
 
     container
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(footer);
 

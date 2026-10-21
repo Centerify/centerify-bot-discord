@@ -8,11 +8,15 @@ Centerify is a Discord bot built with TypeScript, Sapphire Framework, Discord.js
 - Independent server settings with current-owner verification
 - Interactive setup for greetings, automatic roles, logging, and moderation
 - Moderation cases, warnings, member reports, and opt-in global moderation
+- Server, channel and role management with permission and hierarchy checks
+- Private support tickets with persistent panels and retained message history
+- Native terminal plugin marketplace for Windows, macOS and Linux
+- Separately installable Better Ticket support-management module
 - Message XP, levels, and a leaderboard with server, global, or selected-server sharing
 - Server-specific custom message commands and member join/leave responses
 - `/ping` command for checking bot responsiveness
 - TypeScript-first project structure
-- Environment-based configuration with `dotenv`
+- Central `centerify.config.json` customization with selectable dotenv files
 - Prisma 8 / Prisma Next data layer setup
 - Production build output through `tsc`
 
@@ -37,7 +41,7 @@ commands remain disabled until the current owner runs `/verify` again.
 
 ### Prerequisites
 
-- Node.js 22 or newer
+- Node.js 24 LTS
 - npm
 - A Discord bot token
 - A PostgreSQL database URL
@@ -47,19 +51,27 @@ commands remain disabled until the current owner runs `/verify` again.
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/iamaloneforever/centerify-bot-discord.git
+git clone https://github.com/Centerify/centerify-bot-discord.git
 cd centerify-bot-discord
-npm install
+npm ci
 ```
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` in the project root and fill in your credentials:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token
 DATABASE_URL=postgresql://user:password@localhost:5432/database
 ```
+
+Run `npm run check:config` to validate configuration without connecting to services.
+Customize bot identity, presence, command names/descriptions/aliases, modules and
+startup in [`centerify.config.json`](centerify.config.json). Select a dotenv file
+with its `envFile` option or `npm start -- --env-file .env.production`.
+See [configuration and development](docs/configuration.md) for module selection,
+logging, package choices and quality commands, and [deployment](docs/deployment.md)
+for the production build and non-root Docker runtime.
 
 ### Discord application setup
 
@@ -81,6 +93,11 @@ Sharing XP or global moderation requires explicit configuration; installing the
 bot in another server does not automatically join its sharing scope.
 
 ## Scripts
+
+See [management and ticket commands](docs/management.md) for the new command
+reference and ticket setup. Apply database migrations before starting this version.
+See [plugins and the native marketplace](docs/plugins.md) to install and manage
+optional modules. Better Ticket is developed separately in `plugins/better-ticket`.
 
 ```bash
 npm run dev
@@ -273,12 +290,12 @@ Use `/settings` → **XP** → **Ways to earn XP** to select **Messages**,
 **Reactions**, **Daily claim**, or any combination. Messages remain the default
 for existing servers. XP must also be enabled in the XP screen.
 
-| Setting | Default | Allowed values |
-| --- | --- | --- |
-| `xp-message-amount` | 15 XP | 1–10,000 |
-| `xp-reaction-amount` | 5 XP | 1–10,000 |
-| `xp-daily-amount` | 100 XP | 1–10,000 |
-| `xp-cooldown` | 60 seconds | 10–3,600 seconds |
+| Setting              | Default    | Allowed values   |
+| -------------------- | ---------- | ---------------- |
+| `xp-message-amount`  | 15 XP      | 1–10,000         |
+| `xp-reaction-amount` | 5 XP       | 1–10,000         |
+| `xp-daily-amount`    | 100 XP     | 1–10,000         |
+| `xp-cooldown`        | 60 seconds | 10–3,600 seconds |
 
 The cooldown applies independently to messages and reactions. Reaction XP goes
 to the member adding the reaction to another human member's message; self,
@@ -339,5 +356,8 @@ See [custom-command configuration, security and deployment](docs/custom-commands
 for response types, permissions, import/export, limits and migration instructions.
 
 ## Architecture and extensions
+
+See [Security boundaries and validation](docs/security.md) for role safeguards,
+destination-server authorization, security tests and remaining dependency risks.
 
 See [Architecture](docs/architecture.md) for module ownership, configuration and replacement boundaries, and [Creating a module](docs/creating-a-module.md) for a complete example.

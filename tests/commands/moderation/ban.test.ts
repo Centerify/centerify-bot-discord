@@ -11,7 +11,11 @@ import {
 test("ban command registers and records bans", async () => {
   const command = await readCommandSource("moderation", "ban");
 
-  assertChatInputCommand(command, { className: "BanCommand", name: "ban", description: "Ban a user" });
+  assertChatInputCommand(command, {
+    className: "BanCommand",
+    name: "ban",
+    description: "Ban a user",
+  });
   assertGuildCommand(command, "BanMembers");
   assertOption(command, "User", "user", true);
   assertOption(command, "String", "reason", true);

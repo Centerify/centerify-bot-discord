@@ -7,16 +7,9 @@ import type { PrismaCustomCommandRepository } from "../../src/modules/custom-com
 const url = process.env.TEST_DATABASE_URL;
 let testApplication: Awaited<ReturnType<typeof startTestApplication>> | undefined;
 const prefix = `custom-integration-${randomUUID()}`;
-const guilds = [
-  "a",
-  "b",
-  "races",
-  "namespace",
-  "legacy",
-  "limit",
-  "rollback",
-  "sharing",
-].map((suffix) => `${prefix}-${suffix}`);
+const guilds = ["a", "b", "races", "namespace", "legacy", "limit", "rollback", "sharing"].map(
+  (suffix) => `${prefix}-${suffix}`,
+);
 const [a, b, races, namespace, legacy, limit, rollback, sharing] = guilds;
 let db: typeof import("../../src/adapters/prisma/client.js").db;
 let service: CustomCommandService, repository: PrismaCustomCommandRepository;
@@ -24,7 +17,7 @@ let sharingRepository: import("../../src/modules/custom-commands/infrastructure/
 describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = url!;
-      testApplication = await startTestApplication();
+    testApplication = await startTestApplication();
     ({ db } = await import("../../src/adapters/prisma/client.js"));
     const { PrismaCustomCommandRepository } =
       await import("../../src/modules/custom-commands/infrastructure/PrismaCustomCommandRepository.js");
@@ -73,9 +66,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
       }),
     );
     await service.createCommand(b, "owner-b", definition({ description: "B" }));
-    expect((await service.getCommand(a, "welcome"))?.aliases).toEqual([
-      "hello",
-    ]);
+    expect((await service.getCommand(a, "welcome"))?.aliases).toEqual(["hello"]);
     expect((await service.getCommand(a, "welcome"))?.deniedRoleIds).toEqual([]);
     expect((await service.getCommand(a, "second"))?.allowedRoleIds).toEqual([]);
     expect(await service.getCommandByNameOrAlias(b, "hello")).toBeNull();
@@ -84,9 +75,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
       aliases: ["hi"],
     });
     expect(await service.getCommandByNameOrAlias(a, "hello")).toBeNull();
-    expect((await service.getCommandByNameOrAlias(a, "hi"))?.updatedBy).toBe(
-      "editor",
-    );
+    expect((await service.getCommandByNameOrAlias(a, "hi"))?.updatedBy).toBe("editor");
     await service.disableCommand(a, "editor", "welcome");
     expect((await service.getCommand(a, "welcome"))?.enabled).toBe(false);
     await service.enableCommand(a, "editor", "welcome");
@@ -105,25 +94,15 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
   });
   test("concurrent case-insensitive name and alias claims have exactly one winner", async () => {
     const sameName = await Promise.allSettled(
-      ["RULES", "rules"].map((name) =>
-        service.createCommand(races, "a", definition({ name })),
-      ),
+      ["RULES", "rules"].map((name) => service.createCommand(races, "a", definition({ name }))),
     );
-    expect(
-      sameName.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
+    expect(sameName.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     const aliases = await Promise.allSettled(
       ["first", "second"].map((name) =>
-        service.createCommand(
-          namespace,
-          "a",
-          definition({ name, aliases: ["shared"] }),
-        ),
+        service.createCommand(namespace, "a", definition({ name, aliases: ["shared"] })),
       ),
     );
-    expect(
-      aliases.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
+    expect(aliases.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     await expect(
       service.createCommand(namespace, "a", definition({ name: "shared" })),
     ).rejects.toThrow("already exists");
@@ -179,42 +158,23 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
     };
     const results = await Promise.allSettled([
       customResponseService.create(legacyInput),
-      service.createCommand(
-        legacy,
-        "owner",
-        definition({ name: "new", aliases: ["shared"] }),
-      ),
+      service.createCommand(legacy, "owner", definition({ name: "new", aliases: ["shared"] })),
     ]);
-    expect(
-      results.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
   });
   test("guild limit survives parallel creations", async () => {
     const { CustomCommandService } =
       await import("../../src/modules/custom-commands/application/CustomCommandService.js");
-    const limited = new CustomCommandService(
-      repository,
-      undefined,
-      undefined,
-      1,
-    );
+    const limited = new CustomCommandService(repository, undefined, undefined, 1);
     const results = await Promise.allSettled(
-      ["first", "second"].map((name) =>
-        limited.createCommand(limit, "a", definition({ name })),
-      ),
+      ["first", "second"].map((name) => limited.createCommand(limit, "a", definition({ name }))),
     );
-    expect(
-      results.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(await limited.listCommands(limit)).toHaveLength(1);
   });
   test("usage counters increment atomically without changing administrative revision", async () => {
     const command = (await service.listCommands(races))[0]!;
-    await Promise.all(
-      Array.from({ length: 10 }, () =>
-        repository.recordUsage(races, command.id),
-      ),
-    );
+    await Promise.all(Array.from({ length: 10 }, () => repository.recordUsage(races, command.id)));
     await repository.recordUsage(b, command.id);
     service.invalidate(races);
     const updated = await service.getCommand(races, command.name);
@@ -236,9 +196,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
       }),
     ).rejects.toThrow("abort");
     expect(await repository.list(rollback)).toEqual([]);
-    expect(
-      await db.orm.public.CustomCommandName.where({ guildId: rollback }).all(),
-    ).toEqual([]);
+    expect(await db.orm.public.CustomCommandName.where({ guildId: rollback }).all()).toEqual([]);
     expect(
       await db.orm.public.CustomCommandRestriction.where({
         guildId: rollback,
@@ -251,9 +209,9 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
     const imported = (await service.listCommands(rollback))[0]!;
     expect(imported.guildId).toBe(rollback);
     expect(imported.createdBy).toBe("importer");
-    await expect(
-      service.importCommands(rollback, "importer", output),
-    ).rejects.toThrow("already exists");
+    await expect(service.importCommands(rollback, "importer", output)).rejects.toThrow(
+      "already exists",
+    );
     expect(await service.listCommands(rollback)).toHaveLength(1);
   });
   test("sharing persists a single definition, resolves aliases, clears scope and cascades on deletion", async () => {
@@ -272,9 +230,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
     await sharingRepository.save(command, global);
     expect(await sharingRepository.available(b)).toContainEqual(global);
     expect(await sharingRepository.get(sharing, command.id)).toEqual(global);
-    expect(await sharingRepository.candidates("shared-alias")).toEqual([
-      global,
-    ]);
+    expect(await sharingRepository.candidates("shared-alias")).toEqual([global]);
     const selected = {
       ...global,
       scope: "selected" as const,
@@ -284,9 +240,7 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
     expect(await sharingRepository.available(b)).toContainEqual(selected);
     expect(await sharingRepository.available(a)).not.toContainEqual(selected);
     expect(await sharingRepository.available(sharing)).toContainEqual(selected);
-    expect(await sharingRepository.candidates("shared-rule")).toEqual([
-      selected,
-    ]);
+    expect(await sharingRepository.candidates("shared-rule")).toEqual([selected]);
     expect(await repository.list(sharing)).toHaveLength(1);
     expect(await repository.list(b)).not.toContainEqual(
       expect.objectContaining({ name: "shared-rule" }),
@@ -320,18 +274,11 @@ describe.skipIf(!url)("live custom-command PostgreSQL guarantees", () => {
     await service.updateCommand(sharing, "owner", command.name, {
       description: "Edited after opening",
     });
-    await expect(sharingRepository.save(command, global)).rejects.toThrow(
-      "changed",
-    );
-    const restricted = await service.updateCommand(
-      sharing,
-      "owner",
-      command.name,
-      { deniedRoleIds: ["123456789012345678"] },
-    );
-    await expect(sharingRepository.save(restricted, global)).rejects.toThrow(
-      "server-specific",
-    );
+    await expect(sharingRepository.save(command, global)).rejects.toThrow("changed");
+    const restricted = await service.updateCommand(sharing, "owner", command.name, {
+      deniedRoleIds: ["123456789012345678"],
+    });
+    await expect(sharingRepository.save(restricted, global)).rejects.toThrow("server-specific");
     expect(await sharingRepository.get(sharing, command.id)).toBeNull();
   });
 });

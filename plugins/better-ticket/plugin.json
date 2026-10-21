@@ -1,0 +1,22 @@
+{
+  "id": "better-ticket",
+  "name": "Better Ticket",
+  "version": "1.0.0",
+  "description": "Support departments, intake forms, ticket claims, priorities, private notes, transcripts, reopen, ratings, saved replies, limits and inactivity closing.",
+  "apiVersion": 1,
+  "entrypoint": "index.js",
+  "permissions": [
+    "ManageChannels",
+    "ManageRoles",
+    "ViewChannel",
+    "SendMessages",
+    "ReadMessageHistory",
+    "AttachFiles",
+    "EmbedLinks",
+    "AddReactions",
+    "CreatePublicThreads",
+    "CreatePrivateThreads",
+    "SendMessagesInThreads"
+  ],
+  "dependencies": ["guilds"]
+}

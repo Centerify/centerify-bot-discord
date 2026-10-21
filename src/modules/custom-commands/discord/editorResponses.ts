@@ -5,10 +5,7 @@ import {
   TextInputStyle,
   type ModalSubmitInteraction,
 } from "discord.js";
-import type {
-  CustomCommandRecord,
-  ResponseTemplate,
-} from "../domain/types.js";
+import type { CustomCommandRecord, ResponseTemplate } from "../domain/types.js";
 import { CustomCommandValidationError } from "../domain/errors.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
 interface Input {
@@ -19,25 +16,17 @@ interface Input {
   required?: boolean;
   paragraph?: boolean;
 }
-export function editorModal(
-  id: string,
-  title: string,
-  inputs: Input[],
-): ModalBuilder {
+export function editorModal(id: string, title: string, inputs: Input[]): ModalBuilder {
   const modal = new ModalBuilder().setCustomId(id).setTitle(title);
   for (const input of inputs) {
     const field = new TextInputBuilder()
       .setCustomId(input.id)
       .setLabel(input.label)
-      .setStyle(
-        input.paragraph ? TextInputStyle.Paragraph : TextInputStyle.Short,
-      )
+      .setStyle(input.paragraph ? TextInputStyle.Paragraph : TextInputStyle.Short)
       .setRequired(input.required ?? false)
       .setMaxLength(input.max ?? L.text);
     if (input.value) field.setValue(input.value);
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(field),
-    );
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(field));
   }
   return modal;
 }
@@ -73,10 +62,7 @@ export function responseModal(
       {
         id: "color",
         label: "Color (hex, e.g. #5865f2)",
-        value:
-          embed.color === undefined
-            ? ""
-            : `#${embed.color.toString(16).padStart(6, "0")}`,
+        value: embed.color === undefined ? "" : `#${embed.color.toString(16).padStart(6, "0")}`,
         max: 7,
       },
       {
@@ -137,8 +123,7 @@ export function responseModal(
     ]);
   if (action.startsWith("edit-field-")) {
     const field = embed.fields?.[Number(action.slice(11))];
-    if (!field)
-      throw new CustomCommandValidationError("That field no longer exists.");
+    if (!field) throw new CustomCommandValidationError("That field no longer exists.");
     return editorModal(id, "Edit embed field", [
       {
         id: "name",
@@ -189,8 +174,7 @@ export function applyResponseModal(
 ): ResponseTemplate[] {
   const content = structuredClone(command.content);
   const response = content[index];
-  if (!response)
-    throw new CustomCommandValidationError("That response no longer exists.");
+  if (!response) throw new CustomCommandValidationError("That response no longer exists.");
   const value = (key: string) => modal.fields.getTextInputValue(key).trim();
   if (response.type === "TEXT") {
     response.text = modal.fields.getTextInputValue("text");
@@ -208,9 +192,7 @@ export function applyResponseModal(
     if (description) embed.description = description;
     else delete embed.description;
     if (color && !/^#?[a-fA-F0-9]{6}$/.test(color))
-      throw new CustomCommandValidationError(
-        "Color must be a six-digit hex value.",
-      );
+      throw new CustomCommandValidationError("Color must be a six-digit hex value.");
     if (color) embed.color = parseInt(color.replace("#", ""), 16);
     else delete embed.color;
     if (author) embed.author = { ...embed.author, name: author };
@@ -226,10 +208,7 @@ export function applyResponseModal(
     for (const key of ["author", "footer"] as const) {
       const url = value(`${key}_icon`);
       const item = embed[key];
-      if (url && !item)
-        throw new CustomCommandValidationError(
-          `Set ${key} text before its icon.`,
-        );
+      if (url && !item) throw new CustomCommandValidationError(`Set ${key} text before its icon.`);
       if (item) {
         if (url) item.icon_url = url;
         else delete item.icon_url;
@@ -237,20 +216,14 @@ export function applyResponseModal(
     }
     const timestamp = value("timestamp");
     embed.timestamp =
-      timestamp === "true"
-        ? true
-        : timestamp === "false" || !timestamp
-          ? false
-          : timestamp;
+      timestamp === "true" ? true : timestamp === "false" || !timestamp ? false : timestamp;
   } else if (action === "links") {
     const url = value("url"),
       authorUrl = value("author_url");
     if (url) embed.url = url;
     else delete embed.url;
     if (authorUrl && !embed.author)
-      throw new CustomCommandValidationError(
-        "Set author text before its link.",
-      );
+      throw new CustomCommandValidationError("Set author text before its link.");
     if (embed.author) {
       if (authorUrl) embed.author.url = authorUrl;
       else delete embed.author.url;
@@ -270,9 +243,7 @@ export function applyResponseModal(
       }
     }
     if (!editing && (embed.fields?.length ?? 0) >= L.embedFields)
-      throw new CustomCommandValidationError(
-        `Embeds support at most ${L.embedFields} fields.`,
-      );
+      throw new CustomCommandValidationError(`Embeds support at most ${L.embedFields} fields.`);
     const inline = value("inline");
     if (!["true", "false", ""].includes(inline))
       throw new CustomCommandValidationError("Inline must be true or false.");

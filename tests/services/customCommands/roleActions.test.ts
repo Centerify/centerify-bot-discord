@@ -1,6 +1,10 @@
 import { EventEmitter } from "node:events";
 import { expect, test, vi } from "vitest";
 import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
+const security = vi.hoisted(() => ({ verified: vi.fn(async () => true) }));
+vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
+  guildOwnershipService: { isVerified: security.verified },
+}));
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({
   logger: { info: vi.fn(), warn: vi.fn() },
 }));
@@ -42,7 +46,12 @@ Rules
     permissions: new PermissionsBitField([PermissionFlagsBits.ManageRoles]),
     roles: { highest: { comparePositionTo: vi.fn().mockReturnValue(1) } },
   };
-  const role = { id: ROLE, guild: { id: ctx.guildId }, managed: false };
+  const role = {
+    id: ROLE,
+    guild: { id: ctx.guildId },
+    managed: false,
+    permissions: new PermissionsBitField(),
+  };
   const fetch = vi.fn().mockResolvedValue(ctx.member);
   const fetchMe = vi.fn().mockResolvedValue(me);
   const fetchRole = vi.fn().mockResolvedValue(role);
@@ -50,9 +59,8 @@ Rules
   Object.assign(ctx.guild, { roles: { fetch: fetchRole } });
   const loadCommand = vi.fn().mockResolvedValue(ctx.command);
   const active = vi.fn().mockReturnValue(true);
-  const execute = (
-    action: "addrole" | "removerole" | "togglerole" = "addrole",
-  ) => executeRoleAction(ctx, { action, roleId: ROLE }, loadCommand, active);
+  const execute = (action: "addrole" | "removerole" | "togglerole" = "addrole") =>
+    executeRoleAction(ctx, { action, roleId: ROLE }, loadCommand, active);
   const collector = new EventEmitter() as EventEmitter & {
     stop: ReturnType<typeof vi.fn>;
   };
@@ -74,18 +82,14 @@ Rules
     editReply: vi.fn().mockResolvedValue(undefined),
   });
   const collect = (click: ReturnType<typeof interaction>) =>
-    (
-      collector.listeners("collect")[0] as (
-        click: ReturnType<typeof interaction>,
-      ) => Promise<void>
-    )(click);
-  const attach = async (preview = false) =>
-    attachStageNavigation(
-      message,
-      ctx,
-      await new CustomCommandRenderer().render(ctx, true),
-      { preview, loadCommand },
+    (collector.listeners("collect")[0] as (click: ReturnType<typeof interaction>) => Promise<void>)(
+      click,
     );
+  const attach = async (preview = false) =>
+    attachStageNavigation(message, ctx, await new CustomCommandRenderer().render(ctx, true), {
+      preview,
+      loadCommand,
+    });
   return {
     ctx,
     cache,
@@ -125,6 +129,44 @@ test("role changes refresh membership and hierarchy, modify only the configured 
   expect(await s.execute("togglerole")).toBe("Role added.");
   expect(s.add).toHaveBeenCalledTimes(2);
   expect(s.cache.has("unrelated")).toBe(true);
+});
+
+test.each([
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.BanMembers,
+])("self-service roles cannot grant privileged permission %s", async (permission) => {
+  const s = setup();
+  s.role.permissions = new PermissionsBitField([permission]);
+  await expect(s.execute()).rejects.toThrow("Privileged roles");
+  expect(s.add).not.toHaveBeenCalled();
+});
+
+test("revoked server verification invalidates already delivered controls", async () => {
+  const s = setup();
+  security.verified.mockResolvedValueOnce(false);
+  await expect(s.execute()).rejects.toThrow("no longer verified");
+  expect(s.add).not.toHaveBeenCalled();
+  expect(s.loadCommand).not.toHaveBeenCalled();
+});
+
+test("Manage Roles alone cannot grant Administrator; permitted role managers retain hierarchy checks", async () => {
+  const s = setup();
+  s.role.permissions = new PermissionsBitField([PermissionFlagsBits.Administrator]);
+  Object.assign(s.ctx.member, {
+    permissions: new PermissionsBitField([PermissionFlagsBits.ManageRoles]),
+  });
+  await expect(s.execute()).rejects.toThrow("Privileged roles");
+  Object.assign(s.ctx.member, {
+    permissions: new PermissionsBitField([PermissionFlagsBits.Administrator]),
+  });
+  const comparePositionTo = vi.fn().mockReturnValue(0);
+  Object.assign(s.ctx.member.roles, { highest: { comparePositionTo } });
+  await expect(s.execute()).rejects.toThrow("Privileged roles");
+  comparePositionTo.mockReturnValue(1);
+  await expect(s.execute()).resolves.toBe("Role added.");
+  expect(s.add).toHaveBeenCalledOnce();
 });
 
 test.each([
@@ -244,10 +286,7 @@ test("button and select actions execute through the real executor; clicks do not
 test("preview role buttons and select options report without executing; navigation still works", async () => {
   const s = setup();
   await s.attach(true);
-  for (const click of [
-    s.interaction("cc-stage:0:0"),
-    s.interaction("cc-select:0:0", ["0"]),
-  ]) {
+  for (const click of [s.interaction("cc-stage:0:0"), s.interaction("cc-select:0:0", ["0"])]) {
     await s.collect(click);
     expect(click.reply).toHaveBeenCalledWith({
       content: "Preview only — roles are not changed.",
@@ -268,9 +307,7 @@ test("foreign users, forged selections, wrong component types, stale stages and 
   const foreign = s.interaction("cc-select:0:0", ["0"]);
   foreign.user.id = "other";
   await s.collect(foreign);
-  expect(foreign.reply).toHaveBeenCalledWith(
-    expect.objectContaining({ flags: 64 }),
-  );
+  expect(foreign.reply).toHaveBeenCalledWith(expect.objectContaining({ flags: 64 }));
   for (const click of [
     s.interaction("cc-select:0:0", [ROLE]),
     s.interaction("cc-select:0:0", ["-1"]),
@@ -346,10 +383,7 @@ test("unstaged role components attach collectors to every delivered response", a
     createMessageComponentCollector: vi.fn().mockReturnValue(firstCollector),
     edit: vi.fn().mockResolvedValue(undefined),
   };
-  const send = vi
-    .fn()
-    .mockResolvedValueOnce(first)
-    .mockResolvedValueOnce(s.message);
+  const send = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(s.message);
   await new CustomCommandExecutor(repository).execute(s.ctx, { send });
   expect(first.createMessageComponentCollector).toHaveBeenCalledOnce();
   expect(s.message.createMessageComponentCollector).toHaveBeenCalledOnce();

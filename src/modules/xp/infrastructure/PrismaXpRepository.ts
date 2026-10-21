@@ -4,7 +4,13 @@ import type { XpMethod } from "../domain/policy.js";
 
 export class PrismaXpRepository implements XpRepository {
   constructor(private readonly database: typeof db = db) {}
-  async award(guildId: string, userId: string, method: XpMethod, amount: number, cooldownSeconds: number) {
+  async award(
+    guildId: string,
+    userId: string,
+    method: XpMethod,
+    amount: number,
+    cooldownSeconds: number,
+  ) {
     // The conditional upsert is atomic on its own; avoid BEGIN/COMMIT per event.
     const plan = this.database.raw.sql`
       INSERT INTO member_xp ("guildId", "userId", xp, "lastAwardedAt", "lastReactionAwardedAt", "lastDailyAwardedAt")
@@ -23,7 +29,9 @@ export class PrismaXpRepository implements XpRepository {
         WHEN 'daily' THEN member_xp."lastDailyAwardedAt"
       END, '1970-01-01'::timestamptz) <= now() - (${cooldownSeconds} * interval '1 second')
       RETURNING xp
-    `.returnsRow({ xp: "pg/int4@1" }).build();
+    `
+      .returnsRow({ xp: "pg/int4@1" })
+      .build();
     const rows = await this.database.runtime().query(plan);
     return rows.length > 0;
   }

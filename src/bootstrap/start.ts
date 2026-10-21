@@ -1,38 +1,106 @@
 import { withApplication } from "../adapters/discord/context.js";
-import { ApplicationCommandRegistries, LogLevel, RegisterBehavior, SapphireClient } from "@sapphire/framework";
-import { parseModuleConfiguration } from "../core/index.js";
+import {
+  ApplicationCommandRegistries,
+  LogLevel,
+  RegisterBehavior,
+  SapphireClient,
+} from "@sapphire/framework";
+import { parseEnvironment, type EnvironmentConfiguration } from "./config.js";
 import { gatewayOptions } from "../adapters/discord/clientOptions.js";
 import { createInteractionTransport } from "../adapters/discord/interactionTransport.js";
 import { installDiscordModules } from "../adapters/discord/modules.js";
 import { createApplication } from "./application.js";
 import { db } from "../adapters/prisma/client.js";
 import { logger } from "../adapters/logging/pino.js";
+import { defaultPluginManager, loadInstalledPlugins } from "./plugins.js";
+import { applyBotIdentity, configuredPresence } from "../adapters/discord/configuration.js";
+import { Events } from "discord.js";
 
-export async function startBot() {
-  const token = process.env.DISCORD_TOKEN;
-  if (!token) throw new Error("Missing DISCORD_TOKEN in environment");
-  if (!process.env.DATABASE_URL) throw new Error("Missing DATABASE_URL in environment");
+export async function startBot(config: EnvironmentConfiguration = parseEnvironment()) {
+  if (config.customization.startup.enabled === false)
+    throw new Error("Bot startup is disabled in configuration");
   ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
+  ApplicationCommandRegistries.setDefaultGuildIds(config.customization.startup.commandGuildIds);
+  ApplicationCommandRegistries.setBulkOverwriteRetries(
+    config.customization.startup.commandRegistrationRetries ?? null,
+  );
+  const pluginManager = defaultPluginManager(config.pluginStateDirectory);
+  const installedPlugins = await loadInstalledPlugins(pluginManager);
   const transport = createInteractionTransport(logger);
-  const client = new SapphireClient({ ...gatewayOptions, rest: { makeRequest: transport.makeRequest }, baseUserDirectory: null, loadMessageCommandListeners: true, logger: { level: LogLevel.Info } });
-  const application = createApplication({ modules: parseModuleConfiguration(process.env.CENTERIFY_MODULES) });
+  const client = new SapphireClient({
+    ...gatewayOptions,
+    rest: { makeRequest: transport.makeRequest },
+    baseUserDirectory: null,
+    loadMessageCommandListeners: true,
+    logger: { level: LogLevel.Info },
+    presence: configuredPresence(config.customization.bot),
+  });
+  const application = createApplication({
+    modules: config.modules,
+    bot: config.customization.bot,
+    pluginManager,
+    additionalModules: installedPlugins,
+  });
   let removeAdapters: (() => Promise<void>) | undefined;
   let stopping: Promise<void> | undefined;
-  const stop = () => stopping ??= (async () => {
-    const errors: unknown[] = [];
-    for (const close of [() => client.destroy(), () => transport.stop(), () => removeAdapters?.(), () => withApplication(application, () => application.stop()), () => db.close()]) {
-      try { await close(); } catch (error) { errors.push(error); }
-    }
-    if (errors.length) throw new AggregateError(errors, "Application shutdown failed");
-  })();
+  const stop = () =>
+    (stopping ??= (async () => {
+      const errors: unknown[] = [];
+      for (const close of [
+        () => client.destroy(),
+        () => transport.stop(),
+        () => removeAdapters?.(),
+        () => withApplication(application, () => application.stop()),
+        () => db.close(),
+      ]) {
+        try {
+          await close();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (errors.length) throw new AggregateError(errors, "Application shutdown failed");
+    })());
   client.on("error", (error) => logger.error({ err: error }, "Discord client error"));
   try {
     await application.start();
-    removeAdapters = await installDiscordModules(client, application);
+    removeAdapters = await installDiscordModules(
+      client,
+      application,
+      config.customization.commands,
+    );
     await transport.start();
-    await client.login(token);
+    let onReady: (ready: SapphireClient<true>) => void;
+    const identityReady = new Promise<void>((resolve, reject) => {
+      onReady = (ready) => {
+        void applyBotIdentity(ready, config.customization.bot).then(resolve, reject);
+      };
+      client.once(Events.ClientReady, onReady);
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const connected = Promise.all([client.login(config.discordToken), identityReady]);
+      if (config.customization.startup.loginTimeoutMs === undefined) await connected;
+      else
+        await Promise.race([
+          connected,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("Bot login timed out")),
+              config.customization.startup.loginTimeoutMs,
+            );
+          }),
+        ]);
+    } finally {
+      clearTimeout(timer);
+      client.off(Events.ClientReady, onReady!);
+    }
   } catch (error) {
-    try { await stop(); } catch (cleanupError) { logger.error({ err: cleanupError }, "Startup cleanup failed"); }
+    try {
+      await stop();
+    } catch (cleanupError) {
+      logger.error({ err: cleanupError }, "Startup cleanup failed");
+    }
     throw error;
   }
   return { client, application, stop };

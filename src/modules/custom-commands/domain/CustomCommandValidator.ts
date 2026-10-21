@@ -1,7 +1,4 @@
-import {
-  PERMISSION_NAMES,
-  type PermissionName as PermissionsString,
-} from "./permissions.js";
+import { PERMISSION_NAMES, type PermissionName as PermissionsString } from "./permissions.js";
 import {
   CUSTOM_COMMAND_LIMITS as L,
   COOLDOWN_SCOPES,
@@ -20,6 +17,8 @@ import type {
   EffectAction,
 } from "./types.js";
 import { responseActions, isEffectAction } from "./components.js";
+import { object, text, boolean, choice } from "./validation.js";
+export { object } from "./validation.js";
 import {
   URL_VARIABLES,
   templateSyntax,
@@ -34,74 +33,18 @@ export function normalizeCommandName(name: string): string {
 function fail(message: string): never {
   throw new CustomCommandValidationError(message);
 }
-export function object(
-  value: unknown,
-  label: string,
-  keys: readonly string[],
-): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    return fail(`${label} must be an object.`);
-  const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !keys.includes(key)))
-    fail(`${label} contains unsupported fields.`);
-  return record;
-}
 function defaultValue(value: unknown, fallback: unknown): unknown {
   return value === undefined ? fallback : value;
 }
-function text(
-  value: unknown,
-  label: string,
-  max: number,
-  empty = false,
-): string {
-  if (
-    typeof value !== "string" ||
-    value.length > max ||
-    (!empty && !value.trim())
-  )
-    return fail(
-      `${label} must contain ${empty ? "0" : "1"}–${max} characters.`,
-    );
-  if (
-    value.includes("\0") ||
-    Buffer.from(value, "utf8").toString("utf8") !== value
-  )
-    fail(`${label} contains invalid Unicode or a null character.`);
-  return value;
-}
-function boolean(value: unknown, label: string): boolean {
-  if (typeof value !== "boolean") return fail(`${label} must be a boolean.`);
-  return value;
-}
-function choice<T extends string>(
-  value: unknown,
-  choices: readonly T[],
-  label: string,
-): T {
-  if (typeof value !== "string" || !choices.includes(value as T))
-    return fail(`${label} is unsupported.`);
-  return value as T;
-}
 function url(value: unknown, templates = false): string {
   const input = text(value, "URL", L.url);
-  if (templates && URL_VARIABLES.some((key) => input === `{${key}}`))
-    return input;
+  if (templates && URL_VARIABLES.some((key) => input === `{${key}}`)) return input;
   try {
     const parsed = new URL(input);
-    if (
-      parsed.protocol !== "https:" ||
-      parsed.username ||
-      parsed.password ||
-      /[{}]/.test(input)
-    )
-      fail(
-        "URLs must use HTTPS without credentials, or an approved complete image placeholder.",
-      );
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password || /[{}]/.test(input))
+      fail("URLs must use HTTPS without credentials, or an approved complete image placeholder.");
   } catch {
-    fail(
-      "URLs must use HTTPS without credentials, or an approved complete image placeholder.",
-    );
+    fail("URLs must use HTTPS without credentials, or an approved complete image placeholder.");
   }
   return input;
 }
@@ -146,36 +89,27 @@ export class CustomCommandValidator {
   public name(input: unknown): string {
     const name = normalizeCommandName(text(input, "Name", L.name));
     if (!/^[\p{L}\p{N}_-][\p{L}\p{N}\p{M}_-]*$/u.test(name))
-      fail(
-        "Name must contain letters, numbers, marks, underscores or hyphens, without spaces.",
-      );
+      fail("Name must contain letters, numbers, marks, underscores or hyphens, without spaces.");
     return name;
   }
   public definition(input: unknown): CustomCommandDefinition {
     const data = object(input, "Command", definitionKeys);
     const name = this.name(data.name);
-    const aliases = this.list(
-      defaultValue(data.aliases, []),
-      "Aliases",
-      L.aliases,
-    ).map((alias) => this.name(alias));
+    const aliases = this.list(defaultValue(data.aliases, []), "Aliases", L.aliases).map((alias) =>
+      this.name(alias),
+    );
     if (new Set([name, ...aliases]).size !== aliases.length + 1)
       fail("Names and aliases must be distinct.");
     const restrictions = Object.fromEntries(
       RESTRICTION_KEYS.map((key) => {
-        const values = this.list(
-          defaultValue(data[key], []),
-          key,
-          L.restrictions,
-        );
+        const values = this.list(defaultValue(data[key], []), key, L.restrictions);
         if (key.endsWith("Permissions")) {
           for (const permission of values)
             if (!PERMISSION_NAMES.some((name) => name === permission))
               fail(`Unknown Discord permission: ${permission}.`);
         } else
           for (const id of values)
-            if (!/^\d{17,20}$/.test(id))
-              fail(`${key} must contain Discord IDs.`);
+            if (!/^\d{17,20}$/.test(id)) fail(`${key} must contain Discord IDs.`);
         return [key, values];
       }),
     ) as Pick<CustomCommandDefinition, (typeof RESTRICTION_KEYS)[number]>;
@@ -189,17 +123,11 @@ export class CustomCommandValidator {
       fail(`Cooldown must be 0–${L.cooldownSeconds} seconds.`);
     const content = this.responses(data.content);
     const responseType = choice(
-      defaultValue(
-        data.responseType,
-        content.length > 1 ? "MULTI" : content[0]!.type,
-      ),
+      defaultValue(data.responseType, content.length > 1 ? "MULTI" : content[0]!.type),
       RESPONSE_TYPES,
       "Response type",
     );
-    if (
-      responseType !== "MULTI" &&
-      (content.length !== 1 || content[0]!.type !== responseType)
-    )
+    if (responseType !== "MULTI" && (content.length !== 1 || content[0]!.type !== responseType))
       fail("Response type does not match its content.");
     return {
       name,
@@ -207,32 +135,17 @@ export class CustomCommandValidator {
       ...restrictions,
       content,
       responseType,
-      description: text(
-        defaultValue(data.description, ""),
-        "Description",
-        L.description,
-        true,
-      ),
+      description: text(defaultValue(data.description, ""), "Description", L.description, true),
       enabled: boolean(defaultValue(data.enabled, true), "Enabled"),
-      triggerType: choice(
-        defaultValue(data.triggerType, "BOTH"),
-        TRIGGER_TYPES,
-        "Trigger type",
-      ),
+      triggerType: choice(defaultValue(data.triggerType, "BOTH"), TRIGGER_TYPES, "Trigger type"),
       cooldownSeconds,
       cooldownScope: choice(
         defaultValue(data.cooldownScope, "USER"),
         COOLDOWN_SCOPES,
         "Cooldown scope",
       ),
-      deleteInvocation: boolean(
-        defaultValue(data.deleteInvocation, false),
-        "Delete invocation",
-      ),
-      replyToInvocation: boolean(
-        defaultValue(data.replyToInvocation, true),
-        "Reply to invocation",
-      ),
+      deleteInvocation: boolean(defaultValue(data.deleteInvocation, false), "Delete invocation"),
+      replyToInvocation: boolean(defaultValue(data.replyToInvocation, true), "Reply to invocation"),
     };
   }
   private list(value: unknown, label: string, max: number): string[] {
@@ -243,18 +156,14 @@ export class CustomCommandValidator {
     )
       return fail(`${label} must be a list of at most ${max} strings.`);
     const values = value as string[];
-    if (new Set(values).size !== values.length)
-      fail(`${label} contains duplicates.`);
+    if (new Set(values).size !== values.length) fail(`${label} contains duplicates.`);
     return [...values];
   }
   public responses(input: unknown, templates = true): ResponseTemplate[] {
     if (!Array.isArray(input) || input.length < 1 || input.length > L.messages)
       return fail(`Provide 1–${L.messages} response messages.`);
-    if (JSON.stringify(input).length > L.templateInput)
-      fail("Response payload is too large.");
-    const builtInKeys = new Set(
-      this.variables.keys?.() ?? TEMPLATE_VARIABLE_KEYS,
-    );
+    if (JSON.stringify(input).length > L.templateInput) fail("Response payload is too large.");
+    const builtInKeys = new Set(this.variables.keys?.() ?? TEMPLATE_VARIABLE_KEYS);
     const variables = customVariables(
       input.filter((entry) => entry && typeof entry === "object"),
       builtInKeys,
@@ -269,10 +178,7 @@ export class CustomCommandValidator {
     }
     return this.responsePayload(input, templates);
   }
-  private responsePayload(
-    input: unknown[],
-    templates: boolean,
-  ): ResponseTemplate[] {
+  private responsePayload(input: unknown[], templates: boolean): ResponseTemplate[] {
     const responses: ResponseTemplate[] = Array.from(input).map((entry) => {
       const data = object(entry, "Response", [
         "type",
@@ -295,21 +201,13 @@ export class CustomCommandValidator {
           : { variables: { ...(data.variables as Record<string, string>) } }),
       };
       const buttons =
-        data.buttons === undefined
-          ? {}
-          : { buttons: this.buttons(data.buttons, templates) };
+        data.buttons === undefined ? {} : { buttons: this.buttons(data.buttons, templates) };
       const selects =
-        data.selects === undefined
-          ? {}
-          : { selects: this.selects(data.selects, templates) };
-      if (
-        (buttons.buttons?.length ? 1 : 0) + (selects.selects?.length ?? 0) >
-        L.componentRows
-      )
+        data.selects === undefined ? {} : { selects: this.selects(data.selects, templates) };
+      if ((buttons.buttons?.length ? 1 : 0) + (selects.selects?.length ?? 0) > L.componentRows)
         fail(`Use at most ${L.componentRows} component rows per message.`);
       if (data.type === "TEXT") {
-        if (data.embed !== undefined)
-          fail("Text responses cannot contain an embed.");
+        if (data.embed !== undefined) fail("Text responses cannot contain an embed.");
         const value = text(data.text, "Response text", L.text);
         if (templates) this.variables.validate(value);
         return { type: "TEXT", text: value, ...stage, ...buttons, ...selects };
@@ -324,18 +222,14 @@ export class CustomCommandValidator {
         ...selects,
       };
     });
-    const stages = responses
-      .filter((r) => r.stage !== undefined)
-      .map((r) => r.stage!);
+    const stages = responses.filter((r) => r.stage !== undefined).map((r) => r.stage!);
     if (
       stages.length &&
       (stages.length !== responses.length ||
         !stages.includes(0) ||
         new Set(stages).size !== stages.length)
     )
-      fail(
-        "Stages require exactly one @main and unique @stage(n) markers on every response.",
-      );
+      fail("Stages require exactly one @main and unique @stage(n) markers on every response.");
     for (const response of responses)
       for (const action of responseActions(response)) {
         if (!isEffectAction(action) && !stages.length)
@@ -345,11 +239,7 @@ export class CustomCommandValidator {
       }
     return responses;
   }
-  public action(
-    data: Record<string, unknown>,
-    templates = true,
-    nested = false,
-  ): ComponentAction {
+  public action(data: Record<string, unknown>, templates = true, nested = false): ComponentAction {
     const aliases: Record<string, string> = {
       setrole: "addrole",
       setwarn: "warn",
@@ -357,8 +247,7 @@ export class CustomCommandValidator {
       removewarn: "unwarn",
       renamechannel: "setchannelname",
     };
-    const name =
-      typeof data.action === "string" ? data.action.toLowerCase() : data.action;
+    const name = typeof data.action === "string" ? data.action.toLowerCase() : data.action;
     const action = choice(
       typeof name === "string" ? (aliases[name] ?? name) : name,
       [
@@ -428,12 +317,7 @@ export class CustomCommandValidator {
     ];
     if (Object.keys(data).some((key) => !allowed.includes(key)))
       fail(`Unsupported fields for ${action} action.`);
-    const checkedText = (
-      value: unknown,
-      label: string,
-      max: number,
-      empty = false,
-    ) => {
+    const checkedText = (value: unknown, label: string, max: number, empty = false) => {
       const result = text(value, label, max, empty);
       if (templates) this.variables.validate(result);
       return result;
@@ -445,19 +329,13 @@ export class CustomCommandValidator {
         this.variables.validate(result);
         return result;
       }
-      return fail(
-        `${label} requires a Discord ID or a complete variable placeholder.`,
-      );
+      return fail(`${label} requires a Discord ID or a complete variable placeholder.`);
     };
     const options = {
       ...(data.successMessage === undefined
         ? {}
         : {
-            successMessage: checkedText(
-              data.successMessage,
-              "Success message",
-              L.text,
-            ),
+            successMessage: checkedText(data.successMessage, "Success message", L.text),
           }),
       ...(data.repeatable === undefined
         ? {}
@@ -466,15 +344,12 @@ export class CustomCommandValidator {
     if (action === "go" || action === "back") {
       if (!Number.isSafeInteger(data.target) || (data.target as number) < 0)
         fail("Navigation requires a stage target.");
-      if (data.roleId !== undefined)
-        fail("Navigation cannot contain a role ID.");
+      if (data.roleId !== undefined) fail("Navigation cannot contain a role ID.");
       return { action, target: data.target as number };
     }
-    if (data.target !== undefined)
-      fail("This action cannot have a stage target.");
+    if (data.target !== undefined) fail("This action cannot have a stage target.");
     if (action === "main" || action === "cancel") {
-      if (data.roleId !== undefined)
-        fail("This action cannot contain a role ID.");
+      if (data.roleId !== undefined) fail("This action cannot contain a role ID.");
       return { action };
     }
     if (action === "sequence") {
@@ -489,11 +364,7 @@ export class CustomCommandValidator {
         actions: data.actions.map(
           (entry) =>
             this.action(
-              object(entry, "Sequence step", [
-                "action",
-                "roleId",
-                ...COMPONENT_ACTION_FIELDS,
-              ]),
+              object(entry, "Sequence step", ["action", "roleId", ...COMPONENT_ACTION_FIELDS]),
               templates,
               true,
             ) as EffectAction,
@@ -501,19 +372,13 @@ export class CustomCommandValidator {
         ...options,
       };
     }
-    if (
-      action === "addrole" ||
-      action === "removerole" ||
-      action === "togglerole"
-    ) {
+    if (action === "addrole" || action === "removerole" || action === "togglerole") {
       if (typeof data.roleId !== "string" || !/^\d{17,20}$/.test(data.roleId))
         return fail("Role actions require a Discord role ID.");
       return {
         action,
         roleId: data.roleId,
-        ...(data.userId === undefined
-          ? {}
-          : { userId: id(data.userId, "Target member") }),
+        ...(data.userId === undefined ? {} : { userId: id(data.userId, "Target member") }),
         ...options,
       };
     }
@@ -549,10 +414,7 @@ export class CustomCommandValidator {
       return {
         action,
         channelId: id(data.channelId, "Target channel"),
-        categoryId:
-          data.categoryId === null
-            ? null
-            : id(data.categoryId, "Target category"),
+        categoryId: data.categoryId === null ? null : id(data.categoryId, "Target category"),
         ...options,
       };
     if (action === "reply" || action === "sendmessage") {
@@ -581,9 +443,7 @@ export class CustomCommandValidator {
           (data.durationMs as number) < 60_000 ||
           (data.durationMs as number) > L.timeoutMs
         )
-          fail(
-            "Duration must be between 1 minute and 28 days in milliseconds.",
-          );
+          fail("Duration must be between 1 minute and 28 days in milliseconds.");
       }
       if (action === "timeout")
         return {
@@ -597,26 +457,21 @@ export class CustomCommandValidator {
         action,
         userId,
         reason,
-        ...(data.durationMs === undefined
-          ? {}
-          : { durationMs: data.durationMs as number }),
+        ...(data.durationMs === undefined ? {} : { durationMs: data.durationMs as number }),
         ...options,
       };
     }
     if (action === "unwarn") {
       if (
         data.caseNumber !== undefined &&
-        (!Number.isSafeInteger(data.caseNumber) ||
-          (data.caseNumber as number) < 1)
+        (!Number.isSafeInteger(data.caseNumber) || (data.caseNumber as number) < 1)
       )
         fail("Case number must be a positive integer.");
       return {
         action,
         userId,
         reason,
-        ...(data.caseNumber === undefined
-          ? {}
-          : { caseNumber: data.caseNumber as number }),
+        ...(data.caseNumber === undefined ? {} : { caseNumber: data.caseNumber as number }),
         ...options,
       };
     }
@@ -645,13 +500,8 @@ export class CustomCommandValidator {
       return fail(`Use at most ${L.componentRows} selects per message.`);
     return input.map((entry) => {
       const data = object(entry, "Select", ["placeholder", "options"]);
-      const placeholder = text(
-        data.placeholder,
-        "Select placeholder",
-        L.selectPlaceholder,
-      );
-      if (/[\r\n]/.test(placeholder))
-        fail("Select placeholders must be a single line.");
+      const placeholder = text(data.placeholder, "Select placeholder", L.selectPlaceholder);
+      if (/[\r\n]/.test(placeholder)) fail("Select placeholders must be a single line.");
       if (templates) this.variables.validate(placeholder);
       if (
         !Array.isArray(data.options) ||
@@ -672,15 +522,10 @@ export class CustomCommandValidator {
         const description =
           option.description === undefined
             ? undefined
-            : text(
-                option.description,
-                "Select option description",
-                L.selectLabel,
-              );
+            : text(option.description, "Select option description", L.selectLabel);
         for (const value of [label, description]) {
           if (value === undefined) continue;
-          if (/[\r\n]/.test(value))
-            fail("Select labels and descriptions must be a single line.");
+          if (/[\r\n]/.test(value)) fail("Select labels and descriptions must be a single line.");
           if (templates) this.variables.validate(value);
         }
         return {
@@ -709,8 +554,7 @@ export class CustomCommandValidator {
       if (/[\r\n]/.test(label)) fail("Button labels must be a single line.");
       if (templates) this.variables.validate(label);
       if (data.action !== undefined) {
-        if (data.url !== undefined)
-          fail("Action buttons cannot contain a URL.");
+        if (data.url !== undefined) fail("Action buttons cannot contain a URL.");
         return {
           label,
           ...this.action(data, templates),
@@ -755,11 +599,7 @@ export class CustomCommandValidator {
     if (data.title !== undefined)
       result.title = checkedText(data.title, "Embed title", L.embedTitle);
     if (data.description !== undefined)
-      result.description = checkedText(
-        data.description,
-        "Embed description",
-        L.embedDescription,
-      );
+      result.description = checkedText(data.description, "Embed description", L.embedDescription);
     if (data.url !== undefined) result.url = url(data.url, templates);
     if (data.color !== undefined) {
       if (
@@ -772,28 +612,18 @@ export class CustomCommandValidator {
       result.color = data.color;
     }
     if (data.author !== undefined) {
-      const author = object(data.author, "Embed author", [
-        "name",
-        "url",
-        "icon_url",
-      ]);
+      const author = object(data.author, "Embed author", ["name", "url", "icon_url"]);
       result.author = {
         name: checkedText(author.name, "Author name", L.embedAuthor),
-        ...(author.url !== undefined
-          ? { url: url(author.url, templates) }
-          : {}),
-        ...(author.icon_url !== undefined
-          ? { icon_url: url(author.icon_url, templates) }
-          : {}),
+        ...(author.url !== undefined ? { url: url(author.url, templates) } : {}),
+        ...(author.icon_url !== undefined ? { icon_url: url(author.icon_url, templates) } : {}),
       };
     }
     if (data.footer !== undefined) {
       const footer = object(data.footer, "Embed footer", ["text", "icon_url"]);
       result.footer = {
         text: checkedText(footer.text, "Footer", L.embedFooter),
-        ...(footer.icon_url !== undefined
-          ? { icon_url: url(footer.icon_url, templates) }
-          : {}),
+        ...(footer.icon_url !== undefined ? { icon_url: url(footer.icon_url, templates) } : {}),
       };
     }
     for (const key of ["thumbnail", "image"] as const)
@@ -802,8 +632,7 @@ export class CustomCommandValidator {
         result[key] = { url: url(image.url, templates) };
       }
     if (data.timestamp !== undefined) {
-      if (typeof data.timestamp === "boolean")
-        result.timestamp = data.timestamp;
+      if (typeof data.timestamp === "boolean") result.timestamp = data.timestamp;
       else if (
         typeof data.timestamp === "string" &&
         /^\d{4}-\d{2}-\d{2}T/.test(data.timestamp) &&
@@ -820,16 +649,13 @@ export class CustomCommandValidator {
         return {
           name: checkedText(item.name, "Field name", L.embedFieldName),
           value: checkedText(item.value, "Field value", L.embedFieldValue),
-          ...(item.inline !== undefined
-            ? { inline: boolean(item.inline, "Inline") }
-            : {}),
+          ...(item.inline !== undefined ? { inline: boolean(item.inline, "Inline") } : {}),
         };
       });
     }
     if (total > L.embedTotal)
       fail(`Embed text must be at most ${L.embedTotal} characters in total.`);
-    if (!total && !result.image && !result.thumbnail)
-      fail("Embed needs text or an image.");
+    if (!total && !result.image && !result.thumbnail) fail("Embed needs text or an image.");
     return result;
   }
 }

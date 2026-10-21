@@ -34,15 +34,11 @@ type DynamicServerStats = {
 export class ServerCommand extends Command {
   public override registerApplicationCommands(registry: Command.Registry) {
     registry.registerChatInputCommand((builder) =>
-      builder
-        .setName("server")
-        .setDescription("Show information about this server"),
+      builder.setName("server").setDescription("Show information about this server"),
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
       await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
@@ -76,7 +72,7 @@ export class ServerCommand extends Command {
       componentType: ComponentType.Button,
       time: 120_000,
     });
-  trackCollector("information", collector);
+    trackCollector("information", collector);
 
     collector.on("collect", async (buttonInteraction) => {
       if (buttonInteraction.customId !== moreInfoId) {
@@ -85,8 +81,7 @@ export class ServerCommand extends Command {
 
       if (buttonInteraction.user.id !== interaction.user.id) {
         await buttonInteraction.reply({
-          content:
-            "Only the person who requested this server card can open the details.",
+          content: "Only the person who requested this server card can open the details.",
           flags: MessageFlags.Ephemeral,
         });
 
@@ -97,18 +92,12 @@ export class ServerCommand extends Command {
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
 
-      const canViewSensitiveStats = buttonInteraction.memberPermissions?.has(
-        PermissionFlagsBits.ManageGuild,
-      ) ?? false;
-      const dynamicStats = await this.fetchDynamicStats(
-        guild,
-        canViewSensitiveStats,
-      );
+      const canViewSensitiveStats =
+        buttonInteraction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
+      const dynamicStats = await this.fetchDynamicStats(guild, canViewSensitiveStats);
 
       await buttonInteraction.editReply({
-        components: [
-          this.buildDetailsCard(buttonInteraction, guild, owner, dynamicStats),
-        ],
+        components: [this.buildDetailsCard(buttonInteraction, guild, owner, dynamicStats)],
         flags: MessageFlags.IsComponentsV2,
       });
     });
@@ -160,12 +149,10 @@ export class ServerCommand extends Command {
 
     const header = iconUrl
       ? new SectionBuilder()
-        .addTextDisplayComponents(headerText)
-        .setThumbnailAccessory(
-          new ThumbnailBuilder()
-            .setURL(iconUrl)
-            .setDescription(`${guild.name} server icon`),
-        )
+          .addTextDisplayComponents(headerText)
+          .setThumbnailAccessory(
+            new ThumbnailBuilder().setURL(iconUrl).setDescription(`${guild.name} server icon`),
+          )
       : null;
 
     const ownership = new TextDisplayBuilder().setContent(
@@ -227,10 +214,7 @@ export class ServerCommand extends Command {
 
     if (iconUrl) {
       actionRow.addComponents(
-        new ButtonBuilder()
-          .setLabel("Open icon")
-          .setStyle(ButtonStyle.Link)
-          .setURL(iconUrl),
+        new ButtonBuilder().setLabel("Open icon").setStyle(ButtonStyle.Link).setURL(iconUrl),
       );
     }
 
@@ -244,33 +228,23 @@ export class ServerCommand extends Command {
 
     return container
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(ownership)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(boosts)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(community)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addActionRowComponents(actionRow)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(footer);
   }
@@ -365,27 +339,19 @@ export class ServerCommand extends Command {
       .setAccentColor(Colors.Blurple)
       .addTextDisplayComponents(overview)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(counts)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(serverSettings)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
       .addTextDisplayComponents(extras)
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(footer);
   }
@@ -411,13 +377,9 @@ export class ServerCommand extends Command {
 
     return {
       total: values.length,
-      text: values.filter((channel) => channel.type === ChannelType.GuildText)
-        .length,
-      voice: values.filter((channel) => channel.type === ChannelType.GuildVoice)
-        .length,
-      category: values.filter(
-        (channel) => channel.type === ChannelType.GuildCategory,
-      ).length,
+      text: values.filter((channel) => channel.type === ChannelType.GuildText).length,
+      voice: values.filter((channel) => channel.type === ChannelType.GuildVoice).length,
+      category: values.filter((channel) => channel.type === ChannelType.GuildCategory).length,
     };
   }
 

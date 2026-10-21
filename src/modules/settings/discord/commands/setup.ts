@@ -1,17 +1,14 @@
 import { trackCollector } from "../../../../adapters/discord/resources.js";
-import { interactionErrorDetails, interactionUnavailable, replyToCommand } from "../../../../adapters/discord/interactions.js";
+import {
+  interactionErrorDetails,
+  interactionUnavailable,
+  replyToCommand,
+} from "../../../../adapters/discord/interactions.js";
 import { settingsActionAvailable } from "../availability.js";
 import { Command } from "@sapphire/framework";
-import {
-  InteractionContextType,
-  MessageFlags,
-  PermissionFlagsBits,
-} from "discord.js";
+import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
-import {
-  guildConfigService,
-  type GuildConfig,
-} from "../../../guilds/discord/index.js";
+import { guildConfigService, type GuildConfig } from "../../../guilds/discord/index.js";
 import { canManageServer } from "../../../guilds/discord/index.js";
 import { SetupInteractionHandler } from "../interactionHandler.js";
 import { SetupRenderer } from "../renderer.js";
@@ -35,9 +32,7 @@ export class SetupCommand extends Command {
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
@@ -50,8 +45,7 @@ export class SetupCommand extends Command {
 
     if (!canManageServer(interaction.member)) {
       await interaction.editReply({
-        content:
-          "You need Manage Server or Administrator permission to run setup.",
+        content: "You need Manage Server or Administrator permission to run setup.",
       });
       return;
     }
@@ -63,18 +57,12 @@ export class SetupCommand extends Command {
       config = await this.loadConfig(interaction.guildId);
     } catch {
       await interaction.editReply({
-        content:
-          "I could not load this server's setup right now. Please try again shortly.",
+        content: "I could not load this server's setup right now. Please try again shortly.",
       });
       return;
     }
 
-    const initialScreen = this.renderer.buildScreen(
-      "main",
-      interaction.guild,
-      config,
-      sessionId,
-    );
+    const initialScreen = this.renderer.buildScreen("main", interaction.guild, config, sessionId);
 
     await interaction.editReply({
       embeds: initialScreen.embeds,
@@ -85,7 +73,7 @@ export class SetupCommand extends Command {
     const collector = reply.createMessageComponentCollector({
       time: SESSION_TTL,
     });
-  trackCollector("settings", collector);
+    trackCollector("settings", collector);
 
     let finished = false;
     let busy = false;
@@ -96,8 +84,7 @@ export class SetupCommand extends Command {
 
       if (componentInteraction.user.id !== interaction.user.id) {
         await replyToCommand(componentInteraction, {
-          content:
-            "Only the administrator who started this setup session can use these controls.",
+          content: "Only the administrator who started this setup session can use these controls.",
           flags: MessageFlags.Ephemeral,
         }).catch(() => null);
         return;
@@ -113,7 +100,12 @@ export class SetupCommand extends Command {
       }
 
       if (finished || busy) {
-        await replyToCommand(componentInteraction, { content: finished ? "This setup session is complete. Run /setup again." : "Finish the current setup action before starting another.", flags: MessageFlags.Ephemeral }).catch(() => null);
+        await replyToCommand(componentInteraction, {
+          content: finished
+            ? "This setup session is complete. Run /setup again."
+            : "Finish the current setup action before starting another.",
+          flags: MessageFlags.Ephemeral,
+        }).catch(() => null);
         return;
       }
       busy = true;
@@ -124,7 +116,10 @@ export class SetupCommand extends Command {
           config,
           sessionId,
         });
-        if (componentInteraction.customId === `setup:${sessionId}:finish` && componentInteraction.deferred) {
+        if (
+          componentInteraction.customId === `setup:${sessionId}:finish` &&
+          componentInteraction.deferred
+        ) {
           finished = true;
           collector.stop("finished");
         }
@@ -139,7 +134,13 @@ export class SetupCommand extends Command {
         );
 
         if (interactionUnavailable(error)) {
-          if (!finished) await interaction.editReply({ content: "Discord could not accept that click. Please try the control again. If this keeps happening, reopen /setup." }).catch(() => null);
+          if (!finished)
+            await interaction
+              .editReply({
+                content:
+                  "Discord could not accept that click. Please try the control again. If this keeps happening, reopen /setup.",
+              })
+              .catch(() => null);
           return;
         }
 

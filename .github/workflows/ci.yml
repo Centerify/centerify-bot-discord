@@ -45,6 +45,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Formatting and lint
+        run: npm run format:check && npm run lint
+
+      - name: Audit production dependencies
+        run: npm run audit:production
+
       - name: Test
         run: npm test
 
@@ -60,3 +66,25 @@ jobs:
         run: npm run test:database
         env:
           TEST_DATABASE_URL: postgresql://centerify:centerify@localhost:5432/centerify_test
+
+  windows:
+    name: Windows portability
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test -- --maxWorkers=2
+      - run: npm run build
+
+  container:
+    name: Production container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime image
+        run: docker build --target runtime --tag centerify:test .

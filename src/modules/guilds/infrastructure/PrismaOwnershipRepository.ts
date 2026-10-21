@@ -9,7 +9,8 @@ export class PrismaOwnershipRepository implements OwnershipRepository {
   }
   async save(guildId: string, ownerUserId: string) {
     await this.database.orm.public.GuildOwnership.upsert({
-      conflictOn: { guildId }, create: { guildId, ownerUserId },
+      conflictOn: { guildId },
+      create: { guildId, ownerUserId },
       update: { ownerUserId, verifiedAt: new Date().toISOString() },
     });
   }

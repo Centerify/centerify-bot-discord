@@ -1,8 +1,5 @@
 import { ChannelType } from "discord.js";
-import type {
-  SlashCommandSubcommandBuilder,
-  SlashCommandBuilder,
-} from "discord.js";
+import type { SlashCommandSubcommandBuilder, SlashCommandBuilder } from "discord.js";
 import {
   CUSTOM_COMMAND_LIMITS as L,
   COOLDOWN_SCOPES,
@@ -14,10 +11,7 @@ export function definitionOptions(
 ): SlashCommandSubcommandBuilder {
   return sub
     .addStringOption((o) =>
-      o
-        .setName("description")
-        .setDescription("Short description")
-        .setMaxLength(L.description),
+      o.setName("description").setDescription("Short description").setMaxLength(L.description),
     )
     .addStringOption((o) =>
       o
@@ -28,9 +22,7 @@ export function definitionOptions(
     .addStringOption((o) =>
       o
         .setName("response_type")
-        .setDescription(
-          "Embed starts with a description; configure adds fields/messages",
-        )
+        .setDescription("Embed starts with a description; configure adds fields/messages")
         .addChoices(...RESPONSE_TYPES.map((value) => ({ name: value, value }))),
     )
     .addStringOption((o) =>
@@ -43,77 +35,64 @@ export function definitionOptions(
       o
         .setName("cooldown_scope")
         .setDescription("Cooldown scope")
-        .addChoices(
-          ...COOLDOWN_SCOPES.map((value) => ({ name: value, value })),
-        ),
+        .addChoices(...COOLDOWN_SCOPES.map((value) => ({ name: value, value }))),
     )
     .addRoleOption((o) =>
-      o
-        .setName("denied_role")
-        .setDescription("Deny this role; configure supports multiple roles"),
+      o.setName("denied_role").setDescription("Deny this role; configure supports multiple roles"),
     )
     .addChannelOption((o) =>
       o
         .setName("denied_channel")
-        .setDescription(
-          "Deny this channel; configure supports multiple channels",
-        ),
+        .setDescription("Deny this channel; configure supports multiple channels"),
     )
     .addStringOption((o) =>
       o
         .setName("user_permissions")
-        .setDescription(
-          "Discord permission names separated by spaces, e.g. ManageMessages",
-        )
+        .setDescription("Discord permission names separated by spaces, e.g. ManageMessages")
         .setMaxLength(L.restrictions * (L.name + 1)),
     )
     .addStringOption((o) =>
       o
         .setName("bot_permissions")
-        .setDescription(
-          "Additional required bot permission names separated by spaces",
-        )
+        .setDescription("Additional required bot permission names separated by spaces")
         .setMaxLength(L.restrictions * (L.name + 1)),
     )
     .addBooleanOption((o) =>
       o
         .setName("delete_invocation")
-        .setDescription(
-          "Delete prefix invocation after delivery (requires Manage Messages)",
-        ),
+        .setDescription("Delete prefix invocation after delivery (requires Manage Messages)"),
     )
-    .addBooleanOption((o) =>
-      o.setName("reply").setDescription("Reply to the invocation"),
-    )
-    .addBooleanOption((o) =>
-      o.setName("active").setDescription("Whether the command is enabled"),
-    );
+    .addBooleanOption((o) => o.setName("reply").setDescription("Reply to the invocation"))
+    .addBooleanOption((o) => o.setName("active").setDescription("Whether the command is enabled"));
 }
 export function extraSubcommands(builder: SlashCommandBuilder): void {
-  for (const name of ["template", "markdown"]) builder.addSubcommand((sub) =>
-    sub
-      .setName(name)
-      .setDescription(name === "template" ? "Save command responses from a template file" : "Alias for /custom template")
-      .addStringOption((o) =>
-        o
-          .setName("name")
-          .setDescription("Existing command name")
-          .setRequired(true)
-          .setMaxLength(L.name),
-      )
-      .addAttachmentOption((o) =>
-        o
-          .setName("file")
-          .setDescription("Command template (.cfg; legacy .txt and .md also work)")
-          .setRequired(true),
-      ),
-  );
+  for (const name of ["template", "markdown"])
+    builder.addSubcommand((sub) =>
+      sub
+        .setName(name)
+        .setDescription(
+          name === "template"
+            ? "Save command responses from a template file"
+            : "Alias for /custom template",
+        )
+        .addStringOption((o) =>
+          o
+            .setName("name")
+            .setDescription("Existing command name")
+            .setRequired(true)
+            .setMaxLength(L.name),
+        )
+        .addAttachmentOption((o) =>
+          o
+            .setName("file")
+            .setDescription("Command template (.cfg; legacy .txt and .md also work)")
+            .setRequired(true),
+        ),
+    );
   builder.addSubcommand((sub) =>
     sub
       .setName("options")
-      .setDescription(
-        "Configure custom commands and share them between servers",
-      ),
+      .setDescription("Configure custom commands and share them between servers"),
   );
   for (const name of ["info", "disable", "configure"] as const)
     builder.addSubcommand((sub) =>
@@ -122,22 +101,15 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
         .setDescription(
           `${name === "configure" ? "Open the template editor for" : name === "info" ? "Show details of" : "Disable"} a custom command`,
         )
-        .addStringOption((o) =>
-          o.setName("name").setDescription("Command name").setRequired(true),
-        ),
+        .addStringOption((o) => o.setName("name").setDescription("Command name").setRequired(true)),
     );
   for (const name of ["clone", "rename"] as const)
     builder.addSubcommand((sub) =>
       sub
         .setName(name)
-        .setDescription(
-          `${name === "clone" ? "Copy" : "Rename"} a custom command`,
-        )
+        .setDescription(`${name === "clone" ? "Copy" : "Rename"} a custom command`)
         .addStringOption((o) =>
-          o
-            .setName("name")
-            .setDescription("Existing command name")
-            .setRequired(true),
+          o.setName("name").setDescription("Existing command name").setRequired(true),
         )
         .addStringOption((o) =>
           o
@@ -159,10 +131,7 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
           .setMaxLength(L.name),
       )
       .addStringOption((o) =>
-        o
-          .setName("args")
-          .setDescription("Arguments separated by spaces")
-          .setMaxLength(L.text),
+        o.setName("args").setDescription("Arguments separated by spaces").setMaxLength(L.text),
       ),
   );
   builder.addSubcommand((sub) =>
@@ -170,22 +139,15 @@ export function extraSubcommands(builder: SlashCommandBuilder): void {
       .setName("import")
       .setDescription("Import validated version 1 commands atomically")
       .addAttachmentOption((o) =>
-        o
-          .setName("file")
-          .setDescription("JSON export file, at most 8 MB")
-          .setRequired(true),
+        o.setName("file").setDescription("JSON export file, at most 8 MB").setRequired(true),
       ),
   );
   builder.addSubcommand((sub) =>
-    sub
-      .setName("export")
-      .setDescription("Download this server's commands as JSON"),
+    sub.setName("export").setDescription("Download this server's commands as JSON"),
   );
 }
 
-export function createOptions(
-  sub: SlashCommandSubcommandBuilder,
-): SlashCommandSubcommandBuilder {
+export function createOptions(sub: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder {
   return definitionOptions(
     sub
       .addStringOption((o) =>
@@ -198,18 +160,14 @@ export function createOptions(
       .addStringOption((o) =>
         o
           .setName("response")
-          .setDescription(
-            "Response; supports {user.mention}, {guild.name}, {args.0}",
-          )
+          .setDescription("Response; supports {user.mention}, {guild.name}, {args.0}")
           .setRequired(true)
           .setMaxLength(L.text),
       )
       .addStringOption((o) =>
         o
           .setName("kind")
-          .setDescription(
-            "Optional: use the legacy command or member-event format",
-          )
+          .setDescription("Optional: use the legacy command or member-event format")
           .addChoices(
             { name: "Legacy message command", value: "command" },
             { name: "Member joins", value: "member_join" },
@@ -226,20 +184,13 @@ export function createOptions(
         o
           .setName("channel")
           .setDescription("Allowed channel; output channel for legacy events")
-          .addChannelTypes(
-            ChannelType.GuildText,
-            ChannelType.GuildAnnouncement,
-          ),
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
       )
       .addRoleOption((o) =>
-        o
-          .setName("role")
-          .setDescription("Only members with this role can run the command"),
+        o.setName("role").setDescription("Only members with this role can run the command"),
       )
       .addBooleanOption((o) =>
-        o
-          .setName("admin_only")
-          .setDescription("Require Administrator permission"),
+        o.setName("admin_only").setDescription("Require Administrator permission"),
       )
       .addBooleanOption((o) =>
         o.setName("allow_args").setDescription("Legacy only: allow arguments"),
@@ -251,22 +202,14 @@ export function createOptions(
           .setMinValue(0)
           .setMaxValue(L.cooldownSeconds),
       )
-      .addBooleanOption((o) =>
-        o.setName("embed").setDescription("Send an embed description"),
-      ),
+      .addBooleanOption((o) => o.setName("embed").setDescription("Send an embed description")),
   );
 }
-export function editOptions(
-  sub: SlashCommandSubcommandBuilder,
-): SlashCommandSubcommandBuilder {
+export function editOptions(sub: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder {
   return definitionOptions(
     sub
       .addStringOption((o) =>
-        o
-          .setName("name")
-          .setDescription("Command name")
-          .setRequired(true)
-          .setMaxLength(L.name),
+        o.setName("name").setDescription("Command name").setRequired(true).setMaxLength(L.name),
       )
       .addStringOption((o) =>
         o
@@ -282,16 +225,10 @@ export function editOptions(
           .setMaxValue(L.cooldownSeconds),
       )
       .addRoleOption((o) => o.setName("role").setDescription("Allowed role"))
-      .addChannelOption((o) =>
-        o.setName("channel").setDescription("Allowed channel"),
-      )
+      .addChannelOption((o) => o.setName("channel").setDescription("Allowed channel"))
+      .addBooleanOption((o) => o.setName("embed").setDescription("Use an embed description"))
       .addBooleanOption((o) =>
-        o.setName("embed").setDescription("Use an embed description"),
-      )
-      .addBooleanOption((o) =>
-        o
-          .setName("admin_only")
-          .setDescription("Require Administrator permission"),
+        o.setName("admin_only").setDescription("Require Administrator permission"),
       ),
   );
 }

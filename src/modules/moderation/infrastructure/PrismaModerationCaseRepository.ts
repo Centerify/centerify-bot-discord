@@ -25,68 +25,60 @@ export class PrismaModerationCaseRepository implements ModerationCaseRepository 
   }
 
   public findByCaseNumber(guildId: string, caseNumber: number) {
-    return this.database.orm.public.ModerationCase
-      .where({ guildId, caseNumber })
-      .first();
+    return this.database.orm.public.ModerationCase.where({ guildId, caseNumber }).first();
   }
 
   public recentForUser(guildId: string, targetUserId: string, limit = defaultLimit) {
-    return this.database.orm.public.ModerationCase
-      .where({ guildId, targetUserId })
+    return this.database.orm.public.ModerationCase.where({ guildId, targetUserId })
       .orderBy((moderationCase) => moderationCase.createdAt.desc())
       .limit(limit)
       .all();
   }
 
   public warningsForRoleRestoration() {
-    return this.database.orm.public.ModerationCase
-      .where({ action: "WARNING" })
-      .all();
+    return this.database.orm.public.ModerationCase.where({ action: "WARNING" }).all();
   }
 
   public warningsForUser(guildId: string, targetUserId: string) {
-    return this.database.orm.public.ModerationCase
-      .where({ guildId, targetUserId, action: "WARNING" })
+    return this.database.orm.public.ModerationCase.where({
+      guildId,
+      targetUserId,
+      action: "WARNING",
+    })
       .orderBy((moderationCase) => moderationCase.createdAt.desc())
       .all();
   }
 
-  public recentNotesForUser(
-    guildId: string,
-    targetUserId: string,
-    limit = defaultLimit,
-  ) {
-    return this.database.orm.public.ModerationCase
-      .where({ guildId, targetUserId, action: "NOTE" })
+  public recentNotesForUser(guildId: string, targetUserId: string, limit = defaultLimit) {
+    return this.database.orm.public.ModerationCase.where({ guildId, targetUserId, action: "NOTE" })
       .orderBy((moderationCase) => moderationCase.createdAt.desc())
       .limit(limit)
       .all();
   }
 
-  public recentGlobalNotesForUser(
-    guildId: string,
-    targetUserId: string,
-    limit = defaultLimit,
-  ) {
-    return this.database.orm.public.ModerationCase
-      .where({ guildId, targetUserId, action: "NOTE", isGlobal: true })
+  public recentGlobalNotesForUser(guildId: string, targetUserId: string, limit = defaultLimit) {
+    return this.database.orm.public.ModerationCase.where({
+      guildId,
+      targetUserId,
+      action: "NOTE",
+      isGlobal: true,
+    })
       .orderBy((moderationCase) => moderationCase.createdAt.desc())
       .limit(limit)
       .all();
   }
 
   public async countForUser(guildId: string, targetUserId: string) {
-    const result = await this.database.orm.public.ModerationCase
-      .where({ guildId, targetUserId })
-      .aggregate((aggregate) => ({ count: aggregate.count() }));
+    const result = await this.database.orm.public.ModerationCase.where({
+      guildId,
+      targetUserId,
+    }).aggregate((aggregate) => ({ count: aggregate.count() }));
 
     return result.count;
   }
 
   public async updateReason(guildId: string, caseNumber: number, reason: string) {
-    await this.database.orm.public.ModerationCase
-      .where({ guildId, caseNumber })
-      .update({ reason });
+    await this.database.orm.public.ModerationCase.where({ guildId, caseNumber }).update({ reason });
 
     return this.findByCaseNumber(guildId, caseNumber);
   }
@@ -121,7 +113,9 @@ export class PrismaModerationCaseRepository implements ModerationCaseRepository 
         SET "nextCaseNumber" = moderation_case_counter."nextCaseNumber" + 1,
             "updatedAt" = now()
         RETURNING "nextCaseNumber" - 1 AS "caseNumber"
-      `.returnsRow({ caseNumber: "pg/int4@1" }).build(),
+      `
+        .returnsRow({ caseNumber: "pg/int4@1" })
+        .build(),
     );
 
     const row = rows[0];

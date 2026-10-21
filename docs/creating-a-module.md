@@ -18,15 +18,20 @@ export function createExampleModule(override?: Greeting): CenterifyModule {
     metadata: { id: "example", name: "Example", version: "1.0.0" },
     register(context) {
       const config = context.config;
-      if (config !== undefined &&
-          (!config || typeof config !== "object" || Array.isArray(config))) {
+      if (
+        config !== undefined &&
+        (!config || typeof config !== "object" || Array.isArray(config))
+      ) {
         throw new Error("example config must be an object");
       }
       const prefix = config && "prefix" in config ? config.prefix : "Hello";
       if (typeof prefix !== "string") throw new Error("example.prefix must be a string");
-      context.provide(greetingToken, override ?? {
-        say: (name) => `${prefix}, ${name}`,
-      });
+      context.provide(
+        greetingToken,
+        override ?? {
+          say: (name) => `${prefix}, ${name}`,
+        },
+      );
     },
   };
 }
@@ -59,13 +64,14 @@ import { greetingToken } from "../index.js";
 
 export class HelloCommand extends Command {
   override registerApplicationCommands(registry: Command.Registry) {
-    registry.registerChatInputCommand((command) => command
-      .setName("hello")
-      .setDescription("Say hello")
-      .addStringOption((option) => option
-        .setName("name")
-        .setDescription("Name to greet")
-        .setRequired(true)));
+    registry.registerChatInputCommand((command) =>
+      command
+        .setName("hello")
+        .setDescription("Say hello")
+        .addStringOption((option) =>
+          option.setName("name").setDescription("Name to greet").setRequired(true),
+        ),
+    );
   }
 
   override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
@@ -88,8 +94,12 @@ import { withDiscord } from "./src/adapters/discord/modules.js";
 import { createExampleModule } from "./src/modules/example/index.js";
 
 const app = createApplication({
-  additionalModules: [withDiscord(createExampleModule(), async () =>
-    (await import("./src/modules/example/discord/index.js")).discordModule)],
+  additionalModules: [
+    withDiscord(
+      createExampleModule(),
+      async () => (await import("./src/modules/example/discord/index.js")).discordModule,
+    ),
+  ],
   modules: { example: { config: { prefix: "Welcome" } } },
 });
 ```
@@ -114,9 +124,11 @@ export interface GreetingSent extends AppEvent {
 
 // In a subscriber's register(context), declaring dependsOn: ["runtime"]:
 const events = context.resolve(eventsToken);
-context.onStop(events.subscribe<GreetingSent>("example.greeting-sent", (event) => {
-  // Invoke the subscriber's own service with event.name.
-}));
+context.onStop(
+  events.subscribe<GreetingSent>("example.greeting-sent", (event) => {
+    // Invoke the subscriber's own service with event.name.
+  }),
+);
 ```
 
 Keep event payload contracts in the feature that publishes them. Publishing awaits handlers and propagates errors. For required results, use a direct service call instead.

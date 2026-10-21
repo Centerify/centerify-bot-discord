@@ -14,25 +14,42 @@ export class CaseCommand extends Command {
         .setDescription("Show a moderation case")
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .setContexts(InteractionContextType.Guild)
-        .addIntegerOption((option) => option.setName("case-number").setDescription("Case number").setMinValue(1).setRequired(true)),
+        .addIntegerOption((option) =>
+          option
+            .setName("case-number")
+            .setDescription("Case number")
+            .setMinValue(1)
+            .setRequired(true),
+        ),
     );
   }
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: "This command can only be used inside a server.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await replyToCommand(interaction, { content: missingPermissionMessage("ModerateMembers"), flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: missingPermissionMessage("ModerateMembers"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const caseNumber = interaction.options.getInteger("case-number", true);
     try {
-      const moderationCase = await moderationCaseService.findByCaseNumber(interaction.guildId, caseNumber);
+      const moderationCase = await moderationCaseService.findByCaseNumber(
+        interaction.guildId,
+        caseNumber,
+      );
       if (!moderationCase) {
-        await interaction.editReply({ content: `Case #${caseNumber} was not found in this server.` });
+        await interaction.editReply({
+          content: `Case #${caseNumber} was not found in this server.`,
+        });
         return;
       }
       await interaction.editReply({ embeds: [buildCaseEmbed(moderationCase)] });

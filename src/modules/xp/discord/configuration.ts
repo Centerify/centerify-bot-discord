@@ -15,8 +15,10 @@ export class XpConfigurationService {
       const guild = client.guilds.cache.get(id);
       if (!guild) throw new Error(`Centerify must be in server ${id}.`);
       const member = await guild.members.fetch(userId).catch(() => null);
-      if (!member || !canManageServer(member)) throw new Error(`You need Manage Server permission in server ${id}.`);
-      if (!await guildOwnershipService.isVerified(guild)) throw new Error(`The owner of server ${id} must run /verify first.`);
+      if (!member || !canManageServer(member))
+        throw new Error(`You need Manage Server permission in server ${id}.`);
+      if (!(await guildOwnershipService.isVerified(guild)))
+        throw new Error(`The owner of server ${id} must run /verify first.`);
     }
     return serviceRef(configureXpToken).apply(source, ids);
   }

@@ -1,21 +1,25 @@
-import "dotenv/config";
-import { startBot } from "./bootstrap/start.js";
-import { logger } from "./adapters/logging/pino.js";
+import { loadStartupEnvironment } from "./bootstrap/environment.js";
+import { parseEnvironment } from "./bootstrap/config.js";
+
+let startupLogger: typeof import("./adapters/logging/pino.js").logger | undefined;
 
 try {
-  const bot = await startBot();
-  process.on("unhandledRejection", (reason) => logger.error({ err: reason }, "Unhandled promise rejection"));
-  process.once("uncaughtException", (error) => {
-    logger.fatal({ err: error }, "Uncaught exception");
-    void bot.stop().catch((stopError) => logger.error({ err: stopError }, "Shutdown failed")).finally(() => { process.exitCode = 1; });
-  });
-  const shutdown = (signal: NodeJS.Signals) => {
-    logger.info({ signal }, "Shutting down Centerify");
-    void bot.stop().catch((error) => { logger.error({ err: error }, "Shutdown failed"); process.exitCode = 1; });
-  };
-  process.once("SIGINT", shutdown);
-  process.once("SIGTERM", shutdown);
+  loadStartupEnvironment();
+  const config = parseEnvironment();
+  if (config.customization.startup.enabled === false) {
+    console.log("Centerify startup is disabled in centerify.config.json.");
+  } else {
+    const [{ startBot }, { logger }, { installShutdown }] = await Promise.all([
+      import("./bootstrap/start.js"),
+      import("./adapters/logging/pino.js"),
+      import("./bootstrap/lifecycle.js"),
+    ]);
+    startupLogger = logger;
+    const bot = await startBot(config);
+    installShutdown(bot, logger, config.shutdownTimeoutMs);
+  }
 } catch (error) {
-  logger.error({ err: error }, "Failed to start Centerify");
+  if (startupLogger) startupLogger.error({ err: error }, "Failed to start Centerify");
+  else console.error(error instanceof Error ? error.message : "Failed to read configuration");
   process.exitCode = 1;
 }

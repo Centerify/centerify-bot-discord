@@ -6,6 +6,8 @@ import {
   type GuildMember,
   type Role,
 } from "discord.js";
+import { validateAutomatedRole } from "./rolePolicy.js";
+export * from "./rolePolicy.js";
 
 export function canManageServer(member: GuildMember) {
   return (
@@ -14,8 +16,19 @@ export function canManageServer(member: GuildMember) {
   );
 }
 
-export function validateAssignableRole(guild: Guild, role: Role) {
+export function validateAssignableRole(guild: Guild, role: Role, actor?: GuildMember) {
   const me = guild.members.me;
+
+  if (role.guild.id !== guild.id) return "That role belongs to another server.";
+  const unsafe = validateAutomatedRole(role);
+  if (unsafe) return unsafe;
+  if (
+    actor &&
+    (actor.guild.id !== guild.id ||
+      (actor.id !== guild.ownerId && role.comparePositionTo(actor.roles.highest) >= 0))
+  ) {
+    return "That role must be below your highest role.";
+  }
 
   if (role.id === guild.id) {
     return "The @everyone role cannot be used as an auto role.";
@@ -46,10 +59,7 @@ export function isUsableTextChannel(
     return false;
   }
 
-  return (
-    channel.type === ChannelType.GuildText ||
-    channel.type === ChannelType.GuildAnnouncement
-  );
+  return channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement;
 }
 
 export function canSendToChannel(guild: Guild, channel: GuildBasedChannel) {
@@ -62,8 +72,9 @@ export function canSendToChannel(guild: Guild, channel: GuildBasedChannel) {
     return false;
   }
 
-  return channel.permissionsFor(me)?.has([
-    PermissionFlagsBits.ViewChannel,
-    PermissionFlagsBits.SendMessages,
-  ]) ?? false;
+  return (
+    channel
+      .permissionsFor(me)
+      ?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]) ?? false
+  );
 }

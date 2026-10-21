@@ -51,6 +51,6 @@ export const PERMISSION_NAMES = [
   "SendPolls",
   "UseExternalApps",
   "PinMessages",
-  "BypassSlowmode"
+  "BypassSlowmode",
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];

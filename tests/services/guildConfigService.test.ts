@@ -1,8 +1,24 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ first: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn(), where: vi.fn() }));
-vi.mock("../../src/adapters/prisma/client.js", () => ({ db: { orm: { public: { GuildConfig: {
-  where: mocks.where, create: mocks.create, upsert: mocks.upsert,
-} } } } }));
+const mocks = vi.hoisted(() => ({
+  first: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  upsert: vi.fn(),
+  where: vi.fn(),
+}));
+vi.mock("../../src/adapters/prisma/client.js", () => ({
+  db: {
+    orm: {
+      public: {
+        GuildConfig: {
+          where: mocks.where,
+          create: mocks.create,
+          upsert: mocks.upsert,
+        },
+      },
+    },
+  },
+}));
 import { PrismaGuildConfigRepository } from "../../src/modules/guilds/infrastructure/PrismaGuildConfigRepository.js";
 const service = new PrismaGuildConfigRepository();
 const config = { id: 1, guildId: "server", xpEnabled: true };
@@ -15,11 +31,13 @@ beforeEach(() => {
 test("settings upsert explicitly targets guildId rather than the generated primary key", async () => {
   mocks.upsert.mockResolvedValue(config);
   expect(await service.update("server", { xpEnabled: true })).toBe(config);
-  expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
-    conflictOn: { guildId: "server" },
-    create: expect.objectContaining({ guildId: "server", xpEnabled: true }),
-    update: { xpEnabled: true },
-  }));
+  expect(mocks.upsert).toHaveBeenCalledWith(
+    expect.objectContaining({
+      conflictOn: { guildId: "server" },
+      create: expect.objectContaining({ guildId: "server", xpEnabled: true }),
+      update: { xpEnabled: true },
+    }),
+  );
   expect(mocks.update).not.toHaveBeenCalled();
 });
 

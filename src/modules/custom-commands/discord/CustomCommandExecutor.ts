@@ -1,10 +1,7 @@
 import { attachStageNavigation } from "./stageNavigation.js";
 import { silentLogger, type Logger } from "../../../core/index.js";
 import type { CustomCommandRepository } from "../domain/types.js";
-import type {
-  CustomCommandExecutionContext,
-  CustomCommandTransport,
-} from "./types.js";
+import type { CustomCommandExecutionContext, CustomCommandTransport } from "./types.js";
 import {
   CustomCommandCooldownService,
   type CustomCommandCooldownStore,
@@ -40,9 +37,7 @@ export class CustomCommandExecutor {
           actionExecutor: actions,
           loadCommand: async () => {
             const saved = (
-              await repository.list(
-                context.command.sourceGuildId ?? context.guildId,
-              )
+              await repository.list(context.command.sourceGuildId ?? context.guildId)
             ).find((command) => command.id === context.command.id);
             if (!saved || !context.command.sourceGuildId) return saved;
             const shared = await serviceRef(sharingToken).resolve(
@@ -50,11 +45,7 @@ export class CustomCommandExecutor {
               context.guild,
               context.command.name,
             );
-            if (
-              !shared ||
-              shared.id !== saved.id ||
-              shared.sourceGuildId !== saved.guildId
-            )
+            if (!shared || shared.id !== saved.id || shared.sourceGuildId !== saved.guildId)
               return undefined;
             return {
               ...saved,
@@ -66,10 +57,7 @@ export class CustomCommandExecutor {
       logger,
     );
   }
-  execute(
-    context: CustomCommandExecutionContext,
-    transport: CustomCommandTransport,
-  ) {
+  execute(context: CustomCommandExecutionContext, transport: CustomCommandTransport) {
     return this.useCase.execute(context, transport);
   }
 }

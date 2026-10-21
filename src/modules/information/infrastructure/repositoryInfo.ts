@@ -16,15 +16,14 @@ type PackageJson = {
 import type { RepositoryInfo } from "../domain/RepositoryInfo.js";
 
 export async function getRepositoryInfo(): Promise<RepositoryInfo> {
-  const [packageJson, branch, commit, commitSubject, commitDate, commitCount] =
-    await Promise.all([
-      readPackageJson(),
-      git(["branch", "--show-current"]),
-      git(["rev-parse", "--short=12", "HEAD"]),
-      git(["log", "-1", "--pretty=%s"]),
-      git(["log", "-1", "--pretty=%cI"]),
-      git(["rev-list", "--count", "HEAD"]),
-    ]);
+  const [packageJson, branch, commit, commitSubject, commitDate, commitCount] = await Promise.all([
+    readPackageJson(),
+    git(["branch", "--show-current"]),
+    git(["rev-parse", "--short=12", "HEAD"]),
+    git(["log", "-1", "--pretty=%s"]),
+    git(["log", "-1", "--pretty=%cI"]),
+    git(["rev-list", "--count", "HEAD"]),
+  ]);
 
   const repositoryUrl =
     normalizeRepositoryUrl(getPackageRepositoryUrl(packageJson)) ??

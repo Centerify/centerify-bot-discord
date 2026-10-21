@@ -1,4 +1,4 @@
-import { Events, type GuildMember, type PartialGuildMember } from "discord.js";
+import type { GuildMember, PartialGuildMember } from "discord.js";
 import { logger } from "../../../adapters/logging/runtime.js";
 import { guildConfigService } from "../../guilds/discord/index.js";
 import { guildOwnershipService } from "../../guilds/discord/index.js";
@@ -6,7 +6,7 @@ import { greetingService } from "../../welcome/discord/greeting.js";
 
 export class GuildMemberRemoveListener {
   public async run(member: GuildMember | PartialGuildMember) {
-    if (!await guildOwnershipService.isVerified(member.guild)) {
+    if (!(await guildOwnershipService.isVerified(member.guild))) {
       return;
     }
 

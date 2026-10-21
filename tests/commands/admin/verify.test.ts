@@ -22,5 +22,7 @@ test("verification refuses non-owners without claiming success", async () => {
     interaction as unknown as Command.ChatInputCommandInteraction,
   );
   expect(guildOwnershipService.verify).toHaveBeenCalledWith(interaction.guild, "administrator");
-  expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining("Only the current server owner"));
+  expect(interaction.editReply).toHaveBeenCalledWith(
+    expect.stringContaining("Only the current server owner"),
+  );
 });

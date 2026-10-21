@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { PermissionFlagsBits, type GuildMember, type Message } from "discord.js";
+import { currentApplication } from "../../src/adapters/discord/context.js";
+import { customCommandOptionsToken } from "../../src/modules/custom-commands/index.js";
 
 const mocks = vi.hoisted(() => ({
   error: vi.fn(),
@@ -18,7 +20,10 @@ vi.mock("../../src/adapters/logging/runtime.js", () => ({
   logger: { error: mocks.error, warn: mocks.warn },
 }));
 
-import { runCustomCommand, runCustomEvent } from "../../src/modules/custom-commands/discord/legacyRunner.js";
+import {
+  runCustomCommand,
+  runCustomEvent,
+} from "../../src/modules/custom-commands/discord/legacyRunner.js";
 
 const baseRule = {
   id: 1,
@@ -72,7 +77,15 @@ function commandFixture(overrides: Record<string, unknown> = {}) {
     member,
     ...overrides,
   };
-  return { channel, guild, hasPermission, member, message: message as unknown as Message, permissions, send };
+  return {
+    channel,
+    guild,
+    hasPermission,
+    member,
+    message: message as unknown as Message,
+    permissions,
+    send,
+  };
 }
 
 beforeEach(() => {
@@ -81,7 +94,25 @@ beforeEach(() => {
   mocks.verified.mockResolvedValue(true);
 });
 
-afterEach(() => { vi.restoreAllMocks(); });
+test("legacy responses use the same configured prefix, including regex punctuation", async () => {
+  const options = currentApplication().resolve(customCommandOptionsToken);
+  const previous = options.prefix;
+  options.prefix = ".*";
+  try {
+    const current = commandFixture({ content: ".*hello world" });
+    await runCustomCommand(current.message);
+    expect(current.send).toHaveBeenCalledOnce();
+    const old = commandFixture();
+    await runCustomCommand(old.message);
+    expect(old.send).not.toHaveBeenCalled();
+  } finally {
+    options.prefix = previous;
+  }
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 test("runs a guild command, renders variables, and permits only the invoking user mention", async () => {
   const { message, send } = commandFixture();
@@ -157,10 +188,14 @@ test("an expired failed send cannot clear a newer successful cooldown", async ()
   const { message, send } = commandFixture({ content: "!hello" });
   let rejectSend!: (reason: Error) => void;
   let started!: () => void;
-  const sendStarted = new Promise<void>((resolve) => { started = resolve; });
+  const sendStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
   send.mockImplementationOnce(() => {
     started();
-    return new Promise<void>((_, reject) => { rejectSend = reject; });
+    return new Promise<void>((_, reject) => {
+      rejectSend = reject;
+    });
   });
   const firstRun = runCustomCommand(message);
   await sendStarted;
@@ -243,8 +278,10 @@ test("permission requirements include view, send, and embed access", async () =>
 test("commands in threads use the thread-specific send permission", async () => {
   const { channel, hasPermission, message, send } = commandFixture({ content: "!hello" });
   Object.assign(channel, { isThread: () => true });
-  hasPermission.mockImplementation((required: bigint[]) =>
-    !required.includes(PermissionFlagsBits.SendMessages) && required.includes(PermissionFlagsBits.SendMessagesInThreads),
+  hasPermission.mockImplementation(
+    (required: bigint[]) =>
+      !required.includes(PermissionFlagsBits.SendMessages) &&
+      required.includes(PermissionFlagsBits.SendMessagesInThreads),
   );
   await runCustomCommand(message);
   expect(send).toHaveBeenCalledOnce();

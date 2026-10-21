@@ -11,10 +11,7 @@ import {
   escapeMarkdown,
 } from "discord.js";
 import type { CustomCommandRecord } from "../domain/types.js";
-import type {
-  CommandScope,
-  SharingConflict,
-} from "./CustomCommandSharingService.js";
+import type { CommandScope, SharingConflict } from "./CustomCommandSharingService.js";
 
 export interface CustomSettingsState {
   commands: CustomCommandRecord[];
@@ -37,11 +34,7 @@ export interface CustomSettingsState {
     savedCount?: number;
   };
 }
-export function customSettingsView(
-  state: CustomSettingsState,
-  session: string,
-  closed = false,
-) {
+export function customSettingsView(state: CustomSettingsState, session: string, closed = false) {
   const container = new ContainerBuilder().setAccentColor(Colors.Blurple);
   const command = state.commands.find((item) => item.id === state.commandId);
   const customizeCommand = state.commands.find(
@@ -70,10 +63,7 @@ export function customSettingsView(
       ),
     );
   } else {
-    const visible = state.commands.slice(
-      state.commandPage * 25,
-      (state.commandPage + 1) * 25,
-    );
+    const visible = state.commands.slice(state.commandPage * 25, (state.commandPage + 1) * 25);
     container.addActionRowComponents(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
@@ -85,7 +75,9 @@ export function customSettingsView(
           .addOptions(
             visible.map((item) => ({
               label: item.name.slice(0, 100),
-              description: item.sourceGuildId ? `Shared from ${item.sourceGuildId}` : "Saved in this server",
+              description: item.sourceGuildId
+                ? `Shared from ${item.sourceGuildId}`
+                : "Saved in this server",
               value: String(item.id),
               default: state.commandIds
                 ? state.commandIds.has(item.id)
@@ -102,27 +94,29 @@ export function customSettingsView(
           .setMinValues(1)
           .setMaxValues(1)
           .setDisabled(closed)
-          .addOptions(visible.map((item) => ({
-            label: item.name.slice(0, 100),
-            description: item.sourceGuildId ? `Shared from ${item.sourceGuildId}` : "Saved in this server",
-            value: String(item.id),
-            default: item.id === customizeCommand?.id,
-          }))),
+          .addOptions(
+            visible.map((item) => ({
+              label: item.name.slice(0, 100),
+              description: item.sourceGuildId
+                ? `Shared from ${item.sourceGuildId}`
+                : "Saved in this server",
+              value: String(item.id),
+              default: item.id === customizeCommand?.id,
+            })),
+          ),
       ),
     );
     if (customizeCommand)
-      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-        `**Customize:** ${escapeMarkdown(customizeCommand.name)} • Editing this command keeps your sharing selection. **Only This Command** switches the scope controls to this command alone.${customizeCommand.sourceGuildId ? " This is a shared definition; edits apply in every server using it." : ""}`,
-      ));
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `**Customize:** ${escapeMarkdown(customizeCommand.name)} • Editing this command keeps your sharing selection. **Only This Command** switches the scope controls to this command alone.${customizeCommand.sourceGuildId ? " This is a shared definition; edits apply in every server using it." : ""}`,
+        ),
+      );
     if (state.commands.length > 25)
       container.addActionRowComponents(
         buttons([
           ["command-previous", "Previous Commands", state.commandPage === 0],
-          [
-            "command-next",
-            "Next Commands",
-            (state.commandPage + 1) * 25 >= state.commands.length,
-          ],
+          ["command-next", "Next Commands", (state.commandPage + 1) * 25 >= state.commands.length],
         ]),
       );
     if (command) {
@@ -157,10 +151,7 @@ export function customSettingsView(
         ),
       );
       if (state.scope === "selected") {
-        const servers = state.choices.slice(
-          state.serverPage * 25,
-          (state.serverPage + 1) * 25,
-        );
+        const servers = state.choices.slice(state.serverPage * 25, (state.serverPage + 1) * 25);
         if (servers.length)
           container.addActionRowComponents(
             new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -191,11 +182,7 @@ export function customSettingsView(
         container.addActionRowComponents(
           buttons([
             ["server-previous", "Previous Servers", state.serverPage === 0],
-            [
-              "server-next",
-              "Next Servers",
-              (state.serverPage + 1) * 25 >= state.choices.length,
-            ],
+            ["server-next", "Next Servers", (state.serverPage + 1) * 25 >= state.choices.length],
             ["clear", "Clear Selection", state.selected.size === 0],
           ]),
         );
@@ -212,12 +199,7 @@ export function customSettingsView(
           (state.scope === "selected" && state.selected.size === 0),
         ButtonStyle.Success,
       ],
-      [
-        "customize",
-        "Customize",
-        !customizeCommand,
-        ButtonStyle.Primary,
-      ],
+      ["customize", "Customize", !customizeCommand, ButtonStyle.Primary],
       ["only-command", "Only This Command", !customizeCommand],
       ["refresh", "Refresh", false],
       ["close", "Done", false],
@@ -230,10 +212,7 @@ export function customSettingsView(
   };
 }
 
-export function customSettingsWarning(
-  state: CustomSettingsState,
-  session: string,
-) {
+export function customSettingsWarning(state: CustomSettingsState, session: string) {
   const confirmation = state.confirmation!;
   const preview = confirmation.conflicts
     .slice(0, 8)

@@ -1,26 +1,73 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Command } from "@sapphire/framework";
-const mocks = vi.hoisted(() => ({ load: vi.fn(), update: vi.fn(), handle: vi.fn(), customSettings: vi.fn() }));
-vi.mock("../../../src/modules/custom-commands/discord/settings.js", () => ({ openCustomCommandSettings: mocks.customSettings }));
-vi.mock("../../../src/modules/settings/discord/interactionHandler.js", () => ({ SetupInteractionHandler: class { handleComponent = mocks.handle; } }));
-vi.mock("../../../src/modules/guilds/discord/config.js", () => ({ guildConfigService: { getOrCreate: mocks.load, update: mocks.update } }));
+const mocks = vi.hoisted(() => ({
+  load: vi.fn(),
+  update: vi.fn(),
+  handle: vi.fn(),
+  customSettings: vi.fn(),
+}));
+vi.mock("../../../src/modules/custom-commands/discord/settings.js", () => ({
+  openCustomCommandSettings: mocks.customSettings,
+}));
+vi.mock("../../../src/modules/settings/discord/interactionHandler.js", () => ({
+  SetupInteractionHandler: class {
+    handleComponent = mocks.handle;
+  },
+}));
+vi.mock("../../../src/modules/guilds/discord/config.js", () => ({
+  guildConfigService: { getOrCreate: mocks.load, update: mocks.update },
+}));
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 import { SettingsCommand } from "../../../src/modules/settings/discord/index.js";
 function fixture() {
   const callbacks: Record<string, (...args: any[]) => any> = {};
-  const collector = { on: vi.fn((event, callback) => { callbacks[event] = callback; }), resetTimer: vi.fn(), stop: vi.fn() };
+  const collector = {
+    on: vi.fn((event, callback) => {
+      callbacks[event] = callback;
+    }),
+    resetTimer: vi.fn(),
+    stop: vi.fn(),
+  };
   const message = { createMessageComponentCollector: vi.fn(() => collector) };
-  return { id: "settings-session", user: { id: "admin" }, callbacks, collector, message,
-    inCachedGuild: () => true, guildId: "guild", member: { permissions: { has: () => true } },
-    guild: { name: "Server", iconURL: () => null }, deferReply: vi.fn(), editReply: vi.fn().mockResolvedValue(message), reply: vi.fn() };
+  return {
+    id: "settings-session",
+    user: { id: "admin" },
+    callbacks,
+    collector,
+    message,
+    inCachedGuild: () => true,
+    guildId: "guild",
+    member: { permissions: { has: () => true } },
+    guild: { name: "Server", iconURL: () => null },
+    deferReply: vi.fn(),
+    editReply: vi.fn().mockResolvedValue(message),
+    reply: vi.fn(),
+  };
 }
-const config = { xpEnabled: true, xpMethods: "messages,daily", xpSharing: "server", xpSharedGuildIds: "", xpMessageAmount: 15,
-  xpReactionAmount: 5, xpDailyAmount: 250, xpCooldownSeconds: 60, welcomeMessage: "Welcome", goodbyeMessage: "Goodbye" };
+const config = {
+  xpEnabled: true,
+  xpMethods: "messages,daily",
+  xpSharing: "server",
+  xpSharedGuildIds: "",
+  xpMessageAmount: 15,
+  xpReactionAmount: 5,
+  xpDailyAmount: 250,
+  xpCooldownSeconds: 60,
+  welcomeMessage: "Welcome",
+  goodbyeMessage: "Goodbye",
+};
 const command = Object.create(SettingsCommand.prototype) as SettingsCommand;
-beforeEach(() => { vi.resetAllMocks(); mocks.load.mockResolvedValue(config); mocks.update.mockResolvedValue(config); });
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.load.mockResolvedValue(config);
+  mocks.update.mockResolvedValue(config);
+});
 test("settings acknowledges before database work and edits the deferred reply", async () => {
   const f = fixture();
-  mocks.load.mockImplementation(async () => { expect(f.deferReply).toHaveBeenCalledOnce(); return config; });
+  mocks.load.mockImplementation(async () => {
+    expect(f.deferReply).toHaveBeenCalledOnce();
+    return config;
+  });
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
   expect(f.reply).not.toHaveBeenCalled();
   expect(f.editReply).toHaveBeenCalledOnce();
@@ -29,7 +76,9 @@ test("settings database failures respond through the acknowledged interaction", 
   mocks.load.mockRejectedValue(new Error("offline"));
   const f = fixture();
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
-  expect(f.editReply).toHaveBeenCalledWith({ content: "I could not load this server's settings right now." });
+  expect(f.editReply).toHaveBeenCalledWith({
+    content: "I could not load this server's settings right now.",
+  });
   expect(f.reply).not.toHaveBeenCalled();
 });
 test("settings reuses the acknowledgement from the ownership precondition", async () => {
@@ -48,15 +97,38 @@ test("permission denial does not reach the database", async () => {
 });
 
 function button(action = "xp-peers", userId = "admin") {
-  return { customId: `settings:settings-session:${action}`, user: { id: userId }, member: { permissions: { has: () => true } },
-    isButton: () => true, inCachedGuild: () => true, deferReply: vi.fn(), reply: vi.fn(), editReply: vi.fn(), deferred: false, replied: false };
+  return {
+    customId: `settings:settings-session:${action}`,
+    user: { id: userId },
+    member: { permissions: { has: () => true } },
+    isButton: () => true,
+    inCachedGuild: () => true,
+    deferReply: vi.fn(),
+    reply: vi.fn(),
+    editReply: vi.fn(),
+    deferred: false,
+    replied: false,
+  };
 }
 test("settings keeps XP server controls inside the XP section", async () => {
   const f = fixture();
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
   const view = f.editReply.mock.calls[0][0];
-  const labels = view.components.flatMap((row: any) => row.toJSON().components.map((item: any) => item.label));
-  expect(labels).toEqual(["Welcome", "Goodbye", "Auto Role", "Logging", "Global Moderation", "XP", "Custom Commands", "Warning Roles", "Command Access", "Done"]);
+  const labels = view.components.flatMap((row: any) =>
+    row.toJSON().components.map((item: any) => item.label),
+  );
+  expect(labels).toEqual([
+    "Welcome",
+    "Goodbye",
+    "Auto Role",
+    "Logging",
+    "Global Moderation",
+    "XP",
+    "Custom Commands",
+    "Warning Roles",
+    "Command Access",
+    "Done",
+  ]);
   expect(labels).not.toContain("Choose XP Servers");
   expect(labels).not.toContain("Apply XP to Servers");
   expect(view.components).toHaveLength(2);
@@ -77,10 +149,21 @@ test("configuration category buttons route through the shared settings handler",
   const f = fixture();
   mocks.handle.mockResolvedValue(config);
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
-  for (const action of ["xp", "welcome", "goodbye", "autorole", "logging", "moderation", "warning-roles", "command-access"]) {
+  for (const action of [
+    "xp",
+    "welcome",
+    "goodbye",
+    "autorole",
+    "logging",
+    "moderation",
+    "warning-roles",
+    "command-access",
+  ]) {
     const b = { ...button(), customId: `setup:settings-session:${action}` };
     await f.callbacks.collect(b);
-    expect(mocks.handle).toHaveBeenLastCalledWith(expect.objectContaining({ componentInteraction: b, config }));
+    expect(mocks.handle).toHaveBeenLastCalledWith(
+      expect.objectContaining({ componentInteraction: b, config }),
+    );
   }
 });
 
@@ -88,15 +171,24 @@ test("settings prevents concurrent saves and Done closes the session", async () 
   const f = fixture();
   await command.chatInputRun(f as unknown as Command.ChatInputCommandInteraction);
   let finish!: (value: unknown) => void;
-  mocks.handle.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  mocks.handle.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
   const first = f.callbacks.collect({ ...button(), customId: "setup:settings-session:xp" });
   const second = { ...button(), customId: "setup:settings-session:xp-peers" };
   await f.callbacks.collect(second);
-  expect(second.reply).toHaveBeenCalledWith(expect.objectContaining({ content: "Finish the current settings action first." }));
+  expect(second.reply).toHaveBeenCalledWith(
+    expect.objectContaining({ content: "Finish the current settings action first." }),
+  );
   expect(mocks.handle).toHaveBeenCalledOnce();
   finish(config);
   await first;
-  mocks.handle.mockImplementation(async ({ componentInteraction }) => { componentInteraction.deferred = true; return config; });
+  mocks.handle.mockImplementation(async ({ componentInteraction }) => {
+    componentInteraction.deferred = true;
+    return config;
+  });
   await f.callbacks.collect({ ...button(), customId: "setup:settings-session:finish" });
   expect(f.collector.stop).toHaveBeenCalledWith("finished");
 });
@@ -121,7 +213,9 @@ test("an expired custom-settings click recovers through the existing panel and r
   expect(mocks.customSettings).not.toHaveBeenCalled();
   expect(b.reply).not.toHaveBeenCalled();
   expect(b.followUp).not.toHaveBeenCalled();
-  expect(f.editReply).toHaveBeenLastCalledWith({ content: expect.stringContaining("try the control again") });
+  expect(f.editReply).toHaveBeenLastCalledWith({
+    content: expect.stringContaining("try the control again"),
+  });
   expect(f.collector.resetTimer).not.toHaveBeenCalled();
   await f.callbacks.collect(b);
   expect(mocks.customSettings).toHaveBeenCalledOnce();
@@ -133,7 +227,9 @@ test("expiry prevents further actions and does not resurrect settings after a fa
   f.callbacks.end();
   const b = { ...button(), customId: "setup:settings-session:custom-commands" };
   await f.callbacks.collect(b);
-  expect(b.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("session is closed") }));
+  expect(b.reply).toHaveBeenCalledWith(
+    expect.objectContaining({ content: expect.stringContaining("session is closed") }),
+  );
   expect(mocks.customSettings).not.toHaveBeenCalled();
   expect(f.editReply).toHaveBeenLastCalledWith({ components: [] });
 });

@@ -40,7 +40,10 @@ export interface RecordWarningInput {
 
 /** Transport effects use IDs and plain data; Discord objects stay in the adapter. */
 export interface WarningEffects {
-  prepareRole(guildId: string, count: number): Promise<{ id: string | null; name: string; error: string | null }>;
+  prepareRole(
+    guildId: string,
+    count: number,
+  ): Promise<{ id: string | null; name: string; error: string | null }>;
   assignRole(guildId: string, roleId: string): Promise<void>;
 }
 export type WarnInput = Omit<RecordWarningInput, "warningCount" | "warningRoleId">;

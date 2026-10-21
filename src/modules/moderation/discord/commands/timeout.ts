@@ -1,15 +1,16 @@
 import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
-import {
-  InteractionContextType,
-  MessageFlags,
-  PermissionFlagsBits,
-} from "discord.js";
+import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
 import { moderationCaseService } from "../services.js";
 import { formatDuration, maxDiscordTimeoutMs, parseDuration } from "../durationParser.js";
 import { buildCaseEmbed } from "../renderer.js";
-import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions, validateMemberAction } from "../permissionGuards.js";
+import {
+  hasModeratorPermission,
+  missingPermissionMessage,
+  validateBotPermissions,
+  validateMemberAction,
+} from "../permissionGuards.js";
 import { toAuditLogReason } from "../commandUtils.js";
 
 export class TimeoutCommand extends Command {
@@ -20,24 +21,41 @@ export class TimeoutCommand extends Command {
         .setDescription("Timeout a member")
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .setContexts(InteractionContextType.Guild)
-        .addUserOption((option) => option.setName("user").setDescription("Member to timeout").setRequired(true))
-        .addStringOption((option) => option.setName("duration").setDescription("Duration like 10m, 1h, 1d, 7d").setRequired(true))
-        .addStringOption((option) => option.setName("reason").setDescription("Reason").setMaxLength(1_000).setRequired(true)),
+        .addUserOption((option) =>
+          option.setName("user").setDescription("Member to timeout").setRequired(true),
+        )
+        .addStringOption((option) =>
+          option
+            .setName("duration")
+            .setDescription("Duration like 10m, 1h, 1d, 7d")
+            .setRequired(true),
+        )
+        .addStringOption((option) =>
+          option.setName("reason").setDescription("Reason").setMaxLength(1_000).setRequired(true),
+        ),
     );
   }
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: "This command can only be used inside a server.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await replyToCommand(interaction, { content: missingPermissionMessage("ModerateMembers"), flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: missingPermissionMessage("ModerateMembers"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 
-    const botValidation = validateBotPermissions(interaction.guild, [PermissionFlagsBits.ModerateMembers]);
+    const botValidation = validateBotPermissions(interaction.guild, [
+      PermissionFlagsBits.ModerateMembers,
+    ]);
     if (botValidation) {
       await replyToCommand(interaction, { content: botValidation, flags: MessageFlags.Ephemeral });
       return;
@@ -50,7 +68,9 @@ export class TimeoutCommand extends Command {
     const durationMs = parseDuration(interaction.options.getString("duration", true));
 
     if (!member || !durationMs || durationMs > maxDiscordTimeoutMs) {
-      await interaction.editReply({ content: "Choose a member and a duration from 1m through 28d." });
+      await interaction.editReply({
+        content: "Choose a member and a duration from 1m through 28d.",
+      });
       return;
     }
 
@@ -59,7 +79,11 @@ export class TimeoutCommand extends Command {
       return;
     }
 
-    const validation = validateMemberAction({ guild: interaction.guild, moderator: interaction.member, target: member });
+    const validation = validateMemberAction({
+      guild: interaction.guild,
+      moderator: interaction.member,
+      target: member,
+    });
     if (validation) {
       await interaction.editReply({ content: validation });
       return;
@@ -87,7 +111,10 @@ export class TimeoutCommand extends Command {
         embeds: [buildCaseEmbed(moderationCase)],
       });
     } catch (error) {
-      logger.error({ err: error, guildId: interaction.guildId, userId: user.id }, "Timeout command failed");
+      logger.error(
+        { err: error, guildId: interaction.guildId, userId: user.id },
+        "Timeout command failed",
+      );
       await interaction.editReply({ content: "I could not timeout that member right now." });
     }
   }

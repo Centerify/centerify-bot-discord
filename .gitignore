@@ -1,4 +1,9 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 .cache/
+.centerify/
+artifacts/plugin-installer/
+plugins/installed/

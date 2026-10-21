@@ -19,21 +19,15 @@ export async function prepareChannelAction(
   if (
     !channel ||
     channel.guildId !== context.guildId ||
-    (channel.type !== ChannelType.GuildText &&
-      channel.type !== ChannelType.GuildAnnouncement)
+    (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement)
   )
     return deny("Choose a text or announcement channel in this server.");
-  const permissions = [
-    PermissionFlagsBits.ViewChannel,
-    PermissionFlagsBits.ManageChannels,
-  ];
+  const permissions = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels];
   if (
     !channel.permissionsFor(context.member)?.has(permissions) ||
     !channel.permissionsFor(me)?.has(permissions)
   )
-    deny(
-      "You and I both need View Channel and Manage Channels in the target channel.",
-    );
+    deny("You and I both need View Channel and Manage Channels in the target channel.");
   const reason = toAuditLogReason(
     `Custom command ${context.command.name} (${context.command.id}), requested by ${context.userId}`,
   );
@@ -53,9 +47,7 @@ export async function prepareChannelAction(
         return deny("Slowmode requires a regular text channel.");
       return async () => {
         await channel.setRateLimitPerUser(action.seconds, reason);
-        return action.seconds
-          ? "Channel slowmode updated."
-          : "Channel slowmode disabled.";
+        return action.seconds ? "Channel slowmode updated." : "Channel slowmode disabled.";
       };
     case "setchannelcategory": {
       if (action.categoryId !== null) {
@@ -72,9 +64,7 @@ export async function prepareChannelAction(
           !category.permissionsFor(context.member)?.has(permissions) ||
           !category.permissionsFor(me)?.has(permissions)
         )
-          deny(
-            "You and I both need View Channel and Manage Channels in the destination category.",
-          );
+          deny("You and I both need View Channel and Manage Channels in the destination category.");
       }
       return async () => {
         await channel.setParent(action.categoryId, {

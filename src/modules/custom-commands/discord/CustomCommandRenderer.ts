@@ -32,8 +32,7 @@ export class CustomCommandRenderer {
     this.register({
       type: "TEXT",
       render: async (template, context, render) => {
-        if (template.type !== "TEXT")
-          throw new Error("Unexpected response strategy.");
+        if (template.type !== "TEXT") throw new Error("Unexpected response strategy.");
         const content = await this.interpolate(template.text, render);
         this.validator.responses([{ type: "TEXT", text: content }], false);
         return { content };
@@ -42,17 +41,13 @@ export class CustomCommandRenderer {
     this.register({
       type: "EMBED",
       render: async (template, context, render) => {
-        if (template.type !== "EMBED")
-          throw new Error("Unexpected response strategy.");
+        if (template.type !== "EMBED") throw new Error("Unexpected response strategy.");
         const embed: EmbedTemplate = structuredClone(template.embed);
-        if (embed.title)
-          embed.title = await this.interpolate(embed.title, render);
+        if (embed.title) embed.title = await this.interpolate(embed.title, render);
         if (embed.description)
           embed.description = await this.interpolate(embed.description, render);
-        if (embed.author)
-          embed.author.name = await this.interpolate(embed.author.name, render);
-        if (embed.footer)
-          embed.footer.text = await this.interpolate(embed.footer.text, render);
+        if (embed.author) embed.author.name = await this.interpolate(embed.author.name, render);
+        if (embed.footer) embed.footer.text = await this.interpolate(embed.footer.text, render);
         if (embed.fields)
           for (const field of embed.fields) {
             field.name = await this.interpolate(field.name, render);
@@ -84,23 +79,16 @@ export class CustomCommandRenderer {
         this.validator.embed(embed, false);
         const { timestamp, ...data } = embed;
         const builder = new EmbedBuilder(data);
-        if (timestamp)
-          builder.setTimestamp(
-            timestamp === true ? new Date() : new Date(timestamp),
-          );
+        if (timestamp) builder.setTimestamp(timestamp === true ? new Date() : new Date(timestamp));
         return { embeds: [builder] };
       },
     });
   }
   public register(handler: CustomCommandResponseHandler): void {
-    if (this.handlers.has(handler.type))
-      throw new Error("Duplicate response handler.");
+    if (this.handlers.has(handler.type)) throw new Error("Duplicate response handler.");
     this.handlers.set(handler.type, handler);
   }
-  private async interpolate(
-    template: string,
-    render: TemplateRender,
-  ): Promise<string> {
+  private async interpolate(template: string, render: TemplateRender): Promise<string> {
     return (await render(template)).replace(/@(everyone|here)/gi, "@\u200b$1");
   }
   public async render(
@@ -113,8 +101,7 @@ export class CustomCommandRenderer {
     for (const [responseIndex, template] of this.validator
       .responses(context.command.content)
       .entries()) {
-      if (!allStages && template.stage !== undefined && template.stage !== 0)
-        continue;
+      if (!allStages && template.stage !== undefined && template.stage !== 0) continue;
       const handler = this.handlers.get(template.type);
       if (!handler) throw new Error("Missing response handler.");
       const buttons = this.validator.buttons(
@@ -122,12 +109,7 @@ export class CustomCommandRenderer {
           (template.buttons ?? []).map(async (button) => ({
             ...button,
             ...("action" in button
-              ? await renderComponentAction(
-                  button,
-                  context,
-                  this.variables,
-                  render,
-                )
+              ? await renderComponentAction(button, context, this.variables, render)
               : {}),
             label: await this.interpolate(button.label, render),
           })),
@@ -141,20 +123,12 @@ export class CustomCommandRenderer {
             options: await Promise.all(
               select.options.map(async (option) => ({
                 ...option,
-                ...(await renderComponentAction(
-                  option,
-                  context,
-                  this.variables,
-                  render,
-                )),
+                ...(await renderComponentAction(option, context, this.variables, render)),
                 label: await this.interpolate(option.label, render),
                 ...(option.description === undefined
                   ? {}
                   : {
-                      description: await this.interpolate(
-                        option.description,
-                        render,
-                      ),
+                      description: await this.interpolate(option.description, render),
                     }),
               })),
             ),
@@ -171,13 +145,9 @@ export class CustomCommandRenderer {
                   ? [
                       new ActionRowBuilder<ButtonBuilder>().addComponents(
                         buttons.map((button, index) => {
-                          const builder = new ButtonBuilder().setLabel(
-                            button.label,
-                          );
+                          const builder = new ButtonBuilder().setLabel(button.label);
                           if ("url" in button)
-                            return builder
-                              .setStyle(ButtonStyle.Link)
-                              .setURL(button.url);
+                            return builder.setStyle(ButtonStyle.Link).setURL(button.url);
                           const styles = {
                             primary: ButtonStyle.Primary,
                             secondary: ButtonStyle.Secondary,
@@ -198,9 +168,7 @@ export class CustomCommandRenderer {
                 ...selects.map((select, index) =>
                   new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
                     new StringSelectMenuBuilder()
-                      .setCustomId(
-                        `cc-select:${template.stage ?? responseIndex}:${index}`,
-                      )
+                      .setCustomId(`cc-select:${template.stage ?? responseIndex}:${index}`)
                       .setPlaceholder(select.placeholder)
                       .setMinValues(1)
                       .setMaxValues(1)

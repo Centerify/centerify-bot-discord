@@ -4,8 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const e2eOnly = process.argv.includes("--e2e");
 const databaseUrl =
-  process.env.TEST_DATABASE_URL ||
-  (!e2eOnly ? process.env.DATABASE_URL : undefined);
+  process.env.TEST_DATABASE_URL || (!e2eOnly ? process.env.DATABASE_URL : undefined);
 if (!databaseUrl) {
   console.error(
     e2eOnly
@@ -15,19 +14,13 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-console.log(
-  "Running live database tests with temporary synthetic server records.",
-);
+console.log("Running live database tests with temporary synthetic server records.");
 const result = spawnSync(
   process.execPath,
   [
-    fileURLToPath(
-      new URL("../node_modules/vitest/vitest.mjs", import.meta.url),
-    ),
+    fileURLToPath(new URL("../node_modules/vitest/vitest.mjs", import.meta.url)),
     "run",
-    e2eOnly
-      ? "tests/integration/customCommandSharing.e2e.test.ts"
-      : "tests/integration/",
+    e2eOnly ? "tests/integration/customCommandSharing.e2e.test.ts" : "tests/integration/",
   ],
   {
     cwd: fileURLToPath(new URL("..", import.meta.url)),

@@ -12,27 +12,39 @@ vi.mock("../../../src/modules/custom-commands/discord/legacyService.js", () => (
 }));
 vi.mock("../../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({ customCommandService: { listCommands: async () => [] }, customCommandSharingService: { listAvailable: async () => [] } }));
+vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
+  customCommandService: { listCommands: async () => [] },
+  customCommandSharingService: { listAvailable: async () => [] },
+}));
 
 import { CustomCommand } from "../../../src/modules/custom-commands/discord/index.js";
 import { VerifiedGuildOwnershipPrecondition } from "../../../src/modules/guilds/discord/index.js";
 
 const command = Object.create(CustomCommand.prototype) as CustomCommand;
-const precondition = Object.create(VerifiedGuildOwnershipPrecondition.prototype) as VerifiedGuildOwnershipPrecondition;
+const precondition = Object.create(
+  VerifiedGuildOwnershipPrecondition.prototype,
+) as VerifiedGuildOwnershipPrecondition;
 
 function fixture() {
   const receivedAt = Date.now();
   const interaction = {
-    commandName: "custom", guildId: "guild-a", guild: { ownerId: "owner" },
-    user: { id: "owner" }, member: { permissions: { has: () => false } },
-    inCachedGuild: () => true, deferred: false, replied: false,
+    commandName: "custom",
+    guildId: "guild-a",
+    guild: { ownerId: "owner" },
+    user: { id: "owner" },
+    member: { permissions: { has: () => false } },
+    inCachedGuild: () => true,
+    deferred: false,
+    replied: false,
     options: { getSubcommand: () => "list" },
     deferReply: vi.fn(async (_options: unknown) => {
-      if (interaction.deferred || interaction.replied) throw new Error("Interaction already acknowledged");
+      if (interaction.deferred || interaction.replied)
+        throw new Error("Interaction already acknowledged");
       if (Date.now() - receivedAt >= 3000) throw new Error("Unknown interaction");
       interaction.deferred = true;
     }),
-    reply: vi.fn(), editReply: vi.fn(),
+    reply: vi.fn(),
+    editReply: vi.fn(),
   };
   return interaction;
 }
@@ -42,7 +54,9 @@ beforeEach(() => {
   mocks.check.mockResolvedValue(true);
   mocks.list.mockResolvedValue([]);
 });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 test("slow global and command ownership checks reuse one prompt acknowledgement", async () => {
   vi.useFakeTimers();
@@ -61,7 +75,9 @@ test("slow global and command ownership checks reuse one prompt acknowledgement"
   expect(interaction.deferReply).toHaveBeenCalledExactlyOnceWith({ flags: MessageFlags.Ephemeral });
   expect(mocks.check).toHaveBeenCalledTimes(2);
   expect(mocks.list).toHaveBeenCalledWith("guild-a");
-  expect(interaction.editReply).toHaveBeenCalledWith("No custom commands or events yet. Use `/custom create` to add one.");
+  expect(interaction.editReply).toHaveBeenCalledWith(
+    "No custom commands or events yet. Use `/custom create` to add one.",
+  );
   expect(interaction.reply).not.toHaveBeenCalled();
 });
 
@@ -90,7 +106,9 @@ test("permission denial edits the precondition reply without a second acknowledg
   interaction.deferred = true;
   interaction.user.id = "not-an-admin";
   await command.chatInputRun(interaction as never);
-  expect(interaction.editReply).toHaveBeenCalledWith({ content: "Only the server owner or an administrator can manage custom rules." });
+  expect(interaction.editReply).toHaveBeenCalledWith({
+    content: "Only the server owner or an administrator can manage custom rules.",
+  });
   expect(interaction.reply).not.toHaveBeenCalled();
   expect(interaction.deferReply).not.toHaveBeenCalled();
   expect(mocks.check).not.toHaveBeenCalled();
@@ -101,7 +119,10 @@ test("direct permission denial replies immediately without touching storage", as
   const interaction = fixture();
   interaction.user.id = "not-an-admin";
   await command.chatInputRun(interaction as never);
-  expect(interaction.reply).toHaveBeenCalledWith({ content: "Only the server owner or an administrator can manage custom rules.", flags: MessageFlags.Ephemeral });
+  expect(interaction.reply).toHaveBeenCalledWith({
+    content: "Only the server owner or an administrator can manage custom rules.",
+    flags: MessageFlags.Ephemeral,
+  });
   expect(interaction.deferReply).not.toHaveBeenCalled();
   expect(mocks.list).not.toHaveBeenCalled();
 });

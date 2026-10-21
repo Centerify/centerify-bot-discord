@@ -1,15 +1,8 @@
 import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
-import {
-  InteractionContextType,
-  MessageFlags,
-  PermissionFlagsBits,
-} from "discord.js";
+import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
-import {
-  dmUser,
-  toAuditLogReason,
-} from "../commandUtils.js";
+import { dmUser, toAuditLogReason } from "../commandUtils.js";
 import { moderationCaseService } from "../services.js";
 import {
   hasModeratorPermission,
@@ -53,9 +46,7 @@ export class UnwarnCommand extends Command {
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
       await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
@@ -101,16 +92,25 @@ export class UnwarnCommand extends Command {
     const caseNumber = interaction.options.getInteger("case-number");
 
     try {
-      const active = await moderationCaseService.activeWarningsForUser(interaction.guildId, user.id);
-      const selected = caseNumber ? active.find((warning) => warning.caseNumber === caseNumber) : active[0];
+      const active = await moderationCaseService.activeWarningsForUser(
+        interaction.guildId,
+        user.id,
+      );
+      const selected = caseNumber
+        ? active.find((warning) => warning.caseNumber === caseNumber)
+        : active[0];
       if (!selected) {
-        await interaction.editReply({ content: caseNumber
-          ? `Case #${caseNumber} is not an active warning for that member.`
-          : "That member has no active warnings." });
+        await interaction.editReply({
+          content: caseNumber
+            ? `Case #${caseNumber} is not an active warning for that member.`
+            : "That member has no active warnings.",
+        });
         return;
       }
       if (warningRoleId(selected.metadata)) {
-        const botValidation = validateBotPermissions(interaction.guild, [PermissionFlagsBits.ManageRoles]);
+        const botValidation = validateBotPermissions(interaction.guild, [
+          PermissionFlagsBits.ManageRoles,
+        ]);
         if (botValidation) {
           await interaction.editReply({ content: botValidation });
           return;

@@ -30,17 +30,12 @@ export class StatusCommand extends Command {
         .setName("status")
         .setDescription("View a member's server profile")
         .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("The member to inspect")
-            .setRequired(false),
+          option.setName("user").setDescription("The member to inspect").setRequired(false),
         ),
     );
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const targetUser = interaction.options.getUser("user") ?? interaction.user;
 
     if (!(await this.canInspectTarget(interaction, targetUser))) {
@@ -78,7 +73,7 @@ export class StatusCommand extends Command {
       componentType: ComponentType.Button,
       time: 120_000,
     });
-  trackCollector("information", collector);
+    trackCollector("information", collector);
 
     collector.on("collect", async (buttonInteraction) => {
       if (buttonInteraction.customId !== moreInfoId) {
@@ -87,8 +82,7 @@ export class StatusCommand extends Command {
 
       if (buttonInteraction.user.id !== interaction.user.id) {
         await buttonInteraction.reply({
-          content:
-            "Only the person who requested this profile can open the details.",
+          content: "Only the person who requested this profile can open the details.",
           flags: MessageFlags.Ephemeral,
         });
 
@@ -96,9 +90,7 @@ export class StatusCommand extends Command {
       }
 
       await buttonInteraction.reply({
-        components: [
-          this.buildDetailsCard(buttonInteraction, targetUser, member),
-        ],
+        components: [this.buildDetailsCard(buttonInteraction, targetUser, member)],
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     });
@@ -137,9 +129,7 @@ export class StatusCommand extends Command {
     disabled?: boolean;
   }) {
     const displayColor =
-      member?.displayColor && member.displayColor !== 0
-        ? member.displayColor
-        : Colors.Blurple;
+      member?.displayColor && member.displayColor !== 0 ? member.displayColor : Colors.Blurple;
 
     const highestRole =
       member?.roles.highest && member.roles.highest.name !== "@everyone"
@@ -148,14 +138,10 @@ export class StatusCommand extends Command {
 
     const accountCreated = this.formatDate(user.createdAt);
 
-    const joinedServer = member?.joinedAt
-      ? this.formatDate(member.joinedAt)
-      : "Not available";
+    const joinedServer = member?.joinedAt ? this.formatDate(member.joinedAt) : "Not available";
     const visibleRoles = this.getVisibleRoles(member);
     const accountAgeDays = this.getAgeInDays(user.createdAt);
-    const serverAgeDays = member?.joinedAt
-      ? this.getAgeInDays(member.joinedAt)
-      : null;
+    const serverAgeDays = member?.joinedAt ? this.getAgeInDays(member.joinedAt) : null;
     const accountType = user.bot ? "Bot account" : "Member account";
     const serverStanding = this.getServerStanding(member);
 
@@ -188,9 +174,7 @@ export class StatusCommand extends Command {
         `${accountAgeDays.toLocaleString()} days`,
         "",
         `**Server tenure**`,
-        serverAgeDays === null
-          ? "Not available"
-          : `${serverAgeDays.toLocaleString()} days`,
+        serverAgeDays === null ? "Not available" : `${serverAgeDays.toLocaleString()} days`,
         "",
         `**Visible roles**`,
         `${visibleRoles.length}`,
@@ -266,67 +250,49 @@ export class StatusCommand extends Command {
 
         // Strong visual separation
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
         )
 
         // Main profile information
         .addTextDisplayComponents(summary)
 
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(false)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
         )
 
         .addTextDisplayComponents(identity)
 
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(false)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
         )
 
         .addTextDisplayComponents(timeline)
 
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(false)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
         )
 
         .addTextDisplayComponents(server)
 
         // Button area
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Large),
+          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
         )
 
         .addActionRowComponents(actionRow)
 
         // Footer breathing room
         .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(false)
-            .setSpacing(SeparatorSpacingSize.Small),
+          new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
         )
 
         .addTextDisplayComponents(footer)
     );
   }
 
-  private buildDetailsCard(
-    interaction: ButtonInteraction,
-    user: User,
-    member: GuildMember | null,
-  ) {
+  private buildDetailsCard(interaction: ButtonInteraction, user: User, member: GuildMember | null) {
     const displayColor =
-      member?.displayColor && member.displayColor !== 0
-        ? member.displayColor
-        : Colors.Blurple;
+      member?.displayColor && member.displayColor !== 0 ? member.displayColor : Colors.Blurple;
 
     const roles = this.getVisibleRoles(member);
 
@@ -385,30 +351,24 @@ export class StatusCommand extends Command {
     const serverInfo = new TextDisplayBuilder().setContent(
       member
         ? [
-          "### Server details",
-          "",
-          `**Nickname**`,
-          member.nickname ? escapeMarkdown(member.nickname) : "None",
-          "",
-          `**Joined server**`,
-          member.joinedAt ? this.formatDate(member.joinedAt) : "Unknown",
-          "",
-          `**Total roles**`,
-          `${roles.length}`,
-          "",
-          `**Standing**`,
-          serverStanding,
-          "",
-          `**Boosting**`,
-          boostedSince
-            ? `Since ${time(boostedSince, TimestampStyles.LongDate)}`
-            : "Not boosting",
-        ].join("\n")
-        : [
-          "### Server details",
-          "",
-          "Server member information is not available.",
-        ].join("\n"),
+            "### Server details",
+            "",
+            `**Nickname**`,
+            member.nickname ? escapeMarkdown(member.nickname) : "None",
+            "",
+            `**Joined server**`,
+            member.joinedAt ? this.formatDate(member.joinedAt) : "Unknown",
+            "",
+            `**Total roles**`,
+            `${roles.length}`,
+            "",
+            `**Standing**`,
+            serverStanding,
+            "",
+            `**Boosting**`,
+            boostedSince ? `Since ${time(boostedSince, TimestampStyles.LongDate)}` : "Not boosting",
+          ].join("\n")
+        : ["### Server details", "", "Server member information is not available."].join("\n"),
     );
 
     const rolesInfo = new TextDisplayBuilder().setContent(
@@ -427,10 +387,9 @@ export class StatusCommand extends Command {
         "### Moderation",
         "",
         timedOutUntil
-          ? [
-            "**Timeout active**",
-            `${time(timedOutUntil, TimestampStyles.RelativeTime)}`,
-          ].join("\n")
+          ? ["**Timeout active**", `${time(timedOutUntil, TimestampStyles.RelativeTime)}`].join(
+              "\n",
+            )
           : "No active timeout.",
       ].join("\n"),
     );
@@ -445,41 +404,31 @@ export class StatusCommand extends Command {
       .addSectionComponents(header)
 
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
 
       .addTextDisplayComponents(discordInfo)
 
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
 
       .addTextDisplayComponents(serverInfo)
 
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
       )
 
       .addTextDisplayComponents(rolesInfo)
 
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Large),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large),
       )
 
       .addTextDisplayComponents(moderation)
 
       .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(false)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small),
       )
 
       .addTextDisplayComponents(footer);
@@ -544,10 +493,7 @@ export class StatusCommand extends Command {
   private getAgeInDays(date: Date) {
     const millisecondsPerDay = 86_400_000;
 
-    return Math.max(
-      0,
-      Math.floor((Date.now() - date.getTime()) / millisecondsPerDay),
-    );
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / millisecondsPerDay));
   }
 
   private getServerStanding(member: GuildMember | null) {
@@ -582,10 +528,7 @@ export class StatusCommand extends Command {
       return false;
     }
 
-    const requester = await this.fetchGuildMember(
-      interaction,
-      interaction.user.id,
-    );
+    const requester = await this.fetchGuildMember(interaction, interaction.user.id);
 
     return requester?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false;
   }

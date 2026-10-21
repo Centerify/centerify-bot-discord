@@ -51,8 +51,10 @@ export class ModuleRegistry {
 
   list() {
     return [...this.modules.values()].map(({ metadata }) => ({
-      ...metadata, dependsOn: [...(metadata.dependsOn ?? [])],
-      enabled: this.isEnabled(metadata.id), config: this.options.get(metadata.id)?.config,
+      ...metadata,
+      dependsOn: [...(metadata.dependsOn ?? [])],
+      enabled: this.isEnabled(metadata.id),
+      config: this.options.get(metadata.id)?.config,
     }));
   }
 
@@ -60,11 +62,14 @@ export class ModuleRegistry {
     return this.modules.has(id) && this.options.get(id)?.enabled !== false;
   }
 
-  resolve<T>(key: ServiceToken<T>): T { return this.services.resolve(key); }
+  resolve<T>(key: ServiceToken<T>): T {
+    return this.services.resolve(key);
+  }
 
   extensions<T>(key: ServiceToken<T>): readonly { moduleId: string; value: T }[] {
     return (this.contributions.get(key.key) ?? []).map((entry) => ({
-      moduleId: entry.moduleId, value: entry.value as T,
+      moduleId: entry.moduleId,
+      value: entry.value as T,
     }));
   }
 
@@ -95,7 +100,10 @@ export class ModuleRegistry {
     } catch (error) {
       const cleanupErrors = await this.cleanup();
       this.state = "idle";
-      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], "Module startup and cleanup failed");
+      if (cleanupErrors.length)
+        throw new AggregateError([error, ...cleanupErrors], "Module startup and cleanup failed", {
+          cause: error,
+        });
       throw error;
     }
   }
@@ -112,9 +120,17 @@ export class ModuleRegistry {
   private async cleanup() {
     const errors: unknown[] = [];
     for (const module of this.activated.reverse()) {
-      try { await module.stop?.(); } catch (error) { errors.push(error); }
+      try {
+        await module.stop?.();
+      } catch (error) {
+        errors.push(error);
+      }
       for (const dispose of (this.disposers.get(module.metadata.id) ?? []).reverse()) {
-        try { await dispose(); } catch (error) { errors.push(error); }
+        try {
+          await dispose();
+        } catch (error) {
+          errors.push(error);
+        }
       }
     }
     this.activated = [];
@@ -132,7 +148,8 @@ export class ModuleRegistry {
       const module = this.modules.get(id);
       if (!module) throw new Error(`Missing module dependency: ${id}`);
       if (!this.isEnabled(id)) throw new Error(`Disabled module dependency: ${id}`);
-      if (visiting.includes(id)) throw new Error(`Circular module dependency: ${[...visiting, id].join(" -> ")}`);
+      if (visiting.includes(id))
+        throw new Error(`Circular module dependency: ${[...visiting, id].join(" -> ")}`);
       if (visited.has(id)) return;
       visiting.push(id);
       for (const dependency of module.metadata.dependsOn ?? []) visit(dependency);

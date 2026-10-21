@@ -1,10 +1,7 @@
 import { trackCollector } from "../../../adapters/discord/resources.js";
 import { interactionErrorDetails, replyToCommand } from "../../../adapters/discord/interactions.js";
 import { attachStageNavigation } from "./stageNavigation.js";
-import {
-  responseActions,
-  hasServerActionReferences,
-} from "../domain/components.js";
+import { responseActions, hasServerActionReferences } from "../domain/components.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -18,27 +15,11 @@ import {
 } from "discord.js";
 import { logger } from "../../../adapters/logging/runtime.js";
 import { requireVerifiedOwnership } from "../../guilds/discord/index.js";
-import {
-  CUSTOM_COMMAND_LIMITS as L,
-  RESTRICTION_KEYS,
-} from "../domain/constants.js";
-import {
-  CustomCommandError,
-  CustomCommandValidationError,
-} from "../domain/errors.js";
-import type {
-  CustomCommandDefinition,
-  CustomCommandRecord,
-} from "../domain/types.js";
-import {
-  customCommandService,
-  customCommandSharingService,
-} from "./runtime.js";
-import {
-  applyResponseModal,
-  editorModal,
-  responseModal,
-} from "./editorResponses.js";
+import { CUSTOM_COMMAND_LIMITS as L, RESTRICTION_KEYS } from "../domain/constants.js";
+import { CustomCommandError, CustomCommandValidationError } from "../domain/errors.js";
+import type { CustomCommandDefinition, CustomCommandRecord } from "../domain/types.js";
+import { customCommandService, customCommandSharingService } from "./runtime.js";
+import { applyResponseModal, editorModal, responseModal } from "./editorResponses.js";
 import { CustomCommandRenderer } from "./CustomCommandRenderer.js";
 import {
   CustomCommandVariableResolver,
@@ -55,12 +36,8 @@ import {
 import { editorView, type EditorSection } from "./editorView.js";
 import { customVariables } from "../domain/variables.js";
 
-async function authorize(
-  interaction: RepliableInteraction,
-  guildId: string,
-): Promise<boolean> {
-  if (!interaction.inCachedGuild() || interaction.guildId !== guildId)
-    return false;
+async function authorize(interaction: RepliableInteraction, guildId: string): Promise<boolean> {
+  if (!interaction.inCachedGuild() || interaction.guildId !== guildId) return false;
   const member = await interaction.guild.members.fetch({
     user: interaction.user.id,
     force: true,
@@ -102,15 +79,8 @@ export async function openCustomCommandEditor(
       command,
     );
     if (
-      [
-        "allowedRoleIds",
-        "deniedRoleIds",
-        "allowedChannelIds",
-        "deniedChannelIds",
-      ].some(
-        (key) =>
-          (patch[key as keyof CustomCommandDefinition] as string[] | undefined)
-            ?.length,
+      ["allowedRoleIds", "deniedRoleIds", "allowedChannelIds", "deniedChannelIds"].some(
+        (key) => (patch[key as keyof CustomCommandDefinition] as string[] | undefined)?.length,
       ) ||
       (patch.content !== undefined && hasServerActionReferences(patch.content))
     )
@@ -136,8 +106,7 @@ export async function openCustomCommandEditor(
     index = 0,
     restriction: (typeof RESTRICTION_KEYS)[number] = "allowedRoleIds",
     busy = false;
-  const render = () =>
-    editorView(command, session, section, index, restriction);
+  const render = () => editorView(command, session, section, index, restriction);
   const message = await root.editReply(render());
   const collector = message.createMessageComponentCollector({
     time: 180_000,
@@ -149,14 +118,18 @@ export async function openCustomCommandEditor(
       await replyToCommand(interaction, {
         content: "Only the administrator who opened this editor can use it.",
         flags: MessageFlags.Ephemeral,
-      }).catch((error) => logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"));
+      }).catch((error) =>
+        logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"),
+      );
       return;
     }
     if (busy) {
       await replyToCommand(interaction, {
         content: "Finish the active edit first.",
         flags: MessageFlags.Ephemeral,
-      }).catch((error) => logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"));
+      }).catch((error) =>
+        logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"),
+      );
       return;
     }
     busy = true;
@@ -307,8 +280,7 @@ export async function openCustomCommandEditor(
         acknowledged = true;
         modalReply = submitted;
         if (!(await authorize(submitted, root.guildId))) return;
-        const value = (key: string) =>
-          submitted.fields.getTextInputValue(key).trim();
+        const value = (key: string) => submitted.fields.getTextInputValue(key).trim();
         if (action === "preview") {
           if (command.sourceGuildId)
             await customCommandSharingService.forManagement(
@@ -319,9 +291,7 @@ export async function openCustomCommandEditor(
             );
           const channel = root.channel;
           if (!channel || channel.isDMBased())
-            throw new CustomCommandValidationError(
-              "Preview requires a server channel.",
-            );
+            throw new CustomCommandValidationError("Preview requires a server channel.");
           const member = await root.guild.members.fetch(root.user.id);
           const previewContext: CustomCommandExecutionContext = {
             guildId: root.guildId,
@@ -334,16 +304,9 @@ export async function openCustomCommandEditor(
             args: parseArguments(value("args")),
             source: "slash",
           };
-          const payloads = await new CustomCommandRenderer().render(
-            previewContext,
-            true,
-          );
-          const staged = command.content.some(
-            (template) => template.stage !== undefined,
-          );
-          await submitted.editReply(
-            "Private preview — no usage or cooldown recorded.",
-          );
+          const payloads = await new CustomCommandRenderer().render(previewContext, true);
+          const staged = command.content.some((template) => template.stage !== undefined);
+          await submitted.editReply("Private preview — no usage or cooldown recorded.");
           for (const [index, payload] of payloads.entries()) {
             if (staged && command.content[index].stage !== 0) continue;
             const message = await submitted.followUp({
@@ -384,19 +347,13 @@ export async function openCustomCommandEditor(
             .split(",")
             .map((flag) => flag.trim())
             .filter(Boolean);
-          if (
-            flags.some((flag) => !["enabled", "reply", "delete"].includes(flag))
-          )
-            throw new CustomCommandValidationError(
-              "Flags may contain enabled, reply and delete.",
-            );
+          if (flags.some((flag) => !["enabled", "reply", "delete"].includes(flag)))
+            throw new CustomCommandValidationError("Flags may contain enabled, reply and delete.");
           patch = {
             description: value("description"),
             aliases: value("aliases").split(/\s+/).filter(Boolean),
             cooldownSeconds: Number(value("cooldown")),
-            cooldownScope: value(
-              "scope",
-            ) as CustomCommandDefinition["cooldownScope"],
+            cooldownScope: value("scope") as CustomCommandDefinition["cooldownScope"],
             enabled: flags.includes("enabled"),
             replyToInvocation: flags.includes("reply"),
             deleteInvocation: flags.includes("delete"),
@@ -407,8 +364,7 @@ export async function openCustomCommandEditor(
           };
         try {
           command = await update(patch);
-          if (action === "markdown" || action === "custom-variables")
-            markdownDraft = undefined;
+          if (action === "markdown" || action === "custom-variables") markdownDraft = undefined;
           await submitted.editReply("Custom command updated.");
           await onSaved?.(command);
           await root.editReply({
@@ -417,9 +373,7 @@ export async function openCustomCommandEditor(
           });
         } catch (error) {
           await submitted.editReply(
-            error instanceof CustomCommandError
-              ? error.message
-              : "Could not save this edit.",
+            error instanceof CustomCommandError ? error.message : "Could not save this edit.",
           );
           if (!(error instanceof CustomCommandError))
             logger.error(
@@ -453,10 +407,7 @@ export async function openCustomCommandEditor(
                   : serializeCommandMarkdown(command.content),
               ),
               {
-                name:
-                  action === "markdown-help"
-                    ? "command-example.cfg"
-                    : "command.cfg",
+                name: action === "markdown-help" ? "command-example.cfg" : "command.cfg",
               },
             ),
           ],
@@ -471,9 +422,7 @@ export async function openCustomCommandEditor(
           .filter((key) => !/^args\.\d+$/.test(key));
         const groups = new Map<string, string[]>();
         for (const key of keys) {
-          const category = key.includes(".")
-            ? key.split(".")[0]
-            : "Time / arguments";
+          const category = key.includes(".") ? key.split(".")[0] : "Time / arguments";
           groups.set(category, [...(groups.get(category) ?? []), `{${key}}`]);
         }
         await interaction.followUp({
@@ -535,9 +484,7 @@ export async function openCustomCommandEditor(
           const content = structuredClone(command.content);
           if (action === "add-text" || action === "add-embed") {
             if (content.length >= L.messages)
-              throw new CustomCommandValidationError(
-                `Use at most ${L.messages} messages.`,
-              );
+              throw new CustomCommandValidationError(`Use at most ${L.messages} messages.`);
             content.push(
               action === "add-text"
                 ? { type: "TEXT", text: "New response" }
@@ -552,10 +499,7 @@ export async function openCustomCommandEditor(
             if (response?.type !== "EMBED")
               throw new CustomCommandValidationError("Choose an embed first.");
             response.embed.fields?.pop();
-          } else
-            throw new CustomCommandValidationError(
-              "Choose a valid editor action.",
-            );
+          } else throw new CustomCommandValidationError("Choose a valid editor action.");
           patch = {
             content,
             responseType: content.length > 1 ? "MULTI" : content[0]!.type,
@@ -571,14 +515,27 @@ export async function openCustomCommandEditor(
       });
     } catch (error) {
       if (!acknowledged && !(error instanceof CustomCommandError)) {
-        logger.error({ ...interactionErrorDetails(error), guildId: root.guildId,
-          commandId: command.id, interactionId: acknowledgementInteraction.id,
-          interactionAgeMs: acknowledgementStartedAt - acknowledgementInteraction.createdTimestamp,
-          acknowledgementDurationMs: Date.now() - acknowledgementStartedAt,
-        }, "custom_command.editor_acknowledgement_failed");
+        logger.error(
+          {
+            ...interactionErrorDetails(error),
+            guildId: root.guildId,
+            commandId: command.id,
+            interactionId: acknowledgementInteraction.id,
+            interactionAgeMs:
+              acknowledgementStartedAt - acknowledgementInteraction.createdTimestamp,
+            acknowledgementDurationMs: Date.now() - acknowledgementStartedAt,
+          },
+          "custom_command.editor_acknowledgement_failed",
+        );
         // The failed click's token cannot deliver a recovery reply. Keep the
         // saved command and controls intact and use the original panel instead.
-        if (!collector.ended) await root.editReply({ content: "Discord could not accept that edit. Your saved command is unchanged. Please try again, or reopen /custom configure." }).catch(() => null);
+        if (!collector.ended)
+          await root
+            .editReply({
+              content:
+                "Discord could not accept that edit. Your saved command is unchanged. Please try again, or reopen /custom configure.",
+            })
+            .catch(() => null);
         return;
       }
       const content =
@@ -592,14 +549,12 @@ export async function openCustomCommandEditor(
         );
       if (!command.content[index]) index = 0;
       if (modalReply)
-        await modalReply
-          .editReply({ content, allowedMentions: { parse: [] } })
-          .catch(() => {});
+        await modalReply.editReply({ content, allowedMentions: { parse: [] } }).catch(() => {});
       else {
         const response = {
-            content,
-            flags: MessageFlags.Ephemeral as const,
-            allowedMentions: { parse: [] as const },
+          content,
+          flags: MessageFlags.Ephemeral as const,
+          allowedMentions: { parse: [] as const },
         };
         if (acknowledged) await interaction.followUp(response).catch(() => {});
         else await replyToCommand(interaction, response).catch(() => {});

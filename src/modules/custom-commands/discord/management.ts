@@ -27,8 +27,7 @@ import { openCustomCommandEditor } from "./editor.js";
 
 export function canManageCustomCommands(member: GuildMember): boolean {
   return (
-    member.id === member.guild.ownerId ||
-    member.permissions.has(PermissionFlagsBits.Administrator)
+    member.id === member.guild.ownerId || member.permissions.has(PermissionFlagsBits.Administrator)
   );
 }
 export function responseTemplate(text: string, type: string): ResponseTemplate {
@@ -90,12 +89,10 @@ export function commandPatch(
               .split(/[\s,]+/)
               .filter(Boolean);
   }
-  if (options.getBoolean("admin_only"))
-    patch.requiredUserPermissions = ["Administrator"];
+  if (options.getBoolean("admin_only")) patch.requiredUserPermissions = ["Administrator"];
   const response = options.getString("response");
   const type =
-    options.getString("response_type") ??
-    (options.getBoolean("embed") ? "EMBED" : "TEXT");
+    options.getString("response_type") ?? (options.getBoolean("embed") ? "EMBED" : "TEXT");
   if (response !== null) {
     patch.content = [responseTemplate(response, type)];
     patch.responseType = type;
@@ -103,10 +100,7 @@ export function commandPatch(
   if (creating) {
     patch.name = options.getString("name", true);
     const trigger = options.getString("trigger");
-    if (
-      trigger &&
-      trigger.trim().toLowerCase() !== String(patch.name).trim().toLowerCase()
-    )
+    if (trigger && trigger.trim().toLowerCase() !== String(patch.name).trim().toLowerCase())
       patch.aliases = [...((patch.aliases as string[]) ?? []), trigger];
   }
   // The service's runtime validator checks every field before writes.
@@ -124,9 +118,7 @@ export function commandInfo(command: CustomCommandRecord): EmbedBuilder {
       ...[
         {
           name: "Aliases",
-          value:
-            command.aliases.map((alias) => escapeMarkdown(alias)).join(", ") ||
-            "None",
+          value: command.aliases.map((alias) => escapeMarkdown(alias)).join(", ") || "None",
         },
         {
           name: "Status / trigger / response",
@@ -191,8 +183,7 @@ export async function showCommandList(
   for (const line of lines) {
     if (
       current.length &&
-      (current.length >= L.pageSize ||
-        length + line.length + 1 > L.listPageContent)
+      (current.length >= L.pageSize || length + line.length + 1 > L.listPageContent)
     ) {
       pages.push(current);
       current = [];
@@ -202,10 +193,7 @@ export async function showCommandList(
     length += line.length + 1;
   }
   if (current.length) pages.push(current);
-  const page = Math.min(
-    Math.max(interaction.options.getInteger("page") ?? 1, 1),
-    pages.length,
-  );
+  const page = Math.min(Math.max(interaction.options.getInteger("page") ?? 1, 1), pages.length);
   await interaction.editReply({
     content: `${pages[page - 1]!.join("\n")}\nPage ${page}/${pages.length} • Use \`/custom list page:${Math.min(page + 1, pages.length)}\``,
     allowedMentions: { parse: [] },
@@ -226,17 +214,11 @@ export async function handleCustomManagement(
     const name = interaction.options.getString("command", true);
     // Resolve the definition and refresh the caller's permissions concurrently.
     const [command, member] = await Promise.all([
-      resolveExecutableCustomCommand(
-        interaction.client,
-        interaction.guild,
-        name,
-      ),
+      resolveExecutableCustomCommand(interaction.client, interaction.guild, name),
       interaction.guild.members.fetch({ user: actor, force: true }),
     ]);
     if (!command)
-      throw new CustomCommandNotFoundError(
-        `No custom command named \`${name}\` exists.`,
-      );
+      throw new CustomCommandNotFoundError(`No custom command named \`${name}\` exists.`);
     const channel = interaction.channel;
     if (!channel || channel.isDMBased() || !("send" in channel))
       throw new CustomCommandNotFoundError("Use a text channel.");
@@ -299,9 +281,7 @@ export async function handleCustomManagement(
     const count = await customCommandService.importCommands(
       guildId,
       actor,
-      await readCommandAttachment(
-        interaction.options.getAttachment("file", true),
-      ),
+      await readCommandAttachment(interaction.options.getAttachment("file", true)),
     );
     await interaction.editReply(`Imported ${count} custom commands.`);
     return;
@@ -312,10 +292,7 @@ export async function handleCustomManagement(
     let command = await customCommandService.getCommand(guildId, name);
     if (!command) {
       const matches = (
-        await customCommandSharingService.listAvailable(
-          interaction.client,
-          interaction.guild,
-        )
+        await customCommandSharingService.listAvailable(interaction.client, interaction.guild)
       ).filter((row) => row.name === name.trim().toLowerCase());
       if (matches.length > 1)
         throw new CustomCommandNotFoundError(
@@ -324,9 +301,7 @@ export async function handleCustomManagement(
       command = matches[0] ?? null;
     }
     if (!command)
-      throw new CustomCommandNotFoundError(
-        `No custom command named \`${name}\` exists.`,
-      );
+      throw new CustomCommandNotFoundError(`No custom command named \`${name}\` exists.`);
     if (sub === "template" || sub === "markdown") {
       const source = await readCommandAttachment(
         interaction.options.getAttachment("file", true),
@@ -419,8 +394,7 @@ export async function handleCustomManagement(
       ),
   };
   const action = actions[sub];
-  if (!action)
-    throw new CustomCommandNotFoundError("Unknown custom command action.");
+  if (!action) throw new CustomCommandNotFoundError("Unknown custom command action.");
   const changed = await action();
   await interaction.editReply({
     content: `Custom command \`${changed.name}\`: ${sub} completed.`,

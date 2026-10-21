@@ -6,7 +6,7 @@ import {
 } from "./CustomCommandVariableResolver.js";
 import type { CustomCommandExecutionContext } from "./types.js";
 import { CustomCommandArgumentError } from "../domain/errors.js";
-import { CUSTOM_COMMAND_PREFIX } from "../domain/constants.js";
+import { customCommandPrefix } from "./configuration.js";
 
 /** Expand once, then validate the complete action before any side effects. */
 export async function renderComponentAction(
@@ -42,13 +42,9 @@ export async function renderComponentAction(
       !/^\d{17,20}$/.test(data[field] as string)
     ) {
       const target =
-        field === "userId"
-          ? "member"
-          : field === "categoryId"
-            ? "category"
-            : "channel";
+        field === "userId" ? "member" : field === "categoryId" ? "category" : "channel";
       const usage = ["{args.0}", "{args.first}", "{args}"].includes(template)
-        ? ` Usage: ${CUSTOM_COMMAND_PREFIX}${context.command.name} ${field === "userId" ? "@Member" : "#channel"}.`
+        ? ` Usage: ${customCommandPrefix()}${context.command.name} ${field === "userId" ? "@Member" : "#channel"}.`
         : "";
       throw new CustomCommandArgumentError(
         `${value ? "Invalid" : "Missing"} ${target} argument ${template}. Supply a ${target} mention or a 17–20 digit Discord ID.${usage}`,
@@ -57,9 +53,7 @@ export async function renderComponentAction(
   }
   if (action.action === "sequence")
     data.actions = await Promise.all(
-      action.actions.map((step) =>
-        renderComponentAction(step, context, variables, render),
-      ),
+      action.actions.map((step) => renderComponentAction(step, context, variables, render)),
     );
   return new CustomCommandValidator(variables).action(data, false);
 }

@@ -19,8 +19,11 @@ export async function readCommandSource(
 ): Promise<CommandSource> {
   for (const module of await readdir(modulesRoot)) {
     const file = join(modulesRoot, module, "discord", "commands", `${name}.ts`);
-    try { return { file, source: await readFile(file, "utf8") }; }
-    catch (error) { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; }
+    try {
+      return { file, source: await readFile(file, "utf8") };
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
   }
   throw new Error(`No module owns command ${category}/${name}`);
 }
@@ -31,11 +34,7 @@ export function assertSapphireCommand({ file, source }: CommandSource, className
     new RegExp(`export class ${className} extends Command`),
     `${file} must export ${className}`,
   );
-  assert.match(
-    source,
-    /registerApplicationCommands/,
-    `${file} must register application commands`,
-  );
+  assert.match(source, /registerApplicationCommands/, `${file} must register application commands`);
 }
 
 export function assertChatInputCommand(

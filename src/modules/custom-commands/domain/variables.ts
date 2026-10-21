@@ -64,9 +64,7 @@ export const TEMPLATE_VARIABLE_KEYS = [
   "args",
 ] as const;
 
-const DEFAULT_VARIABLE_KEYS: ReadonlySet<string> = new Set(
-  TEMPLATE_VARIABLE_KEYS,
-);
+const DEFAULT_VARIABLE_KEYS: ReadonlySet<string> = new Set(TEMPLATE_VARIABLE_KEYS);
 
 export interface TemplateToken {
   start: number;
@@ -85,9 +83,7 @@ export function templateTokens(
     const before = template.slice(0, position);
     const line = before.split("\n").length;
     const column = position - before.lastIndexOf("\n");
-    throw new CustomCommandValidationError(
-      `Template line ${line}, column ${column}: ${message}`,
-    );
+    throw new CustomCommandValidationError(`Template line ${line}, column ${column}: ${message}`);
   };
   for (let i = 0; i < template.length; i++) {
     if (template[i] === "}") fail(i, "Unmatched template brace.");
@@ -122,9 +118,7 @@ export function customVariables(
       typeof response.variables !== "object" ||
       Array.isArray(response.variables)
     )
-      throw new CustomCommandValidationError(
-        "Custom variables must be an object.",
-      );
+      throw new CustomCommandValidationError("Custom variables must be an object.");
     return Object.entries(response.variables);
   });
   if (entries.length > 25)
@@ -149,10 +143,7 @@ export function customVariables(
   const keys = new Set<string>([...builtInKeys, ...Object.keys(variables)]);
   const visited = new Set<string>();
   const visit = (key: string, path: Set<string>) => {
-    if (path.has(key))
-      throw new CustomCommandValidationError(
-        `Circular custom variable {${key}}.`,
-      );
+    if (path.has(key)) throw new CustomCommandValidationError(`Circular custom variable {${key}}.`);
     if (visited.has(key)) return;
     const next = new Set([...path, key]);
     for (const token of templateTokens(variables[key], keys))

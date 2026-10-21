@@ -8,13 +8,9 @@ const attachment = {
 };
 afterEach(() => vi.unstubAllGlobals());
 test("imports only Discord-hosted bounded attachments and refuses redirects", async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue(new Response('{"version":1,"commands":[]}'));
+  const fetch = vi.fn().mockResolvedValue(new Response('{"version":1,"commands":[]}'));
   vi.stubGlobal("fetch", fetch);
-  expect(await readCommandAttachment(attachment as never)).toContain(
-    '"version":1',
-  );
+  expect(await readCommandAttachment(attachment as never)).toContain('"version":1');
   expect(fetch).toHaveBeenCalledWith(
     expect.any(URL),
     expect.objectContaining({
@@ -29,10 +25,14 @@ test("imports only Discord-hosted bounded attachments and refuses redirects", as
     { url: "https://cdn.discordapp.com/other/a" },
     { size: L.importBytes + 1 },
     { name: "commands.exe" },
+    { url: "https://cdn.discordapp.com:8443/attachments/a" },
+    { url: "https://cdn.discordapp.com/attachments/a#fragment" },
+    { url: "not a url" },
+    { size: -1 },
+    { size: NaN },
+    { size: Infinity },
   ])
-    await expect(
-      readCommandAttachment({ ...attachment, ...patch } as never),
-    ).rejects.toThrow();
+    await expect(readCommandAttachment({ ...attachment, ...patch } as never)).rejects.toThrow();
   expect(fetch).toHaveBeenCalledOnce();
 });
 test("the downloaded stream is bounded independently of reported attachment size", async () => {
@@ -40,9 +40,7 @@ test("the downloaded stream is bounded independently of reported attachment size
     "fetch",
     vi.fn().mockResolvedValue(new Response(new Uint8Array(L.importBytes + 1))),
   );
-  await expect(readCommandAttachment(attachment as never)).rejects.toThrow(
-    "too large",
-  );
+  await expect(readCommandAttachment(attachment as never)).rejects.toThrow("too large");
 });
 
 test("template uploads accept .cfg and legacy text formats, and enforce size limits", async () => {
@@ -51,42 +49,43 @@ test("template uploads accept .cfg and legacy text formats, and enforce size lim
     "fetch",
     vi.fn().mockImplementation(async () => new Response("**Hello**")),
   );
-  expect(await readCommandAttachment(template as never, "markdown")).toBe(
-    "**Hello**",
-  );
+  expect(await readCommandAttachment(template as never, "markdown")).toBe("**Hello**");
   expect(
-    await readCommandAttachment(
-      { ...template, name: "command.md" } as never,
-      "markdown",
-    ),
+    await readCommandAttachment({ ...template, name: "command.md" } as never, "markdown"),
   ).toBe("**Hello**");
   for (const extension of [".txt", ".markdown", ".CFG"])
-    expect(await readCommandAttachment({ ...template, name: `command${extension}` } as never, "markdown")).toBe("**Hello**");
+    expect(
+      await readCommandAttachment(
+        { ...template, name: `command${extension}` } as never,
+        "markdown",
+      ),
+    ).toBe("**Hello**");
+  await expect(readCommandAttachment(attachment as never, "markdown")).rejects.toThrow(".txt");
   await expect(
-    readCommandAttachment(attachment as never, "markdown"),
-  ).rejects.toThrow(".txt");
-  await expect(
-    readCommandAttachment(
-      { ...template, size: L.markdownInput * 4 + 1 } as never,
-      "markdown",
-    ),
+    readCommandAttachment({ ...template, size: L.markdownInput * 4 + 1 } as never, "markdown"),
   ).rejects.toThrow("bytes");
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(new Response(new Uint8Array(L.markdownInput * 4 + 1))),
+    vi.fn().mockResolvedValue(new Response(new Uint8Array(L.markdownInput * 4 + 1))),
   );
-  await expect(
-    readCommandAttachment(template as never, "markdown"),
-  ).rejects.toThrow("too large");
+  await expect(readCommandAttachment(template as never, "markdown")).rejects.toThrow("too large");
 });
 
-test.each(["cdn.discordapp.com", "media.discordapp.net"])("accepts signed ephemeral uploads from %s without stripping their signature", async (host) => {
-  const fetch = vi.fn().mockImplementation(async () => new Response("uploaded content"));
-  vi.stubGlobal("fetch", fetch);
-  const url = `https://${host}/ephemeral-attachments/123/456/command.txt?ex=123&is=456&hm=signature`;
-  expect(await readCommandAttachment({ ...attachment, name: "command.txt", url } as never, "markdown")).toBe("uploaded content");
-  expect(fetch.mock.calls[0]![0].href).toBe(url);
-  expect(await readCommandAttachment({ ...attachment, url: url.replace("command.txt", "commands.json") } as never)).toBe("uploaded content");
-});
+test.each(["cdn.discordapp.com", "media.discordapp.net"])(
+  "accepts signed ephemeral uploads from %s without stripping their signature",
+  async (host) => {
+    const fetch = vi.fn().mockImplementation(async () => new Response("uploaded content"));
+    vi.stubGlobal("fetch", fetch);
+    const url = `https://${host}/ephemeral-attachments/123/456/command.txt?ex=123&is=456&hm=signature`;
+    expect(
+      await readCommandAttachment({ ...attachment, name: "command.txt", url } as never, "markdown"),
+    ).toBe("uploaded content");
+    expect(fetch.mock.calls[0]![0].href).toBe(url);
+    expect(
+      await readCommandAttachment({
+        ...attachment,
+        url: url.replace("command.txt", "commands.json"),
+      } as never),
+    ).toBe("uploaded content");
+  },
+);

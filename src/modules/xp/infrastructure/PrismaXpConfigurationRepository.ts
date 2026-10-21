@@ -5,7 +5,11 @@ export class PrismaXpConfigurationRepository implements XpConfigurationRepositor
   async saveAll(updates: { guildId: string; settings: XpSettings }[]) {
     await this.database.transaction(async (tx) => {
       for (const { guildId, settings } of updates) {
-        await tx.orm.public.GuildConfig.upsert({ create: { guildId, ...settings }, update: settings, conflictOn: { guildId } });
+        await tx.orm.public.GuildConfig.upsert({
+          create: { guildId, ...settings },
+          update: settings,
+          conflictOn: { guildId },
+        });
       }
     });
   }

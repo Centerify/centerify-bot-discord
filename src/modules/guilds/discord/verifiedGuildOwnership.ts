@@ -1,4 +1,4 @@
-import { Precondition } from "@sapphire/framework";
+import { Precondition, type Command } from "@sapphire/framework";
 import type {
   ChatInputCommandInteraction,
   ContextMenuCommandInteraction,
@@ -13,32 +13,20 @@ import {
 } from "./ownership.js";
 
 export class VerifiedGuildOwnershipPrecondition extends Precondition {
-  public constructor(
-    context: Precondition.LoaderContext,
-    options: Precondition.Options,
-  ) {
+  public constructor(context: Precondition.LoaderContext, options: Precondition.Options) {
     super(context, { ...options, position: 0 });
   }
 
-  public override async chatInputRun(interaction: ChatInputCommandInteraction) {
-    if (
-      interaction.commandName === "verify" ||
-      interaction.commandName === "unverify"
-    )
-      return this.ok();
+  public override async chatInputRun(interaction: ChatInputCommandInteraction, command?: Command) {
+    const commandName = command?.name ?? interaction.commandName;
+    if (commandName === "verify" || commandName === "unverify") return this.ok();
     // Ownership checks make REST and database requests before the command runs.
-    if (
-      !interaction.deferred &&
-      !interaction.replied
-    ) {
+    if (!interaction.deferred && !interaction.replied) {
       const acknowledgementStartedAt = Date.now();
       try {
         await interaction.deferReply(commandReplyOptions(interaction));
       } catch (error) {
-        const code =
-          error && typeof error === "object" && "code" in error
-            ? error.code
-            : undefined;
+        const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
         if (code !== 10062 && code !== 40060) throw error;
         // Discord cannot accept another initial response. Stop before ownership
         // requests or command side effects; retrying the callback cannot recover it.
@@ -49,34 +37,26 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
             commandName: interaction.commandName,
             interactionId: interaction.id,
             guildId: interaction.guildId,
-            interactionAgeMs:
-              acknowledgementStartedAt - interaction.createdTimestamp,
+            interactionAgeMs: acknowledgementStartedAt - interaction.createdTimestamp,
             acknowledgementDurationMs: Date.now() - acknowledgementStartedAt,
           },
           "Command acknowledgement rejected; interaction expired or already acknowledged",
         );
         return this.error({
           identifier: "InteractionUnavailable",
-          message:
-            "This interaction expired or was already acknowledged. Run the command again.",
+          message: "This interaction expired or was already acknowledged. Run the command again.",
         });
       }
     }
     return this.checkInteraction(interaction);
   }
 
-  public override async contextMenuRun(
-    interaction: ContextMenuCommandInteraction,
-  ) {
+  public override async contextMenuRun(interaction: ContextMenuCommandInteraction) {
     return this.checkInteraction(interaction);
   }
 
   public override async messageRun(message: Message) {
-    if (
-      message.guild &&
-      (await guildOwnershipService.isVerified(message.guild))
-    )
-      return this.ok();
+    if (message.guild && (await guildOwnershipService.isVerified(message.guild))) return this.ok();
     return this.error({
       identifier: "GuildOwnershipRequired",
       message: OWNERSHIP_REQUIRED_MESSAGE,

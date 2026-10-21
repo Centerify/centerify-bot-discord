@@ -31,6 +31,7 @@ export interface GuildConfig {
   globalNoteEnabled: boolean;
   warningRoleSettings?: unknown;
   commandRoleAccess?: unknown;
+  ticketSettings?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +61,7 @@ export type GuildConfigUpdate = Partial<{
   globalNoteEnabled: boolean;
   warningRoleSettings: import("./settings.js").WarningRoleSettings;
   commandRoleAccess: import("./settings.js").CommandRoleAccess;
+  ticketSettings: { enabled: boolean; categoryId: string; supportRoleId: string };
 }>;
 
 export interface GuildConfigStore {

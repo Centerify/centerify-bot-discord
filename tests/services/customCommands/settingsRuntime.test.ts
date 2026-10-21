@@ -54,9 +54,7 @@ function fixture() {
   };
   const prefix = () => {
     const view = root.editReply.mock.calls[0]![0].components[0].toJSON();
-    const row = view.components.find(
-      (item: any) => item.type === ComponentType.ActionRow,
-    );
+    const row = view.components.find((item: any) => item.type === ComponentType.ActionRow);
     return row.components[0].custom_id.split(":").slice(0, 2).join(":");
   };
   const warnings: any[] = [];
@@ -125,16 +123,29 @@ test("customizing another command keeps a batch selected, then its scope can be 
   await f.callbacks.collect(f.item("scope", ["all"]));
   await f.callbacks.collect(f.item("customize-command", ["3"]));
   await f.callbacks.collect(f.item("customize"));
-  expect(mocks.editor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 3 }), expect.any(Function));
+  expect(mocks.editor).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ id: 3 }),
+    expect.any(Function),
+  );
   expect(rendered(f).text).toContain("Commands selected:** 2");
   await f.callbacks.collect(f.item("save"));
-  expect(mocks.save.mock.calls.map((args) => [args[2].id, args[3]])).toEqual([[1, "all"], [2, "all"]]);
+  expect(mocks.save.mock.calls.map((args) => [args[2].id, args[3]])).toEqual([
+    [1, "all"],
+    [2, "all"],
+  ]);
   mocks.save.mockClear();
   await f.callbacks.collect(f.item("only-command"));
   await f.callbacks.collect(f.item("scope", ["selected"]));
   await f.callbacks.collect(f.item("servers", ["server-2"]));
   await f.callbacks.collect(f.item("save"));
-  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(f.root.client, "admin", expect.objectContaining({ id: 3 }), "selected", ["server-2"]);
+  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(
+    f.root.client,
+    "admin",
+    expect.objectContaining({ id: 3 }),
+    "selected",
+    ["server-2"],
+  );
 });
 
 test("customization rejects command IDs outside the visible page", async () => {
@@ -142,7 +153,9 @@ test("customization rejects command IDs outside the visible page", async () => {
   await openCustomCommandSettings(f.root as never);
   const item = f.item("customize-command", ["999"]);
   await f.callbacks.collect(item);
-  expect(item.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: "Choose one command from this page." }));
+  expect(item.followUp).toHaveBeenCalledWith(
+    expect.objectContaining({ content: "Choose one command from this page." }),
+  );
   expect(mocks.editor).not.toHaveBeenCalled();
 });
 test("scope/server dropdowns stage changes, preserve selection across pages, and save explicitly", async () => {
@@ -241,9 +254,7 @@ test("changing commands and refreshing preserve pending scope selections", async
     second = record({ id: 2, name: "z-other-command" });
   mocks.list.mockResolvedValue([first, second]);
   mocks.scope.mockImplementation(async (command) =>
-    command.id === second.id
-      ? { scope: "selected", selectedGuildIds: "server-2" }
-      : null,
+    command.id === second.id ? { scope: "selected", selectedGuildIds: "server-2" } : null,
   );
   const f = fixture();
   await openCustomCommandSettings(f.root as never);
@@ -253,13 +264,7 @@ test("changing commands and refreshing preserve pending scope selections", async
   await f.callbacks.collect(f.item("refresh"));
   expect(mocks.save).not.toHaveBeenCalled();
   await f.callbacks.collect(f.item("save"));
-  expect(mocks.save).toHaveBeenCalledWith(
-    f.root.client,
-    "admin",
-    second,
-    "selected",
-    ["server-3"],
-  );
+  expect(mocks.save).toHaveBeenCalledWith(f.root.client, "admin", second, "selected", ["server-3"]);
   await f.callbacks.collect(f.item("command", [String(first.id)]));
   expect(rendered(f).text).toContain("All eligible servers");
 });
@@ -340,9 +345,7 @@ test("an expired session discards queued saves and an in-flight save never reviv
   await vi.waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
   const overlapping = f.item("save");
   const queued = f.callbacks.collect(overlapping);
-  await vi.waitFor(() =>
-    expect(overlapping.deferUpdate).toHaveBeenCalledOnce(),
-  );
+  await vi.waitFor(() => expect(overlapping.deferUpdate).toHaveBeenCalledOnce());
   f.collector.ended = true;
   f.callbacks.end([], "time");
   const replyCountAtExpiry = f.root.editReply.mock.calls.length;
@@ -358,9 +361,7 @@ test("an expired session discards queued saves and an in-flight save never reviv
   const view = f.root.editReply.mock.calls.at(-1)![0].components[0].toJSON();
   expect(
     view.components.some(
-      (item: any) =>
-        item.type === ComponentType.TextDisplay &&
-        item.content.includes("expired"),
+      (item: any) => item.type === ComponentType.TextDisplay && item.content.includes("expired"),
     ),
   ).toBe(true);
 });
@@ -462,16 +463,13 @@ test("a failed save reports the failure and leaves the session usable for retry"
       .components[0].toJSON()
       .components.some(
         (item: any) =>
-          item.type === ComponentType.TextDisplay &&
-          item.content.includes("scope saved"),
+          item.type === ComponentType.TextDisplay && item.content.includes("scope saved"),
       ),
   ).toBe(true);
 });
 
 function rendered(f: ReturnType<typeof fixture>) {
-  const container = f.root.editReply.mock.calls
-    .at(-1)![0]
-    .components[0].toJSON();
+  const container = f.root.editReply.mock.calls.at(-1)![0].components[0].toJSON();
   return {
     text: container.components
       .filter((item: any) => item.type === ComponentType.TextDisplay)
@@ -533,9 +531,8 @@ test("selecting servers updates the panel, and returning to Specific servers res
   mocks.discover.mockResolvedValue([{ id: "server-1", name: "Server 1" }]);
   await f.callbacks.collect(f.item("scope", ["selected"]));
   expect(
-    rendered(f).controls.find((control: any) =>
-      control.custom_id.endsWith(":servers"),
-    ).options[0].value,
+    rendered(f).controls.find((control: any) => control.custom_id.endsWith(":servers")).options[0]
+      .value,
   ).toBe("server-1");
   expect(mocks.save).not.toHaveBeenCalled();
 });
@@ -558,9 +555,9 @@ test("duplicate warning requires an explicit Proceed click and consumes that con
     "confirmation",
   );
   expect(rendered(f).text).toContain("scope saved");
-  expect(
-    rendered(f).controls.some((control: any) => control.label === "Keep Existing"),
-  ).toBe(false);
+  expect(rendered(f).controls.some((control: any) => control.label === "Keep Existing")).toBe(
+    false,
+  );
   const replay = f.item(f.proceed);
   await f.callbacks.collect(replay);
   expect(mocks.save).toHaveBeenCalledTimes(2);
@@ -571,34 +568,29 @@ test("duplicate warning requires an explicit Proceed click and consumes that con
   );
 });
 
-test.each([
-  "cancel",
-  "scope",
-  "servers",
-  "clear",
-  "refresh",
-  "command",
-  "customize",
-])("%s invalidates the pending duplicate confirmation", async (action) => {
-  const f = await warned();
-  const values =
-    action === "scope"
-      ? ["all"]
-      : action === "servers"
-        ? ["server-2"]
-        : action === "command"
-          ? ["1"]
-          : [];
-  await f.callbacks.collect(f.item(action, values));
-  const stale = f.item(f.proceed);
-  await f.callbacks.collect(stale);
-  expect(mocks.save).toHaveBeenCalledOnce();
-  expect(stale.followUp).toHaveBeenCalledWith(
-    expect.objectContaining({
-      content: expect.stringContaining("no longer valid"),
-    }),
-  );
-});
+test.each(["cancel", "scope", "servers", "clear", "refresh", "command", "customize"])(
+  "%s invalidates the pending duplicate confirmation",
+  async (action) => {
+    const f = await warned();
+    const values =
+      action === "scope"
+        ? ["all"]
+        : action === "servers"
+          ? ["server-2"]
+          : action === "command"
+            ? ["1"]
+            : [];
+    await f.callbacks.collect(f.item(action, values));
+    const stale = f.item(f.proceed);
+    await f.callbacks.collect(stale);
+    expect(mocks.save).toHaveBeenCalledOnce();
+    expect(stale.followUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("no longer valid"),
+      }),
+    );
+  },
+);
 
 test("new duplicates on Proceed require a fresh warning and confirmation", async () => {
   const f = await warned();
@@ -635,32 +627,23 @@ test("forged Proceed without a warning cannot save", async () => {
   );
 });
 
-test.each([
-  "other user",
-  "foreign guild",
-  "uncached guild",
-  "revoked access",
-  "expired",
-])("Proceed denies %s", async (denial) => {
-  const f = await warned();
-  const item = f.item(
-    f.proceed,
-    [],
-    denial === "other user" ? "other" : "admin",
-  );
-  if (denial === "foreign guild") item.guildId = "foreign";
-  if (denial === "uncached guild") item.inCachedGuild = () => false;
-  if (denial === "revoked access") mocks.manage.mockResolvedValue(false);
-  if (denial === "expired") {
-    f.collector.ended = true;
-    f.callbacks.end([], "time");
-  }
-  await f.callbacks.collect(item);
-  expect(mocks.save).toHaveBeenCalledOnce();
-  expect(item.reply.mock.calls.length + item.followUp.mock.calls.length).toBe(
-    1,
-  );
-});
+test.each(["other user", "foreign guild", "uncached guild", "revoked access", "expired"])(
+  "Proceed denies %s",
+  async (denial) => {
+    const f = await warned();
+    const item = f.item(f.proceed, [], denial === "other user" ? "other" : "admin");
+    if (denial === "foreign guild") item.guildId = "foreign";
+    if (denial === "uncached guild") item.inCachedGuild = () => false;
+    if (denial === "revoked access") mocks.manage.mockResolvedValue(false);
+    if (denial === "expired") {
+      f.collector.ended = true;
+      f.callbacks.end([], "time");
+    }
+    await f.callbacks.collect(item);
+    expect(mocks.save).toHaveBeenCalledOnce();
+    expect(item.reply.mock.calls.length + item.followUp.mock.calls.length).toBe(1);
+  },
+);
 
 test("server selection is rejected when Specific servers is not active", async () => {
   const f = fixture();
@@ -685,9 +668,7 @@ test("a warning display failure leaves saving blocked and reports a retryable er
   await f.callbacks.collect(save);
   expect(save.followUp).toHaveBeenCalledWith(
     expect.objectContaining({
-      content: expect.stringContaining(
-        "Could not display the duplicate warning",
-      ),
+      content: expect.stringContaining("Could not display the duplicate warning"),
     }),
   );
   expect(f.collector.ended).toBe(false);
@@ -702,22 +683,17 @@ test("multi-command selection saves the displayed scope for every selected comma
   await openCustomCommandSettings(f.root as never);
   await f.callbacks.collect(f.item("command", ["1", "2"]));
   expect(rendered(f).text).toContain("Commands selected:** 2");
-  expect(
-    rendered(f).controls.find((c: any) => c.label === "Customize").disabled,
-  ).toBe(false);
+  expect(rendered(f).controls.find((c: any) => c.label === "Customize").disabled).toBe(false);
   await f.callbacks.collect(f.item("scope", ["selected"]));
   await f.callbacks.collect(f.item("servers", ["server-1", "server-2"]));
   await f.callbacks.collect(f.item("refresh"));
   await f.callbacks.collect(f.item("save"));
   expect(mocks.save).toHaveBeenCalledTimes(2);
   for (const command of [record(), second])
-    expect(mocks.save).toHaveBeenCalledWith(
-      f.root.client,
-      "admin",
-      command,
-      "selected",
-      ["server-1", "server-2"],
-    );
+    expect(mocks.save).toHaveBeenCalledWith(f.root.client, "admin", command, "selected", [
+      "server-1",
+      "server-2",
+    ]);
   expect(rendered(f).text).toContain("2 command scopes saved");
   expect(rendered(f).text).not.toContain("Unsaved scope changes");
 });
@@ -748,13 +724,7 @@ test("save reloads the command version while keeping the scope draft", async () 
   const updated = record({ updatedAt: "later", name: "renamed" });
   mocks.list.mockResolvedValue([updated]);
   await f.callbacks.collect(f.item("save"));
-  expect(mocks.save).toHaveBeenLastCalledWith(
-    f.root.client,
-    "admin",
-    updated,
-    "all",
-    [],
-  );
+  expect(mocks.save).toHaveBeenLastCalledWith(f.root.client, "admin", updated, "all", []);
 });
 
 test("customize updates the parent panel without resetting the scope draft", async () => {
@@ -776,9 +746,7 @@ test("batch duplicate confirmation resumes at the conflicting command", async ()
   await openCustomCommandSettings(f.root as never);
   await f.callbacks.collect(f.item("command", ["1", "2"]));
   await f.callbacks.collect(f.item("scope", ["all"]));
-  mocks.save
-    .mockResolvedValueOnce(undefined)
-    .mockRejectedValueOnce(duplicate());
+  mocks.save.mockResolvedValueOnce(undefined).mockRejectedValueOnce(duplicate());
   await f.callbacks.collect(f.item("save"));
   expect(warningRendered(f).text).toContain("1 command(s) saved");
   const proceed = warningRendered(f)
@@ -804,13 +772,9 @@ test("batch failures report partial progress and leave remaining drafts intact",
   await openCustomCommandSettings(f.root as never);
   await f.callbacks.collect(f.item("command", ["1", "2"]));
   await f.callbacks.collect(f.item("scope", ["all"]));
-  mocks.save
-    .mockResolvedValueOnce(undefined)
-    .mockRejectedValueOnce(new Error("failed"));
+  mocks.save.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("failed"));
   await f.callbacks.collect(f.item("save"));
-  expect(rendered(f).text).toContain(
-    "1 command(s) saved; 1 command(s) were not saved",
-  );
+  expect(rendered(f).text).toContain("1 command(s) saved; 1 command(s) were not saved");
   await f.callbacks.collect(f.item("command", ["2"]));
   expect(rendered(f).text).toContain("All eligible servers");
   expect(rendered(f).text).toContain("Unsaved scope changes");
@@ -857,9 +821,7 @@ test("clearing the sharing selection keeps customization available", async () =>
   await openCustomCommandSettings(f.root as never);
   await f.callbacks.collect(f.item("command", []));
   for (const label of ["Save Scope"])
-    expect(
-      rendered(f).controls.find((c: any) => c.label === label).disabled,
-    ).toBe(true);
+    expect(rendered(f).controls.find((c: any) => c.label === label).disabled).toBe(true);
   await f.callbacks.collect(f.item("save"));
   expect(mocks.save).not.toHaveBeenCalled();
 });
@@ -886,9 +848,7 @@ test("refresh removes deleted commands and never silently selects a replacement"
   await openCustomCommandSettings(f.root as never);
   mocks.list.mockResolvedValue([record({ id: 2, name: "replacement" })]);
   await f.callbacks.collect(f.item("refresh"));
-  expect(
-    rendered(f).controls.find((c: any) => c.label === "Save Scope").disabled,
-  ).toBe(true);
+  expect(rendered(f).controls.find((c: any) => c.label === "Save Scope").disabled).toBe(true);
   await f.callbacks.collect(f.item("save"));
   expect(mocks.save).not.toHaveBeenCalled();
 });
@@ -906,15 +866,11 @@ test("expired dropdown acknowledgements preserve drafts and recover using the or
   expect(expired.followUp).not.toHaveBeenCalled();
   expect(expired.editReply).not.toHaveBeenCalled();
   expect(rendered(f).text).toContain("It was not applied");
-  expect(
-    rendered(f).controls.find((c: any) => c.label === "Save Scope").disabled,
-  ).toBe(true);
-  const servers = rendered(f).controls.find((c: any) =>
-    c.custom_id.endsWith(":servers"),
-  );
-  expect(
-    servers.options.filter((o: any) => o.default).map((o: any) => o.value),
-  ).toEqual(["server-1"]);
+  expect(rendered(f).controls.find((c: any) => c.label === "Save Scope").disabled).toBe(true);
+  const servers = rendered(f).controls.find((c: any) => c.custom_id.endsWith(":servers"));
+  expect(servers.options.filter((o: any) => o.default).map((o: any) => o.value)).toEqual([
+    "server-1",
+  ]);
   const save = f.item("save");
   await f.callbacks.collect(save);
   expect(mocks.save).not.toHaveBeenCalled();
@@ -969,9 +925,7 @@ test("failed acknowledgement invalidates duplicate consent and does not revive a
   const expired = f.item("servers", ["server-2"]);
   expired.deferUpdate.mockRejectedValueOnce({ code: 10062 });
   await f.callbacks.collect(expired);
-  expect(rendered(f).controls.some((c: any) => c.label === "Keep Existing")).toBe(
-    false,
-  );
+  expect(rendered(f).controls.some((c: any) => c.label === "Keep Existing")).toBe(false);
   await f.callbacks.collect(f.item(f.proceed));
   expect(mocks.save).toHaveBeenCalledOnce();
   let reject!: (error: unknown) => void;
@@ -1061,12 +1015,22 @@ test("an old Cancel cannot cancel a newer duplicate warning", async () => {
   );
 });
 
-
 test("Replace Existing forwards the reviewed confirmation and replacement choice", async () => {
   const f = await warned();
-  const replace = warningRendered(f).controls.find((control: any) => control.label === "Replace Existing").custom_id.split(":").at(-1);
+  const replace = warningRendered(f)
+    .controls.find((control: any) => control.label === "Replace Existing")
+    .custom_id.split(":")
+    .at(-1);
   await f.warningCallbacks.collect(f.item(replace));
-  expect(mocks.save).toHaveBeenLastCalledWith(f.root.client, "admin", expect.objectContaining({ id: 1 }), "selected", ["server-1"], "confirmation", "replace");
+  expect(mocks.save).toHaveBeenLastCalledWith(
+    f.root.client,
+    "admin",
+    expect.objectContaining({ id: 1 }),
+    "selected",
+    ["server-1"],
+    "confirmation",
+    "replace",
+  );
   await f.warningCallbacks.collect(f.item(replace));
   expect(mocks.save).toHaveBeenCalledTimes(2);
 });

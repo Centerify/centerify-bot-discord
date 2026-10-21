@@ -1,13 +1,7 @@
 import { silentLogger, type Logger } from "../../../core/index.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
-import {
-  CustomCommandArgumentError,
-  CustomCommandValidationError,
-} from "../domain/errors.js";
-import type {
-  CommandExecutionIdentity,
-  CustomCommandRepository,
-} from "../domain/types.js";
+import { CustomCommandArgumentError, CustomCommandValidationError } from "../domain/errors.js";
+import type { CommandExecutionIdentity, CustomCommandRepository } from "../domain/types.js";
 import { responseActions } from "../domain/components.js";
 import type { CustomCommandCooldownStore } from "./CustomCommandCooldownService.js";
 export interface ExecutionContext extends CommandExecutionIdentity {
@@ -34,10 +28,7 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
     ) => void,
     private readonly logger: Logger = silentLogger,
   ) {}
-  public async execute(
-    context: Context,
-    transport: ExecutionTransport<Payload>,
-  ): Promise<void> {
+  public async execute(context: Context, transport: ExecutionTransport<Payload>): Promise<void> {
     const started = Date.now();
     const metadata = {
       guildId: context.guildId,
@@ -55,14 +46,10 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
         context.args.some((arg) => typeof arg !== "string") ||
         context.args.join(" ").length > L.argumentInput
       )
-        throw new CustomCommandValidationError(
-          "Command arguments exceed the limits.",
-        );
+        throw new CustomCommandValidationError("Command arguments exceed the limits.");
       release = this.cooldowns.acquire(context);
       const responses = await this.renderer.render(context, true);
-      const staged = context.command.content.some(
-        (response) => response.stage !== undefined,
-      );
+      const staged = context.command.content.some((response) => response.stage !== undefined);
       for (const [index, payload] of responses.entries()) {
         if (staged && context.command.content[index].stage !== 0) continue;
         const message = await transport.send(payload, staged ? 0 : index);
@@ -77,22 +64,12 @@ export class ExecuteCustomCommand<Context extends ExecutionContext, Payload> {
       ) {
         await transport
           .deleteInvocation()
-          .catch(() =>
-            this.logger.warn(
-              metadata,
-              "custom_command.invocation_delete_failed",
-            ),
-          );
+          .catch(() => this.logger.warn(metadata, "custom_command.invocation_delete_failed"));
       }
       // A metrics outage must not turn an already delivered response into a failure.
       await this.repository
-        .recordUsage(
-          context.command.sourceGuildId ?? context.guildId,
-          context.command.id,
-        )
-        .catch(() =>
-          this.logger.warn(metadata, "custom_command.metrics_failed"),
-        );
+        .recordUsage(context.command.sourceGuildId ?? context.guildId, context.command.id)
+        .catch(() => this.logger.warn(metadata, "custom_command.metrics_failed"));
       this.logger.info(
         { ...metadata, durationMs: Date.now() - started },
         "custom_command.executed",

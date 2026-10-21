@@ -1,17 +1,9 @@
 import { Command } from "@sapphire/framework";
-import {
-  InteractionContextType,
-  MessageFlags,
-  PermissionFlagsBits,
-} from "discord.js";
+import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../../domain/constants.js";
 import { CustomCommandError } from "../../domain/errors.js";
-import {
-  createOptions,
-  editOptions,
-  extraSubcommands,
-} from "../registration.js";
+import { createOptions, editOptions, extraSubcommands } from "../registration.js";
 import { requireVerifiedOwnership } from "../../../guilds/discord/index.js";
 
 export class CustomCommand extends Command {
@@ -24,11 +16,7 @@ export class CustomCommand extends Command {
         .setDefaultMemberPermissions(null)
         .setContexts(InteractionContextType.Guild)
         .addSubcommand((sub) =>
-          createOptions(
-            sub
-              .setName("create")
-              .setDescription("Create a custom command or event"),
-          ),
+          createOptions(sub.setName("create").setDescription("Create a custom command or event")),
         )
         .addSubcommand((sub) =>
           sub
@@ -42,9 +30,7 @@ export class CustomCommand extends Command {
           editOptions(
             sub
               .setName("edit")
-              .setDescription(
-                "Edit a command; configure opens the template editor",
-              ),
+              .setDescription("Edit a command; configure opens the template editor"),
           ),
         )
         .addSubcommand((sub) =>
@@ -52,34 +38,22 @@ export class CustomCommand extends Command {
             .setName("enable")
             .setDescription("Enable or disable a rule")
             .addStringOption((o) =>
-              o
-                .setName("name")
-                .setDescription("Rule name")
-                .setRequired(true)
-                .setMaxLength(L.name),
+              o.setName("name").setDescription("Rule name").setRequired(true).setMaxLength(L.name),
             )
-            .addBooleanOption((o) =>
-              o.setName("enabled").setDescription("Default: enabled"),
-            ),
+            .addBooleanOption((o) => o.setName("enabled").setDescription("Default: enabled")),
         )
         .addSubcommand((sub) =>
           sub
             .setName("delete")
             .setDescription("Delete a rule")
             .addStringOption((o) =>
-              o
-                .setName("name")
-                .setDescription("Rule name")
-                .setRequired(true)
-                .setMaxLength(L.name),
+              o.setName("name").setDescription("Rule name").setRequired(true).setMaxLength(L.name),
             ),
         );
     });
   }
 
-  public override async chatInputRun(
-    interaction: Command.ChatInputCommandInteraction,
-  ) {
+  public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     const deny = async (content: string) => {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content });
@@ -97,9 +71,7 @@ export class CustomCommand extends Command {
       interaction.user.id !== interaction.guild.ownerId &&
       !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
     ) {
-      await deny(
-        "Only the server owner or an administrator can manage custom rules.",
-      );
+      await deny("Only the server owner or an administrator can manage custom rules.");
       return;
     }
     if (!interaction.deferred && !interaction.replied) {
@@ -108,8 +80,7 @@ export class CustomCommand extends Command {
     if (!(await requireVerifiedOwnership(interaction))) return;
     const guildId = interaction.guildId;
     try {
-      const { customCommandService } =
-        await import("../runtime.js");
+      const { customCommandService } = await import("../runtime.js");
       const modern =
         subcommand === "create"
           ? !interaction.options.getString("kind")
@@ -122,13 +93,11 @@ export class CustomCommand extends Command {
               )
             : subcommand !== "list";
       if (modern) {
-        const { handleCustomManagement } =
-          await import("../management.js");
+        const { handleCustomManagement } = await import("../management.js");
         await handleCustomManagement(interaction);
         return;
       }
-      const { handleLegacyCustomResponse } =
-        await import("../legacyManagement.js");
+      const { handleLegacyCustomResponse } = await import("../legacyManagement.js");
       await handleLegacyCustomResponse(interaction);
     } catch (error) {
       if (error instanceof CustomCommandError) {
@@ -151,9 +120,7 @@ export class CustomCommand extends Command {
           },
           "custom_command.management_failed",
         );
-        await interaction.editReply(
-          "I could not save that custom rule right now.",
-        );
+        await interaction.editReply("I could not save that custom rule right now.");
       }
     }
   }

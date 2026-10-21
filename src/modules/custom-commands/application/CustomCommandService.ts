@@ -23,9 +23,7 @@ import {
   object,
 } from "../domain/CustomCommandValidator.js";
 
-export function exportDefinition(
-  command: CustomCommandRecord,
-): CustomCommandDefinition {
+export function exportDefinition(command: CustomCommandRecord): CustomCommandDefinition {
   const {
     name,
     description,
@@ -63,8 +61,7 @@ export class CustomCommandService {
   public constructor(
     private readonly repository: CustomCommandRepository,
     public readonly validator = new CustomCommandValidator(),
-    private readonly reservedNames: () => Iterable<string> = () =>
-      PROTECTED_COMMAND_NAMES,
+    private readonly reservedNames: () => Iterable<string> = () => PROTECTED_COMMAND_NAMES,
     private readonly maxCommands: number = L.commandsPerGuild,
     private readonly validateReferences: (
       guildId: string,
@@ -82,18 +79,14 @@ export class CustomCommandService {
         throw new Error("Custom command repository violated guild isolation.");
       const names = new Map<string, CustomCommandRecord>();
       for (const record of records)
-        for (const name of [record.name, ...record.aliases])
-          names.set(name, record);
+        for (const name of [record.name, ...record.aliases]) names.set(name, record);
       return { records, names };
     });
   }
   public async listCommands(guildId: string): Promise<CustomCommandRecord[]> {
     return structuredClone((await this.load(guildId)).records);
   }
-  public async getCommand(
-    guildId: string,
-    name: string,
-  ): Promise<CustomCommandRecord | null> {
+  public async getCommand(guildId: string, name: string): Promise<CustomCommandRecord | null> {
     const normalized = normalizeCommandName(name);
     const found = (await this.load(guildId)).names.get(normalized);
     return found?.name === normalized ? structuredClone(found) : null;
@@ -104,9 +97,7 @@ export class CustomCommandService {
   ): Promise<CustomCommandRecord | null> {
     // A newly registered built-in always wins, even over an older stored command.
     if (this.isReserved(name)) return null;
-    const found = (await this.load(guildId)).names.get(
-      normalizeCommandName(name),
-    );
+    const found = (await this.load(guildId)).names.get(normalizeCommandName(name));
     return found ? structuredClone(found) : null;
   }
   public isReserved(name: string): boolean {
@@ -138,13 +129,8 @@ export class CustomCommandService {
         );
     }
   }
-  private find(
-    records: CustomCommandRecord[],
-    name: string,
-  ): CustomCommandRecord {
-    const found = records.find(
-      (record) => record.name === normalizeCommandName(name),
-    );
+  private find(records: CustomCommandRecord[], name: string): CustomCommandRecord {
+    const found = records.find((record) => record.name === normalizeCommandName(name));
     if (!found)
       throw new CustomCommandNotFoundError(
         `No custom command named \`${name.slice(0, L.name)}\` exists.`,
@@ -161,10 +147,7 @@ export class CustomCommandService {
       const result = await this.repository.mutate(guildId, operation);
       this.invalidate(guildId);
       const record =
-        result &&
-        typeof result === "object" &&
-        "name" in result &&
-        "id" in result
+        result && typeof result === "object" && "name" in result && "id" in result
           ? result
           : undefined;
       this.logger.info(
@@ -177,12 +160,7 @@ export class CustomCommandService {
       );
       return result;
     } catch (error) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "sqlState" in error &&
-        error.sqlState === "23505"
-      )
+      if (error && typeof error === "object" && "sqlState" in error && error.sqlState === "23505")
         throw new CustomCommandAlreadyExistsError(
           "A custom command name or alias is already in use.",
         );
@@ -242,29 +220,12 @@ export class CustomCommandService {
     });
   }
   public enableCommand(guildId: string, actorId: string, name: string) {
-    return this.updateCommand(
-      guildId,
-      actorId,
-      name,
-      { enabled: true },
-      "enabled",
-    );
+    return this.updateCommand(guildId, actorId, name, { enabled: true }, "enabled");
   }
   public disableCommand(guildId: string, actorId: string, name: string) {
-    return this.updateCommand(
-      guildId,
-      actorId,
-      name,
-      { enabled: false },
-      "disabled",
-    );
+    return this.updateCommand(guildId, actorId, name, { enabled: false }, "disabled");
   }
-  public renameCommand(
-    guildId: string,
-    actorId: string,
-    name: string,
-    newName: string,
-  ) {
+  public renameCommand(guildId: string, actorId: string, name: string, newName: string) {
     return this.updateCommand(guildId, actorId, name, { name: newName });
   }
   public cloneCommand(
@@ -300,11 +261,7 @@ export class CustomCommandService {
       2,
     );
   }
-  public async importCommands(
-    guildId: string,
-    actorId: string,
-    input: string,
-  ): Promise<number> {
+  public async importCommands(guildId: string, actorId: string, input: string): Promise<number> {
     if (Buffer.byteLength(input, "utf8") > L.importBytes)
       throw new CustomCommandValidationError("Import file is too large.");
     let parsed: unknown;
@@ -318,16 +275,9 @@ export class CustomCommandService {
       throw new CustomCommandValidationError(
         "Unsupported import schema version. Expected version 1.",
       );
-    if (
-      !Array.isArray(data.commands) ||
-      data.commands.length > this.maxCommands
-    )
-      throw new CustomCommandValidationError(
-        "Import must contain a bounded list of commands.",
-      );
-    const definitions = data.commands.map((command) =>
-      this.validator.definition(command),
-    );
+    if (!Array.isArray(data.commands) || data.commands.length > this.maxCommands)
+      throw new CustomCommandValidationError("Import must contain a bounded list of commands.");
+    const definitions = data.commands.map((command) => this.validator.definition(command));
     await this.validateReferences(guildId, definitions);
     return this.mutation(guildId, actorId, "imported", async (tx) => {
       const records = await tx.list();

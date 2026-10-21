@@ -31,16 +31,40 @@ export * from "./warningRoleNames.js";
 export * from "./durationParser.js";
 export { runWarn } from "./warn.js";
 export { parseDuration } from "./durationParser.js";
-export { scheduleWarningRoleRemoval, cancelWarningRoleRemoval, removeWarningRoleIfUnused } from "./warningRoles.js";
-import { createWarningRoleLifecycle, warningLifecycleToken, restoreWarningRoleExpirations } from "./warningRoles.js";
-import { loggerToken } from "../../../core/index.js";
+export {
+  scheduleWarningRoleRemoval,
+  cancelWarningRoleRemoval,
+  removeWarningRoleIfUnused,
+} from "./warningRoles.js";
+import {
+  createWarningRoleLifecycle,
+  warningLifecycleToken,
+  restoreWarningRoleExpirations,
+} from "./warningRoles.js";
 
 export const discordModule: DiscordModule = {
-  commands: { "ban": BanCommand, "case": CaseCommand, "history": HistoryCommand, "kick": KickCommand, "note": NoteCommand, "purge": PurgeCommand, "report": ReportCommand, "timeout": TimeoutCommand, "unban": UnbanCommand, "unwarn": UnwarnCommand, "warn": WarnCommand, "warnings": WarningsCommand },
+  commands: {
+    ban: BanCommand,
+    case: CaseCommand,
+    history: HistoryCommand,
+    kick: KickCommand,
+    note: NoteCommand,
+    purge: PurgeCommand,
+    report: ReportCommand,
+    timeout: TimeoutCommand,
+    unban: UnbanCommand,
+    unwarn: UnwarnCommand,
+    warn: WarnCommand,
+    warnings: WarningsCommand,
+  },
   register(context) {
     const lifecycle = createWarningRoleLifecycle();
     context.provide(warningLifecycleToken, lifecycle);
     context.onStop(() => lifecycle.stop());
   },
-  events: [discordEvent("clientReady", async (client) => { await restoreWarningRoleExpirations(client); })],
+  events: [
+    discordEvent("clientReady", async (client) => {
+      await restoreWarningRoleExpirations(client);
+    }),
+  ],
 };

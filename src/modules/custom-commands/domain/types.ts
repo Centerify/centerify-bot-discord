@@ -1,9 +1,5 @@
 import type { PermissionName } from "./permissions.js";
-import type {
-  COOLDOWN_SCOPES,
-  RESPONSE_TYPES,
-  TRIGGER_TYPES,
-} from "./constants.js";
+import type { COOLDOWN_SCOPES, RESPONSE_TYPES, TRIGGER_TYPES } from "./constants.js";
 export type TriggerType = (typeof TRIGGER_TYPES)[number];
 export type ResponseType = (typeof RESPONSE_TYPES)[number];
 export type CooldownScope = (typeof COOLDOWN_SCOPES)[number];
@@ -155,9 +151,6 @@ export interface CustomCommandTransaction {
 }
 export interface CustomCommandRepository {
   list(guildId: string): Promise<CustomCommandRecord[]>;
-  mutate<T>(
-    guildId: string,
-    operation: (tx: CustomCommandTransaction) => Promise<T>,
-  ): Promise<T>;
+  mutate<T>(guildId: string, operation: (tx: CustomCommandTransaction) => Promise<T>): Promise<T>;
   recordUsage(guildId: string, commandId: number): Promise<void>;
 }

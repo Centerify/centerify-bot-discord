@@ -1,26 +1,25 @@
 import { vi } from "vitest";
 import { PermissionsBitField, PermissionFlagsBits } from "discord.js";
-import type { CustomCommandDefinition, CustomCommandRecord, CustomCommandRepository, CustomCommandTransaction } from "../../../src/modules/custom-commands/domain/types.js";
+import type {
+  CustomCommandDefinition,
+  CustomCommandRecord,
+  CustomCommandRepository,
+  CustomCommandTransaction,
+} from "../../../src/modules/custom-commands/domain/types.js";
 import type { CustomCommandExecutionContext } from "../../../src/modules/custom-commands/discord/types.js";
 import { CustomCommandValidator } from "../../../src/modules/custom-commands/domain/CustomCommandValidator.js";
 
 export const ROLE = "123456789012345678",
   CHANNEL = "223456789012345678",
   USER = "323456789012345678";
-export function definition(
-  patch: Partial<CustomCommandDefinition> = {},
-): CustomCommandDefinition {
+export function definition(patch: Partial<CustomCommandDefinition> = {}): CustomCommandDefinition {
   return new CustomCommandValidator().definition({
     name: "welcome",
-    content: [
-      { type: "TEXT", text: "Welcome {user.mention} to {guild.name}!" },
-    ],
+    content: [{ type: "TEXT", text: "Welcome {user.mention} to {guild.name}!" }],
     ...patch,
   });
 }
-export function record(
-  patch: Partial<CustomCommandRecord> = {},
-): CustomCommandRecord {
+export function record(patch: Partial<CustomCommandRecord> = {}): CustomCommandRecord {
   return {
     ...definition(),
     id: 1,
@@ -85,14 +84,10 @@ export class MemoryRepository implements CustomCommandRepository {
   private revision = 0;
   private tail = Promise.resolve();
   public list = vi.fn(async (guildId: string) =>
-    structuredClone(
-      this.records.filter((record) => record.guildId === guildId),
-    ),
+    structuredClone(this.records.filter((record) => record.guildId === guildId)),
   );
   public recordUsage = vi.fn(async (guildId: string, id: number) => {
-    const found = this.records.find(
-      (row) => row.guildId === guildId && row.id === id,
-    );
+    const found = this.records.find((row) => row.guildId === guildId && row.id === id);
     if (found) {
       found.usageCount++;
       found.lastUsedAt = new Date().toISOString();
@@ -111,18 +106,11 @@ export class MemoryRepository implements CustomCommandRepository {
     const original = structuredClone(this.records);
     try {
       return await operation({
-        list: async () =>
-          structuredClone(
-            this.records.filter((row) => row.guildId === guildId),
-          ),
+        list: async () => structuredClone(this.records.filter((row) => row.guildId === guildId)),
         legacyNames: async () => this.legacy[guildId] ?? [],
         save: async (definition, actorId, id) => {
-          const old = this.records.find(
-            (row) => row.guildId === guildId && row.id === id,
-          );
-          const now = new Date(
-            Date.UTC(2026, 9, 1, 0, 0, 0, ++this.revision),
-          ).toISOString();
+          const old = this.records.find((row) => row.guildId === guildId && row.id === id);
+          const now = new Date(Date.UTC(2026, 9, 1, 0, 0, 0, ++this.revision)).toISOString();
           const row = {
             ...record({
               id: id ?? ++this.sequence,
@@ -141,9 +129,7 @@ export class MemoryRepository implements CustomCommandRepository {
           return structuredClone(row);
         },
         remove: async (id) => {
-          this.records = this.records.filter(
-            (row) => !(row.guildId === guildId && row.id === id),
-          );
+          this.records = this.records.filter((row) => !(row.guildId === guildId && row.id === id));
         },
       });
     } catch (error) {

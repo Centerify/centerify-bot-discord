@@ -19,11 +19,8 @@ const mocks = vi.hoisted(() => ({
   settings: vi.fn(),
 }));
 vi.mock("../../../src/modules/custom-commands/discord/runtime.js", () => ({
-  resolveExecutableCustomCommand: (
-    _client: unknown,
-    guild: { id: string },
-    name: string,
-  ) => mocks.find(guild.id, name),
+  resolveExecutableCustomCommand: (_client: unknown, guild: { id: string }, name: string) =>
+    mocks.find(guild.id, name),
   customCommandService: {
     invalidate: vi.fn(),
     getCommand: mocks.get,
@@ -127,9 +124,7 @@ beforeEach(() => {
 
 test("registration has all management actions, public run, valid option limits and an optional legacy kind", () => {
   command.registerApplicationCommands({
-    registerChatInputCommand: (
-      build: (builder: SlashCommandBuilder) => void,
-    ) => {
+    registerChatInputCommand: (build: (builder: SlashCommandBuilder) => void) => {
       const builder = new SlashCommandBuilder();
       build(builder);
       const data = builder.toJSON();
@@ -155,19 +150,19 @@ test("registration has all management actions, public run, valid option limits a
         ]),
       );
       for (const option of data.options ?? [])
-        if ("options" in option)
-          expect(option.options!.length).toBeLessThanOrEqual(25);
+        if ("options" in option) expect(option.options!.length).toBeLessThanOrEqual(25);
       for (const name of ["template", "markdown"]) {
         const upload = data.options!.find((option) => option.name === name)!;
-        expect("options" in upload && upload.options?.find((option) => option.name === "file")).toMatchObject({
-          type: ApplicationCommandOptionType.Attachment, required: true,
+        expect(
+          "options" in upload && upload.options?.find((option) => option.name === "file"),
+        ).toMatchObject({
+          type: ApplicationCommandOptionType.Attachment,
+          required: true,
         });
       }
       const create = data.options!.find((option) => option.name === "create")!;
       if ("options" in create)
-        expect(
-          create.options!.find((option) => option.name === "kind")!.required,
-        ).not.toBe(true);
+        expect(create.options!.find((option) => option.name === "kind")!.required).not.toBe(true);
     },
   } as never);
 });
@@ -284,24 +279,14 @@ test("list displays shared commands and each command's individual scope", async 
   ]);
   const interaction = fixture("list");
   await showCommandList(interaction as never, []);
-  expect(interaction.editReply.mock.calls[0]![0].content).toContain(
-    "Global • Shared from source",
-  );
-  expect(interaction.editReply.mock.calls[0]![0].content).toContain(
-    "Specific servers",
-  );
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Global • Shared from source");
+  expect(interaction.editReply.mock.calls[0]![0].content).toContain("Specific servers");
 });
 test("info fields honor Discord limits even with long aliases and permissions", () => {
   const c = record({
     aliases: Array.from({ length: 10 }, (_, i) => `${i}${"x".repeat(99)}`),
-    requiredUserPermissions: Array.from(
-      { length: 25 },
-      () => "SendMessagesInThreads",
-    ),
-    requiredBotPermissions: Array.from(
-      { length: 25 },
-      () => "SendMessagesInThreads",
-    ),
+    requiredUserPermissions: Array.from({ length: 25 }, () => "SendMessagesInThreads"),
+    requiredBotPermissions: Array.from({ length: 25 }, () => "SendMessagesInThreads"),
   });
   const embed = commandInfo(c).toJSON();
   expect(embed.fields!.every((field) => field.value.length <= 1024)).toBe(true);
@@ -320,9 +305,7 @@ test("editor is separate and embed edits retain the existing response type", asy
       content: [{ type: "EMBED", embed: { description: "Old" } }],
     }),
   );
-  await handleCustomManagement(
-    fixture("edit", { name: "welcome", response: "New" }) as never,
-  );
+  await handleCustomManagement(fixture("edit", { name: "welcome", response: "New" }) as never);
   expect(mocks.update).toHaveBeenCalledWith(
     "guild-a",
     USER,
@@ -344,76 +327,87 @@ test("small human-readable permission lists and aliases map into validated domai
     }) as never,
     true,
   );
-  expect(patch.requiredUserPermissions).toEqual([
-    "ManageMessages",
-    "BanMembers",
-  ]);
+  expect(patch.requiredUserPermissions).toEqual(["ManageMessages", "BanMembers"]);
   expect(patch.aliases).toEqual([]);
   expect(definition(patch)).toBeDefined();
 });
 
 test("pagination respects rendered message size for long markdown names", async () => {
   mocks.list.mockResolvedValue(
-    Array.from({ length: 25 }, (_, i) =>
-      record({ id: i, name: `${i}${"_".repeat(99)}` }),
-    ),
+    Array.from({ length: 25 }, (_, i) => record({ id: i, name: `${i}${"_".repeat(99)}` })),
   );
   const interaction = fixture("list");
   await showCommandList(interaction as never, []);
-  expect(
-    interaction.editReply.mock.calls[0]![0].content.length,
-  ).toBeLessThanOrEqual(2000);
+  expect(interaction.editReply.mock.calls[0]![0].content.length).toBeLessThanOrEqual(2000);
 });
 
 test("template uploads recognize custom variables already saved on the command", async () => {
-  const initial = record({ content: [{
-    type: "TEXT", text: "{GREETING}", variables: { GREETING: "Hello {user.mention}!" },
-  }] });
+  const initial = record({
+    content: [
+      {
+        type: "TEXT",
+        text: "{GREETING}",
+        variables: { GREETING: "Hello {user.mention}!" },
+      },
+    ],
+  });
   mocks.get.mockResolvedValue(initial);
   const interaction = fixture("template", { name: "welcome" });
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("@main\n@title Welcome\n{GREETING}")));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response("@main\n@title Welcome\n{GREETING}")),
+  );
   try {
     await handleCustomManagement(interaction as never);
-    expect(mocks.update).toHaveBeenCalledWith(interaction.guild.id, USER, initial.name,
-      expect.objectContaining({ content: [expect.objectContaining({ variables: initial.content[0].variables })] }),
-      "updated", initial.updatedAt,
+    expect(mocks.update).toHaveBeenCalledWith(
+      interaction.guild.id,
+      USER,
+      initial.name,
+      expect.objectContaining({
+        content: [expect.objectContaining({ variables: initial.content[0].variables })],
+      }),
+      "updated",
+      initial.updatedAt,
     );
   } finally {
     vi.unstubAllGlobals();
   }
 });
 
-test.each(["template", "markdown"])("%s file uploads parse and save the definition before opening the editor", async (subcommand) => {
-  const interaction = fixture(subcommand, { name: "welcome" });
-  const source =
-    ":::embed\n@title Uploaded\n@cover https://example.com/cover.png\n@button [Rules](https://example.com/rules)\n:::";
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(source)));
-  try {
-    await command.chatInputRun(interaction as never);
-    expect(mocks.update).toHaveBeenCalledWith(
-      "guild-a",
-      USER,
-      "welcome",
-      expect.objectContaining({
-        responseType: "EMBED",
-        content: [
-          expect.objectContaining({
-            embed: {
-              title: "Uploaded",
-              image: { url: "https://example.com/cover.png" },
-            },
-            buttons: [{ label: "Rules", url: "https://example.com/rules" }],
-          }),
-        ],
-      }),
-      "updated",
-      record().updatedAt,
-    );
-    expect(mocks.editor).toHaveBeenCalled();
-  } finally {
-    vi.unstubAllGlobals();
-  }
-});
+test.each(["template", "markdown"])(
+  "%s file uploads parse and save the definition before opening the editor",
+  async (subcommand) => {
+    const interaction = fixture(subcommand, { name: "welcome" });
+    const source =
+      ":::embed\n@title Uploaded\n@cover https://example.com/cover.png\n@button [Rules](https://example.com/rules)\n:::";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(source)));
+    try {
+      await command.chatInputRun(interaction as never);
+      expect(mocks.update).toHaveBeenCalledWith(
+        "guild-a",
+        USER,
+        "welcome",
+        expect.objectContaining({
+          responseType: "EMBED",
+          content: [
+            expect.objectContaining({
+              embed: {
+                title: "Uploaded",
+                image: { url: "https://example.com/cover.png" },
+              },
+              buttons: [{ label: "Rules", url: "https://example.com/rules" }],
+            }),
+          ],
+        }),
+        "updated",
+        record().updatedAt,
+      );
+      expect(mocks.editor).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);
 
 test("ordinary members cannot upload Markdown to change commands", async () => {
   const interaction = fixture("markdown", { name: "welcome" }, false);
@@ -428,10 +422,7 @@ test("ordinary members cannot upload Markdown to change commands", async () => {
 
 test("invalid uploaded Markdown never replaces a saved definition", async () => {
   const interaction = fixture("markdown", { name: "welcome" });
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(new Response(":::embed\n@bad invalid\n:::")),
-  );
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(":::embed\n@bad invalid\n:::")));
   try {
     await command.chatInputRun(interaction as never);
     expect(mocks.update).not.toHaveBeenCalled();

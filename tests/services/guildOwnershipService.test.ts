@@ -1,18 +1,36 @@
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Guild, RepliableInteraction } from "discord.js";
 
-const mocks = vi.hoisted(() => ({ first: vi.fn(), upsert: vi.fn(), where: vi.fn(), delete: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  first: vi.fn(),
+  upsert: vi.fn(),
+  where: vi.fn(),
+  delete: vi.fn(),
+}));
 vi.mock("../../src/adapters/prisma/client.js", () => ({
-  db: { orm: { public: { GuildOwnership: {
-    where: mocks.where, upsert: mocks.upsert,
-  } } } },
+  db: {
+    orm: {
+      public: {
+        GuildOwnership: {
+          where: mocks.where,
+          upsert: mocks.upsert,
+        },
+      },
+    },
+  },
 }));
 vi.mock("../../src/adapters/logging/runtime.js", () => ({ logger: { error: vi.fn() } }));
 
-import { GuildOwnershipService, OWNERSHIP_REQUIRED_MESSAGE, requireVerifiedOwnership } from "../../src/modules/guilds/discord/ownership.js";
+import {
+  GuildOwnershipService,
+  OWNERSHIP_REQUIRED_MESSAGE,
+  requireVerifiedOwnership,
+} from "../../src/modules/guilds/discord/ownership.js";
 import { VerifyGuildOwnership } from "../../src/modules/guilds/index.js";
 import { PrismaOwnershipRepository } from "../../src/modules/guilds/infrastructure/PrismaOwnershipRepository.js";
-const service = new GuildOwnershipService(new VerifyGuildOwnership(new PrismaOwnershipRepository()));
+const service = new GuildOwnershipService(
+  new VerifyGuildOwnership(new PrismaOwnershipRepository()),
+);
 const fetchGuild = vi.fn();
 const guild = { id: "guild", ownerId: "old-owner", fetch: fetchGuild } as unknown as Guild;
 
@@ -68,8 +86,17 @@ test("only the current owner can remove verification", async () => {
 
 test("ownership denial completes a deferred reply", async () => {
   mocks.first.mockResolvedValue(null);
-  const interaction = { guild, deferred: true, replied: false, editReply: vi.fn(), followUp: vi.fn(), reply: vi.fn() };
-  expect(await requireVerifiedOwnership(interaction as unknown as RepliableInteraction)).toBe(false);
+  const interaction = {
+    guild,
+    deferred: true,
+    replied: false,
+    editReply: vi.fn(),
+    followUp: vi.fn(),
+    reply: vi.fn(),
+  };
+  expect(await requireVerifiedOwnership(interaction as unknown as RepliableInteraction)).toBe(
+    false,
+  );
   expect(interaction.editReply).toHaveBeenCalledWith({ content: OWNERSHIP_REQUIRED_MESSAGE });
   expect(interaction.followUp).not.toHaveBeenCalled();
   expect(interaction.reply).not.toHaveBeenCalled();
@@ -77,7 +104,9 @@ test("ownership denial completes a deferred reply", async () => {
 
 test("overlapping ownership checks share I/O and the next check refreshes ownership", async () => {
   mocks.first.mockResolvedValue({ ownerUserId: "current-owner" });
-  expect(await Promise.all(Array.from({ length: 100 }, () => service.isVerified(guild)))).toEqual(Array(100).fill(true));
+  expect(await Promise.all(Array.from({ length: 100 }, () => service.isVerified(guild)))).toEqual(
+    Array(100).fill(true),
+  );
   expect(fetchGuild).toHaveBeenCalledOnce();
   expect(mocks.first).toHaveBeenCalledOnce();
   fetchGuild.mockResolvedValue({ ownerId: "new-owner" });
@@ -87,10 +116,16 @@ test("overlapping ownership checks share I/O and the next check refreshes owners
 
 test("failed shared checks are retried and never authorize another guild", async () => {
   fetchGuild.mockRejectedValueOnce(new Error("offline"));
-  expect(await Promise.all([service.isVerified(guild), service.isVerified(guild)])).toEqual([false, false]);
+  expect(await Promise.all([service.isVerified(guild), service.isVerified(guild)])).toEqual([
+    false,
+    false,
+  ]);
   mocks.first.mockResolvedValue({ ownerUserId: "current-owner" });
   expect(await service.isVerified(guild)).toBe(true);
-  const other = { id: "other", fetch: vi.fn().mockResolvedValue({ ownerId: "other-owner" }) } as unknown as Guild;
+  const other = {
+    id: "other",
+    fetch: vi.fn().mockResolvedValue({ ownerId: "other-owner" }),
+  } as unknown as Guild;
   expect(await service.isVerified(other)).toBe(false);
   expect(other.fetch).toHaveBeenCalledOnce();
 });

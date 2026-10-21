@@ -10,11 +10,11 @@ Custom-command caches use a monotonic clock and fixed TTL. Entries expire in ins
 
 Measured on Node.js 25.6.1 against revision `5a76ce9`:
 
-| Workload | Before | After |
-| --- | --- | --- |
-| 30,000 cache misses at 1,000 cached guilds; median of five runs | 178.1 ms | 20.0 ms |
-| 1,000 sequential messages within one XP cooldown | 1,000 award writes | 1 award write |
-| 100 overlapping ownership checks for one guild | 100 Discord fetches and database reads | 1 Discord fetch and database read |
+| Workload                                                        | Before                                 | After                             |
+| --------------------------------------------------------------- | -------------------------------------- | --------------------------------- |
+| 30,000 cache misses at 1,000 cached guilds; median of five runs | 178.1 ms                               | 20.0 ms                           |
+| 1,000 sequential messages within one XP cooldown                | 1,000 award writes                     | 1 award write                     |
+| 100 overlapping ownership checks for one guild                  | 100 Discord fetches and database reads | 1 Discord fetch and database read |
 
 The cache benchmark is about 8.9 times faster for this workload. The XP benchmark uses simulated 1 ms award-write latency and in-memory settings; it measures avoided writes, not production Discord or database latency. Actual gains depend on activity patterns and I/O latency. Guild configuration reads still happen for every XP event so settings changes take effect immediately.
 

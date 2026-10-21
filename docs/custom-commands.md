@@ -244,13 +244,13 @@ their original server; remove those actions before sharing across servers.
 
 Channel actions work in buttons, dropdowns and sequences:
 
-| Action | Meaning |
-| ------ | ------- |
-| `SetChannelName("{channel.id}", "general")` | Rename the current channel; `RenameChannel` is an alias |
-| `SetChannelTopic("{channel.id}", "Welcome to {guild.name}")` | Set the topic; an empty string clears it |
-| `SetSlowmode("{channel.id}", 10)` | Set slowmode in seconds, from 0 (disabled) to 21,600 |
-| `SetChannelCategory("{channel.id}", "CATEGORY_ID")` | Move the channel into a category |
-| `SetChannelCategory("{channel.id}", null)` | Remove the channel from its category |
+| Action                                                       | Meaning                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------- |
+| `SetChannelName("{channel.id}", "general")`                  | Rename the current channel; `RenameChannel` is an alias |
+| `SetChannelTopic("{channel.id}", "Welcome to {guild.name}")` | Set the topic; an empty string clears it                |
+| `SetSlowmode("{channel.id}", 10)`                            | Set slowmode in seconds, from 0 (disabled) to 21,600    |
+| `SetChannelCategory("{channel.id}", "CATEGORY_ID")`          | Move the channel into a category                        |
+| `SetChannelCategory("{channel.id}", null)`                   | Remove the channel from its category                    |
 
 Channel IDs may be fixed IDs or complete placeholders such as `{channel.id}` or
 `{args.0}`. Category IDs follow the same rule. Quote IDs and text; slowmode uses
@@ -356,10 +356,10 @@ Structured actions use these fields:
 | `setnickname`                                              | `userId`, `nickname`                                                           |
 | `reply`                                                    | `text`                                                                         |
 | `sendmessage`                                              | `text`; optional `channelId`, defaulting to the invocation channel             |
-| `setchannelname` (`renamechannel` alias)                    | `channelId`, `name` |
-| `setchanneltopic`                                          | `channelId`, `topic` (empty clears) |
-| `setslowmode`                                             | `channelId`, `seconds` (0–21,600) |
-| `setchannelcategory`                                      | `channelId`, `categoryId` (ID, placeholder or `null`) |
+| `setchannelname` (`renamechannel` alias)                   | `channelId`, `name`                                                            |
+| `setchanneltopic`                                          | `channelId`, `topic` (empty clears)                                            |
+| `setslowmode`                                              | `channelId`, `seconds` (0–21,600)                                              |
+| `setchannelcategory`                                       | `channelId`, `categoryId` (ID, placeholder or `null`)                          |
 | `sequence`                                                 | `actions`, an array of individual effect actions                               |
 
 Every effect action and sequence accepts optional `successMessage` and `repeatable`.

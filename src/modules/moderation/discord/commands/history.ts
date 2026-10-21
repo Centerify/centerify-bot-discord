@@ -1,6 +1,12 @@
 import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
-import { Colors, EmbedBuilder, InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
+import {
+  Colors,
+  EmbedBuilder,
+  InteractionContextType,
+  MessageFlags,
+  PermissionFlagsBits,
+} from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
 import { moderationCaseService } from "../services.js";
 import { formatDetailedCaseField } from "../renderer.js";
@@ -14,17 +20,25 @@ export class HistoryCommand extends Command {
         .setDescription("Show recent moderation history for a user")
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .setContexts(InteractionContextType.Guild)
-        .addUserOption((option) => option.setName("user").setDescription("User to inspect").setRequired(true)),
+        .addUserOption((option) =>
+          option.setName("user").setDescription("User to inspect").setRequired(true),
+        ),
     );
   }
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: "This command can only be used inside a server.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await replyToCommand(interaction, { content: missingPermissionMessage("ModerateMembers"), flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: missingPermissionMessage("ModerateMembers"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
@@ -61,7 +75,10 @@ export class HistoryCommand extends Command {
         embeds: [embed],
       });
     } catch (error) {
-      logger.error({ err: error, guildId: interaction.guildId, userId: user.id }, "History command failed");
+      logger.error(
+        { err: error, guildId: interaction.guildId, userId: user.id },
+        "History command failed",
+      );
       await interaction.editReply({ content: "I could not load moderation history right now." });
     }
   }

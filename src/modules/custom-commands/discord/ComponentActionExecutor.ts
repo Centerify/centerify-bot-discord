@@ -1,19 +1,13 @@
 import { PermissionFlagsBits, type GuildMember } from "discord.js";
-import type {
-  EffectAction,
-  SequenceAction,
-  CustomCommandRecord,
-} from "../domain/types.js";
+import type { EffectAction, SequenceAction, CustomCommandRecord } from "../domain/types.js";
 import type { CustomCommandExecutionContext } from "./types.js";
 import { actionSteps } from "../domain/components.js";
 import { CUSTOM_COMMAND_LIMITS as L } from "../domain/constants.js";
-import {
-  CustomCommandError,
-  CustomCommandPermissionError,
-} from "../domain/errors.js";
+import { CustomCommandError, CustomCommandPermissionError } from "../domain/errors.js";
 import { authorizeComponentAction } from "./actionAuthorization.js";
 import { renderComponentAction } from "./actionTemplates.js";
 import { prepareRoleAction } from "./roleActions.js";
+import { validateAutomatedRole } from "../../guilds/discord/index.js";
 import { prepareChannelAction } from "./channelActions.js";
 import type { ModerationCases, WarnMember } from "../../moderation/index.js";
 import {
@@ -70,14 +64,11 @@ export class ComponentActionExecutor {
   ): Promise<string> {
     const authorized = await authorizeComponentAction(context, loadCommand);
     this.requireActive(isActive);
-    const rendered = (await renderComponentAction(
-      action,
-      authorized.context,
-    )) as EffectAction | SequenceAction;
+    const rendered = (await renderComponentAction(action, authorized.context)) as
+      EffectAction | SequenceAction;
     const steps = actionSteps(rendered);
     // Prepare every step first. A malformed or unauthorized later step applies nothing.
-    for (const step of steps)
-      await this.prepare(authorized.context, authorized.me, step, isActive);
+    for (const step of steps) await this.prepare(authorized.context, authorized.me, step, isActive);
     let completed = 0;
     let attempted = false;
     let result = "";
@@ -86,12 +77,7 @@ export class ComponentActionExecutor {
         this.requireActive(isActive);
         // Earlier steps can change roles, permissions or membership.
         const current = await authorizeComponentAction(context, loadCommand);
-        const apply = await this.prepare(
-          current.context,
-          current.me,
-          step,
-          isActive,
-        );
+        const apply = await this.prepare(current.context, current.me, step, isActive);
         this.requireActive(isActive);
         onAttempt();
         attempted = true;
@@ -100,12 +86,7 @@ export class ComponentActionExecutor {
         completed++;
       }
     } catch (error) {
-      throw new ComponentActionExecutionError(
-        completed,
-        steps.length,
-        attempted,
-        error,
-      );
+      throw new ComponentActionExecutionError(completed, steps.length, attempted, error);
     }
     if (rendered.successMessage !== undefined) return rendered.successMessage;
     if (steps.length === 1) return result;
@@ -122,9 +103,7 @@ export class ComponentActionExecutor {
 
   private requireActive(isActive: () => boolean) {
     if (!isActive())
-      throw new CustomCommandPermissionError(
-        "These controls have expired. Run the command again.",
-      );
+      throw new CustomCommandPermissionError("These controls have expired. Run the command again.");
   }
 
   private async prepare(
@@ -169,9 +148,7 @@ export class ComponentActionExecutor {
         !channel.permissionsFor(context.member)?.has(permissions) ||
         !channel.permissionsFor(me)?.has(permissions)
       )
-        deny(
-          "You and I both need permission to view and send messages in the target channel.",
-        );
+        deny("You and I both need permission to view and send messages in the target channel.");
       return async () => {
         await channel.send({
           content: action.text,
@@ -261,8 +238,7 @@ export class ComponentActionExecutor {
     if (member.guild.id !== context.guildId || member.id !== action.userId)
       deny("That member belongs to another server.");
     if (action.action === "setnickname" && member.id === context.userId) {
-      if (member.id === me.id)
-        deny("I cannot change my nickname through these controls.");
+      if (member.id === me.id) deny("I cannot change my nickname through these controls.");
     } else {
       const error = validateMemberAction({
         guild: context.guild,
@@ -291,12 +267,11 @@ export class ComponentActionExecutor {
                 this.requireActive(isActive);
                 const name = getWarnRoleName(count);
                 const role =
-                  context.guild.roles.cache.find(
-                    (entry) => entry.name === name,
-                  ) ??
-                  (await context.guild.roles.create({ name, reason: audit }));
+                  context.guild.roles.cache.find((entry) => entry.name === name) ??
+                  (await context.guild.roles.create({ name, permissions: [], reason: audit }));
                 this.requireActive(isActive);
                 const invalid =
+                  validateAutomatedRole(role) ||
                   role.id === context.guildId ||
                   role.managed ||
                   !role.editable ||
@@ -318,10 +293,7 @@ export class ComponentActionExecutor {
           if (result.status === "rejected") deny(result.reason);
           if (result.status !== "created") return deny("Warning rejected.");
           if (action.durationMs)
-            this.services.scheduleWarning(
-              context.guild.client,
-              result.moderationCase,
-            );
+            this.services.scheduleWarning(context.guild.client, result.moderationCase);
           return `Warning added — Case #${result.moderationCase.caseNumber}.`;
         };
       }
@@ -336,8 +308,7 @@ export class ComponentActionExecutor {
             reason,
             caseNumber: action.caseNumber,
           });
-          if (!warning)
-            return deny("That member has no matching active warning.");
+          if (!warning) return deny("That member has no matching active warning.");
           this.services.cancelWarning(warning);
           const result = await this.services.removeWarningRole(
             context.guild.client,
@@ -351,8 +322,7 @@ export class ComponentActionExecutor {
       case "removetimeout": {
         if (!member.moderatable) deny("I cannot change that member's timeout.");
         return async () => {
-          const durationMs =
-            action.action === "timeout" ? action.durationMs : null;
+          const durationMs = action.action === "timeout" ? action.durationMs : null;
           await member.timeout(durationMs, audit);
           const created = await this.services.cases.createCase({
             ...caseInput,

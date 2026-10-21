@@ -4,7 +4,12 @@ import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "disco
 import { logger } from "../../../../adapters/logging/runtime.js";
 import { moderationCaseService } from "../services.js";
 import { buildCaseEmbed } from "../renderer.js";
-import { hasModeratorPermission, missingPermissionMessage, validateBotPermissions, validateMemberAction } from "../permissionGuards.js";
+import {
+  hasModeratorPermission,
+  missingPermissionMessage,
+  validateBotPermissions,
+  validateMemberAction,
+} from "../permissionGuards.js";
 import { dmUser, toAuditLogReason } from "../commandUtils.js";
 
 export class KickCommand extends Command {
@@ -15,21 +20,33 @@ export class KickCommand extends Command {
         .setDescription("Kick a member")
         .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
         .setContexts(InteractionContextType.Guild)
-        .addUserOption((option) => option.setName("user").setDescription("Member to kick").setRequired(true))
-        .addStringOption((option) => option.setName("reason").setDescription("Reason").setMaxLength(1_000).setRequired(true)),
+        .addUserOption((option) =>
+          option.setName("user").setDescription("Member to kick").setRequired(true),
+        )
+        .addStringOption((option) =>
+          option.setName("reason").setDescription("Reason").setMaxLength(1_000).setRequired(true),
+        ),
     );
   }
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await replyToCommand(interaction, { content: "This command can only be used inside a server.", flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: "This command can only be used inside a server.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.KickMembers)) {
-      await replyToCommand(interaction, { content: missingPermissionMessage("KickMembers"), flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, {
+        content: missingPermissionMessage("KickMembers"),
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
-    const botValidation = validateBotPermissions(interaction.guild, [PermissionFlagsBits.KickMembers]);
+    const botValidation = validateBotPermissions(interaction.guild, [
+      PermissionFlagsBits.KickMembers,
+    ]);
     if (botValidation) {
       await replyToCommand(interaction, { content: botValidation, flags: MessageFlags.Ephemeral });
       return;
@@ -41,7 +58,11 @@ export class KickCommand extends Command {
       await interaction.editReply({ content: "I cannot kick that member." });
       return;
     }
-    const validation = validateMemberAction({ guild: interaction.guild, moderator: interaction.member, target: member });
+    const validation = validateMemberAction({
+      guild: interaction.guild,
+      moderator: interaction.member,
+      target: member,
+    });
     if (validation) {
       await interaction.editReply({ content: validation });
       return;
@@ -52,12 +73,27 @@ export class KickCommand extends Command {
       return;
     }
     try {
-      await dmUser(user, `You were kicked from ${interaction.guild.name}: ${reason}`, { guildId: interaction.guildId, userId: user.id });
+      await dmUser(user, `You were kicked from ${interaction.guild.name}: ${reason}`, {
+        guildId: interaction.guildId,
+        userId: user.id,
+      });
       await member.kick(toAuditLogReason(reason));
-      const moderationCase = await moderationCaseService.createCase({ guildId: interaction.guildId, targetUserId: user.id, moderatorUserId: interaction.user.id, action: "KICK", reason });
-      await interaction.editReply({ content: `Kick created - Case #${moderationCase.caseNumber}`, embeds: [buildCaseEmbed(moderationCase)] });
+      const moderationCase = await moderationCaseService.createCase({
+        guildId: interaction.guildId,
+        targetUserId: user.id,
+        moderatorUserId: interaction.user.id,
+        action: "KICK",
+        reason,
+      });
+      await interaction.editReply({
+        content: `Kick created - Case #${moderationCase.caseNumber}`,
+        embeds: [buildCaseEmbed(moderationCase)],
+      });
     } catch (error) {
-      logger.error({ err: error, guildId: interaction.guildId, userId: user.id }, "Kick command failed");
+      logger.error(
+        { err: error, guildId: interaction.guildId, userId: user.id },
+        "Kick command failed",
+      );
       await interaction.editReply({ content: "I could not kick that member right now." });
     }
   }
