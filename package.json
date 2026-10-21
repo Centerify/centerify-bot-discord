@@ -42,7 +42,7 @@
     "contract:emit": "prisma contract emit"
   },
   "dependencies": {
-    "@prisma/orm-postgres": "^8.0.0-rc.9",
+    "@prisma/orm-postgres": "^8.0.0-rc.18",
     "@sapphire/framework": "^5.5.1",
     "close-with-grace": "2.5.0",
     "discord.js": "^14.27.0",
