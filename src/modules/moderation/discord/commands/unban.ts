@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -31,14 +32,14 @@ export class UnbanCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.BanMembers)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: missingPermissionMessage("BanMembers"),
         flags: MessageFlags.Ephemeral,
       });
@@ -48,18 +49,18 @@ export class UnbanCommand extends Command {
       PermissionFlagsBits.BanMembers,
     ]);
     if (botValidation) {
-      await interaction.reply({ content: botValidation, flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: botValidation, flags: MessageFlags.Ephemeral });
       return;
     }
     const userId = interaction.options.getString("user-id", true).trim();
     if (!discordIdPattern.test(userId)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "Please provide a valid Discord user ID.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const reason = interaction.options.getString("reason", true).trim();
     if (!reason) {
       await interaction.editReply({ content: "The reason cannot be empty." });

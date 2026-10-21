@@ -52,7 +52,8 @@ Also: \`AddRole(ID)\`, \`RemoveRole(ID)\`, \`ToggleRole(ID)\`.
 **Custom actions**
 \`@button [Warn](SetWarn("{args.0}", "Reason", "1h"))\`
 \`@button [Note](AddNote("{args.0}", "Note"))\`
-Also: Unwarn, Timeout, RemoveTimeout, Kick, Ban, Unban, SetNickname, Reply, SendMessage. Quote IDs and text. \`Action({...})\` configures all fields; \`Actions([...])\` runs up to ten steps. Options use the same actions. Preview executes no effects.
+Also: Unwarn, Timeout, RemoveTimeout, Kick, Ban, Unban, SetNickname, Reply, SendMessage. Quote IDs/text. \`Action({...})\` configures fields; \`Actions([...])\` runs ten steps max. Preview executes no effects.
+**Channels**: \`SetChannelName("{channel.id}", "chat")\`, \`SetChannelTopic(ID, "topic")\`, \`SetSlowmode(ID, 10)\`, \`SetChannelCategory(ID, null)\`. Quote IDs. Both you and I need Manage Channels.
 
 **Embed options**
 \`@title Text\` · \`@color Blurple\` or \`@color #5865f2\` · \`@cover URL\` · \`@thumbnail URL\` · \`@footer Text\`
@@ -83,7 +84,7 @@ function parseAction(
       roleId: role[2],
     };
   const call =
-    /^(action|actions|setwarn|warn|unwarn|removewarn|addnote|note|timeout|removetimeout|kick|ban|unban|setnickname|reply|sendmessage|setrole|addrole|removerole|togglerole)\(([\s\S]*)\)$/i.exec(
+    /^(action|actions|setwarn|warn|unwarn|removewarn|addnote|note|timeout|removetimeout|kick|ban|unban|setnickname|reply|sendmessage|setrole|addrole|removerole|togglerole|setchannelname|renamechannel|setchanneltopic|setslowmode|setchannelcategory)\(([\s\S]*)\)$/i.exec(
       value,
     );
   if (call) {
@@ -119,6 +120,11 @@ function parseAction(
           setnickname: ["userId", "nickname"],
           reply: ["text"],
           sendmessage: ["channelId", "text"],
+          setchannelname: ["channelId", "name"],
+          renamechannel: ["channelId", "name"],
+          setchanneltopic: ["channelId", "topic"],
+          setslowmode: ["channelId", "seconds"],
+          setchannelcategory: ["channelId", "categoryId"],
         };
         if (args.length > fields[name].length)
           throw new CustomCommandValidationError(`Too many arguments for ${name}.`);
@@ -218,7 +224,36 @@ export function parseCommandMarkdown(
   const fail = (line: number, message: string): never => {
     throw new CustomCommandValidationError(`Markdown line ${line}: ${message}`);
   };
-  const append = (line: string) => (field ? fieldBody : body).push(line);
+  const validateTemplate = (value: string, line: number) => {
+    try {
+      templateTokens(value, keys);
+    } catch (error) {
+      if (error instanceof CustomCommandValidationError) fail(line, error.message);
+      throw error;
+    }
+  };
+  const actionAt = (value: string, line: number) => {
+    try {
+      const action = parseAction(value, validator);
+      if (!action && !/^[a-z][a-z\d+.-]*:/i.test(value))
+        fail(
+          line,
+          'unknown or malformed action. Use a supported action call such as SetRole(ROLE_ID), SetChannelName("{channel.id}", "name") or Reply("text").',
+        );
+      return action;
+    } catch (error) {
+      if (
+        error instanceof CustomCommandValidationError &&
+        !error.message.startsWith("Markdown line ")
+      )
+        fail(line, error.message);
+      throw error;
+    }
+  };
+  const append = (line: string, number: number) => {
+    validateTemplate(line, number);
+    (field ? fieldBody : body).push(line);
+  };
   const finish = (line: number) => {
     if (!response) return;
     if (field) fail(line, "close the field with @endfield.");
@@ -236,7 +271,7 @@ export function parseCommandMarkdown(
     const number = index + 1;
     if (index <= headerEnd) continue;
     if (fence) {
-      append(line);
+      append(line, number);
       if (new RegExp(`^ {0,3}${fence.char}{${fence.length},}\\s*$`).test(line)) fence = undefined;
       continue;
     }
@@ -265,13 +300,13 @@ export function parseCommandMarkdown(
       fail(number, "expected :::text or :::embed.");
     }
     if (/^\\(?:@|:::|\\| {0,3}(?:`{3,}|~{3,}))/.test(line)) {
-      append(line.slice(1));
+      append(line.slice(1), number);
       continue;
     }
     const openingFence = /^ {0,3}(`{3,}|~{3,})/.exec(line);
     if (openingFence) {
       fence = { char: openingFence[1][0], length: openingFence[1].length };
-      append(line);
+      append(line, number);
       continue;
     }
     if (line.trimEnd() === ":::") {
@@ -283,7 +318,7 @@ export function parseCommandMarkdown(
       fail(number, "close the current block with ::: before starting another.");
     if (!line.startsWith("@")) {
       if (select && line.trim()) fail(number, "use @option inside a select.");
-      append(line);
+      append(line, number);
       continue;
     }
     const match = /^@([a-z-]+)(?:\s+(.*))?$/.exec(line);
@@ -297,11 +332,13 @@ export function parseCommandMarkdown(
       }
       if (key === "option") {
         const option = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(raw);
-        const action = option && parseAction(option[2], validator);
+        const action = option && actionAt(option[2], number);
         if (!option || !action)
           fail(number, "use @option [Label](Action); URL options are unsupported.");
+        const label = option![1].replace(/\\(.)/g, "$1");
+        validateTemplate(label, number);
         select.options.push({
-          label: option![1].replace(/\\(.)/g, "$1"),
+          label,
           ...action!,
         });
         continue;
@@ -311,6 +348,7 @@ export function parseCommandMarkdown(
         if (!option || option.description !== undefined)
           fail(number, "place one @option-description after an option.");
         option!.description = scalar(raw, number);
+        validateTemplate(option!.description, number);
         continue;
       }
       fail(number, "close the select with @endselect before another directive.");
@@ -319,7 +357,7 @@ export function parseCommandMarkdown(
       const id = /^(\d{17,20})$/.exec(raw)?.[1] ?? /^<#(\d{17,20})>$/.exec(raw)?.[1];
       if (!id)
         fail(number, "use @channel with a Discord channel ID, e.g. @channel 123456789012345678.");
-      append(`<#${id}>`);
+      append(`<#${id}>`, number);
       continue;
     }
     if (key === "endfield") {
@@ -338,6 +376,7 @@ export function parseCommandMarkdown(
     if (field) fail(number, "close the field with @endfield before another directive.");
     if (key === "select" || key === "dropdown") {
       select = { placeholder: scalar(raw, number), options: [] };
+      validateTemplate(select.placeholder, number);
       (response!.selects ??= []).push(select);
       continue;
     }
@@ -349,8 +388,9 @@ export function parseCommandMarkdown(
       const link = /^\[((?:\\.|[^\]\\])*)\]\((.+)\)$/.exec(styled[2]);
       if (!link) fail(number, "use @button [Label](https://example.com).");
       const label = link![1].replace(/\\(.)/g, "$1");
+      validateTemplate(label, number);
       const target = link![2];
-      const action = parseAction(target, validator);
+      const action = actionAt(target, number);
       if (action) {
         if (style === "link") fail(number, "actions cannot use link style.");
         (response!.buttons ??= []).push({
@@ -367,6 +407,7 @@ export function parseCommandMarkdown(
     if (response!.type !== "EMBED") fail(number, `@${key} requires an :::embed block.`);
     const embed = (response as { type: "EMBED"; embed: EmbedTemplate }).embed;
     const value = scalar(raw, number);
+    if (["title", "author", "footer", "field"].includes(key)) validateTemplate(value, number);
     if (key === "field") {
       field = { name: value, value: "" };
       fieldBody = [];

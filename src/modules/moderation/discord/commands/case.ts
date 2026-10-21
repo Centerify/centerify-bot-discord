@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -25,20 +26,20 @@ export class CaseCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: missingPermissionMessage("ModerateMembers"),
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const caseNumber = interaction.options.getInteger("case-number", true);
     try {
       const moderationCase = await moderationCaseService.findByCaseNumber(

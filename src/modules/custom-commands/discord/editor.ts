@@ -1,4 +1,5 @@
 import { trackCollector } from "../../../adapters/discord/resources.js";
+import { interactionErrorDetails, replyToCommand } from "../../../adapters/discord/interactions.js";
 import { attachStageNavigation } from "./stageNavigation.js";
 import { responseActions, hasServerActionReferences } from "../domain/components.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
@@ -114,21 +115,28 @@ export async function openCustomCommandEditor(
   trackCollector("custom-commands", collector);
   collector.on("collect", async (interaction) => {
     if (interaction.user.id !== root.user.id) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "Only the administrator who opened this editor can use it.",
         flags: MessageFlags.Ephemeral,
-      });
+      }).catch((error) =>
+        logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"),
+      );
       return;
     }
     if (busy) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "Finish the active edit first.",
         flags: MessageFlags.Ephemeral,
-      });
+      }).catch((error) =>
+        logger.error(interactionErrorDetails(error), "custom_command.editor_reply_failed"),
+      );
       return;
     }
     busy = true;
     let modalReply: ModalSubmitInteraction | undefined;
+    let acknowledgementInteraction: RepliableInteraction = interaction;
+    let acknowledgementStartedAt = Date.now();
+    let acknowledged = false;
     try {
       let action = interaction.customId.split(":").at(-1)!;
       if (action === "edit-field" && interaction.isStringSelectMenu()) {
@@ -254,6 +262,7 @@ export async function openCustomCommandEditor(
                       ])
                     : responseModal(id, action, command.content[index]!);
         await interaction.showModal(modal);
+        acknowledged = true;
         const submitted = await interaction
           .awaitModalSubmit({
             time: 90_000,
@@ -264,7 +273,11 @@ export async function openCustomCommandEditor(
           })
           .catch(() => null);
         if (!submitted) return;
+        acknowledgementInteraction = submitted;
+        acknowledgementStartedAt = Date.now();
+        acknowledged = false;
         await submitted.deferReply({ flags: MessageFlags.Ephemeral });
+        acknowledged = true;
         modalReply = submitted;
         if (!(await authorize(submitted, root.guildId))) return;
         const value = (key: string) => submitted.fields.getTextInputValue(key).trim();
@@ -364,13 +377,14 @@ export async function openCustomCommandEditor(
           );
           if (!(error instanceof CustomCommandError))
             logger.error(
-              { guildId: root.guildId, commandId: command.id },
+              { ...interactionErrorDetails(error), guildId: root.guildId, commandId: command.id },
               "custom_command.editor_failed",
             );
         }
         return;
       }
       await interaction.deferUpdate();
+      acknowledged = true;
       if (!(await authorize(interaction, root.guildId))) return;
       if (action === "markdown-download" || action === "markdown-help") {
         if (command.sourceGuildId)
@@ -500,26 +514,51 @@ export async function openCustomCommandEditor(
         ...(collector.ended ? { components: [] } : {}),
       });
     } catch (error) {
+      if (!acknowledged && !(error instanceof CustomCommandError)) {
+        logger.error(
+          {
+            ...interactionErrorDetails(error),
+            guildId: root.guildId,
+            commandId: command.id,
+            interactionId: acknowledgementInteraction.id,
+            interactionAgeMs:
+              acknowledgementStartedAt - acknowledgementInteraction.createdTimestamp,
+            acknowledgementDurationMs: Date.now() - acknowledgementStartedAt,
+          },
+          "custom_command.editor_acknowledgement_failed",
+        );
+        // The failed click's token cannot deliver a recovery reply. Keep the
+        // saved command and controls intact and use the original panel instead.
+        if (!collector.ended)
+          await root
+            .editReply({
+              content:
+                "Discord could not accept that edit. Your saved command is unchanged. Please try again, or reopen /custom configure.",
+            })
+            .catch(() => null);
+        return;
+      }
       const content =
         error instanceof CustomCommandError
           ? error.message
           : "Could not update this command. Reopen the editor and try again.";
       if (!(error instanceof CustomCommandError))
         logger.error(
-          { guildId: root.guildId, commandId: command.id },
+          { ...interactionErrorDetails(error), guildId: root.guildId, commandId: command.id },
           "custom_command.editor_failed",
         );
       if (!command.content[index]) index = 0;
       if (modalReply)
         await modalReply.editReply({ content, allowedMentions: { parse: [] } }).catch(() => {});
-      else
-        await interaction
-          .followUp({
-            content,
-            flags: MessageFlags.Ephemeral,
-            allowedMentions: { parse: [] },
-          })
-          .catch(() => {});
+      else {
+        const response = {
+          content,
+          flags: MessageFlags.Ephemeral as const,
+          allowedMentions: { parse: [] as const },
+        };
+        if (acknowledged) await interaction.followUp(response).catch(() => {});
+        else await replyToCommand(interaction, response).catch(() => {});
+      }
     } finally {
       busy = false;
     }

@@ -64,21 +64,36 @@ export const TEMPLATE_VARIABLE_KEYS = [
   "args",
 ] as const;
 
+const DEFAULT_VARIABLE_KEYS: ReadonlySet<string> = new Set(TEMPLATE_VARIABLE_KEYS);
+
+export interface TemplateToken {
+  start: number;
+  end: number;
+  key: string;
+}
+
 export function templateTokens(
   template: string,
-  keys: ReadonlySet<string> = new Set(TEMPLATE_VARIABLE_KEYS),
-) {
+  keys: ReadonlySet<string> = DEFAULT_VARIABLE_KEYS,
+): TemplateToken[] {
   if (template.length > L.templateInput)
     throw new CustomCommandValidationError("Template is too long.");
-  const tokens: { start: number; end: number; key: string }[] = [];
+  const tokens: TemplateToken[] = [];
+  const fail = (position: number, message: string): never => {
+    const before = template.slice(0, position);
+    const line = before.split("\n").length;
+    const column = position - before.lastIndexOf("\n");
+    throw new CustomCommandValidationError(`Template line ${line}, column ${column}: ${message}`);
+  };
   for (let i = 0; i < template.length; i++) {
-    if (template[i] === "}") throw new CustomCommandValidationError("Unmatched template brace.");
+    if (template[i] === "}") fail(i, "Unmatched template brace.");
     if (template[i] !== "{") continue;
     const end = template.indexOf("}", i + 1);
-    if (end === -1) throw new CustomCommandValidationError("Unmatched template brace.");
+    if (end === -1) fail(i, "Unmatched template brace.");
     const key = template.slice(i + 1, end);
+    if (key.includes("{")) fail(i, "Nested placeholders are unsupported.");
     if (!keys.has(key) && !/^args\.(?:[0-9]|1[0-9]|2[0-4])$/.test(key)) {
-      throw new CustomCommandValidationError(`Unknown variable {${key.slice(0, L.name)}}.`);
+      fail(i, `Unknown variable {${key.slice(0, L.name)}}.`);
     }
     tokens.push({ start: i, end: end + 1, key });
     i = end;
@@ -94,6 +109,7 @@ export const templateSyntax = {
 /** Definitions are command-wide and stored with the response payload. */
 export function customVariables(
   content: readonly { variables?: Record<string, string> }[],
+  builtInKeys: ReadonlySet<string> = DEFAULT_VARIABLE_KEYS,
 ): Record<string, string> {
   const entries = content.flatMap((response) => {
     if (response.variables === undefined) return [];
@@ -124,7 +140,7 @@ export function customVariables(
       );
     variables[key] = value;
   }
-  const keys = new Set<string>([...TEMPLATE_VARIABLE_KEYS, ...Object.keys(variables)]);
+  const keys = new Set<string>([...builtInKeys, ...Object.keys(variables)]);
   const visited = new Set<string>();
   const visit = (key: string, path: Set<string>) => {
     if (path.has(key)) throw new CustomCommandValidationError(`Circular custom variable {${key}}.`);

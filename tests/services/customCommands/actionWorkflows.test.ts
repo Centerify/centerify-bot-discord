@@ -1,6 +1,12 @@
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
-import { Collection, PermissionFlagsBits, PermissionsBitField, type GuildMember } from "discord.js";
+import {
+  Collection,
+  ChannelType,
+  PermissionFlagsBits,
+  PermissionsBitField,
+  type GuildMember,
+} from "discord.js";
 import { expect, test, vi } from "vitest";
 vi.mock("../../../src/modules/guilds/discord/ownership.js", () => ({
   guildOwnershipService: { isVerified: async () => true },
@@ -70,6 +76,7 @@ function setup(
     new PermissionsBitField([
       PermissionFlagsBits.ModerateMembers,
       PermissionFlagsBits.ManageRoles,
+      PermissionFlagsBits.ManageChannels,
       PermissionFlagsBits.KickMembers,
       PermissionFlagsBits.BanMembers,
       PermissionFlagsBits.ManageNicknames,
@@ -147,10 +154,16 @@ function setup(
   const channel = {
     id: OTHER_CHANNEL,
     guildId: ctx.guildId,
+    type: ChannelType.GuildText,
     isTextBased: () => true,
     isThread: () => false,
     send,
-    permissionsFor: () => permissions(),
+    permissionsFor: (member: GuildMember) =>
+      member.id === USER ? ctx.member.permissions : me.permissions,
+    setName: vi.fn().mockResolvedValue(undefined),
+    setTopic: vi.fn().mockResolvedValue(undefined),
+    setRateLimitPerUser: vi.fn().mockResolvedValue(undefined),
+    setParent: vi.fn().mockResolvedValue(undefined),
   };
   Object.assign(ctx.channel, { isTextBased: () => true, send });
   const fetchChannel = vi.fn().mockResolvedValue(channel);
@@ -597,6 +610,195 @@ test("message actions reject foreign channels and missing actor access", async (
   expect(s.send).not.toHaveBeenCalled();
 });
 
+test.each([
+  [
+    { action: "setchannelname", channelId: OTHER_CHANNEL, name: "staff-chat" },
+    "setName",
+    "staff-chat",
+  ],
+  [
+    {
+      action: "setchanneltopic",
+      channelId: OTHER_CHANNEL,
+      topic: "Welcome {user.name}",
+    },
+    "setTopic",
+    "Welcome Alex",
+  ],
+  [{ action: "setchanneltopic", channelId: OTHER_CHANNEL, topic: "" }, "setTopic", null],
+  [
+    { action: "setslowmode", channelId: OTHER_CHANNEL, seconds: 21600 },
+    "setRateLimitPerUser",
+    21600,
+  ],
+  [{ action: "setslowmode", channelId: OTHER_CHANNEL, seconds: 0 }, "setRateLimitPerUser", 0],
+] as const)(
+  "channel action %j executes through the authorized workflow",
+  async (action, method, value) => {
+    const s = setup(action);
+    await expect(s.execute()).resolves.toContain("Channel");
+    expect(s.channel[method]).toHaveBeenCalledExactlyOnceWith(value, expect.stringContaining(USER));
+    expect(s.fetchChannel).toHaveBeenCalledWith(OTHER_CHANNEL, { force: true });
+    expect(s.createCase).not.toHaveBeenCalled();
+  },
+);
+
+test.each([
+  "actor permission",
+  "bot permission",
+  "actor view",
+  "bot view",
+  "foreign channel",
+  "unsupported channel",
+  "deleted channel",
+  "expired",
+])("channel actions reject %s before changing Discord", async (condition) => {
+  const s = setup({
+    action: "setchannelname",
+    channelId: OTHER_CHANNEL,
+    name: "new-name",
+  });
+  if (condition === "actor permission")
+    s.ctx.member.permissions.remove(PermissionFlagsBits.ManageChannels);
+  if (condition === "bot permission") s.me.permissions.remove(PermissionFlagsBits.ManageChannels);
+  if (condition === "actor view") s.ctx.member.permissions.remove(PermissionFlagsBits.ViewChannel);
+  if (condition === "bot view") s.me.permissions.remove(PermissionFlagsBits.ViewChannel);
+  if (condition === "foreign channel") s.channel.guildId = "other";
+  if (condition === "unsupported channel") s.channel.type = ChannelType.GuildVoice;
+  if (condition === "deleted channel") s.fetchChannel.mockResolvedValue(null as never);
+  if (condition === "expired") s.active.mockReturnValue(false);
+  await expect(s.execute()).rejects.toThrow();
+  expect(s.channel.setName).not.toHaveBeenCalled();
+  expect(s.attempt).not.toHaveBeenCalled();
+});
+
+test("channel category actions check the destination and preserve permission overwrites", async () => {
+  const categoryId = "623456789012345678";
+  const s = setup({
+    action: "setchannelcategory",
+    channelId: OTHER_CHANNEL,
+    categoryId,
+  });
+  const category = {
+    ...s.channel,
+    id: categoryId,
+    type: ChannelType.GuildCategory,
+  };
+  s.fetchChannel.mockImplementation(async (id) => (id === categoryId ? category : s.channel));
+  await expect(s.execute()).resolves.toBe("Channel category updated.");
+  expect(s.channel.setParent).toHaveBeenCalledExactlyOnceWith(categoryId, {
+    lockPermissions: false,
+    reason: expect.stringContaining(USER),
+  });
+  s.channel.setParent.mockClear();
+  category.permissionsFor = () => new PermissionsBitField();
+  await expect(s.execute()).rejects.toThrow("destination category");
+  expect(s.channel.setParent).not.toHaveBeenCalled();
+  category.type = ChannelType.GuildText;
+  await expect(s.execute()).rejects.toThrow("category in this server");
+  category.type = ChannelType.GuildCategory;
+  category.guildId = "other";
+  await expect(s.execute()).rejects.toThrow("category in this server");
+  const clear = setup({
+    action: "setchannelcategory",
+    channelId: OTHER_CHANNEL,
+    categoryId: null,
+  });
+  await clear.execute();
+  expect(clear.channel.setParent).toHaveBeenCalledWith(
+    null,
+    expect.objectContaining({ lockPermissions: false }),
+  );
+});
+
+test("slowmode rejects announcement channels before attempting an update", async () => {
+  const s = setup({
+    action: "setslowmode",
+    channelId: OTHER_CHANNEL,
+    seconds: 5,
+  });
+  s.channel.type = ChannelType.GuildAnnouncement;
+  await expect(s.execute()).rejects.toThrow("regular text channel");
+  expect(s.channel.setRateLimitPerUser).not.toHaveBeenCalled();
+});
+
+test("a later unauthorized channel step prevents all writes; permissions refresh between steps", async () => {
+  const s = setup({
+    action: "sequence",
+    actions: [
+      { action: "reply", text: "Starting" },
+      { action: "setchannelname", channelId: OTHER_CHANNEL, name: "new-name" },
+      {
+        action: "setchanneltopic",
+        channelId: OTHER_CHANNEL,
+        topic: "New topic",
+      },
+    ],
+  });
+  s.ctx.member.permissions.remove(PermissionFlagsBits.ManageChannels);
+  await expect(s.execute()).rejects.toThrow("Manage Channels");
+  expect(s.attempt).not.toHaveBeenCalled();
+  s.ctx.member.permissions.add(PermissionFlagsBits.ManageChannels);
+  s.channel.setName.mockImplementation(async () => {
+    s.ctx.member.permissions.remove(PermissionFlagsBits.ManageChannels);
+  });
+  await expect(s.execute()).rejects.toMatchObject({ completed: 2, total: 3 });
+  expect(s.channel.setName).toHaveBeenCalledOnce();
+  expect(s.channel.setTopic).not.toHaveBeenCalled();
+});
+
+test("channel controls preview without changing server settings", async () => {
+  const s = setup({
+    action: "setchannelname",
+    channelId: OTHER_CHANNEL,
+    name: "new-name",
+  });
+  await s.attach(true);
+  await s.collect(s.click());
+  expect(s.channel.setName).not.toHaveBeenCalled();
+  expect(s.loadCommand).not.toHaveBeenCalled();
+});
+
+test("the channel management example renders and survives template export", async () => {
+  const content = parseCommandMarkdown(
+    readFileSync("docs/channel-management-template.cfg", "utf8"),
+  );
+  expect(parseCommandMarkdown(serializeCommandMarkdown(content))).toEqual(content);
+  const s = setup();
+  s.ctx.command = record({ content, responseType: "EMBED" });
+  await expect(new CustomCommandRenderer().render(s.ctx)).resolves.toHaveLength(1);
+  expect(s.channel.setName).not.toHaveBeenCalled();
+  expect(s.channel.setTopic).not.toHaveBeenCalled();
+  expect(s.channel.setParent).not.toHaveBeenCalled();
+});
+
+test("category references in custom aliases are checked on save and prevent sharing", async () => {
+  const categoryId = "623456789012345678";
+  const content = markdownPatch(
+    `@var CATEGORY = ${categoryId}\nHello\n@button [Move](SetChannelCategory("{channel.id}", "{CATEGORY}"))`,
+  ).content;
+  expect(hasServerActionReferences(content)).toBe(true);
+  const s = setup();
+  s.ctx.guild.channels.cache.set(categoryId, {
+    id: categoryId,
+    guildId: s.ctx.guildId,
+    type: ChannelType.GuildCategory,
+  } as never);
+  await expect(
+    validateGuildReferences(s.ctx.guild, [definition({ content })]),
+  ).resolves.toBeUndefined();
+  s.ctx.guild.channels.cache.delete(categoryId);
+  await expect(validateGuildReferences(s.ctx.guild, [definition({ content })])).rejects.toThrow(
+    "Category",
+  );
+  expect(
+    hasServerActionReferences(
+      markdownPatch('Hello\n@button [Move](SetChannelCategory("{channel.id}", "{args.0}"))')
+        .content,
+    ),
+  ).toBe(false);
+});
+
 test("notes default to once per button, explicit repeatability works, and previews never record effects", async () => {
   const s = setup();
   await s.attach();
@@ -828,6 +1030,12 @@ test.each([
   `SetNickname("{args.0}", "Nickname")`,
   `Reply("Hello {user.name}")`,
   `SendMessage("{channel.id}", "Hi")`,
+  `SetChannelName("{channel.id}", "chat")`,
+  `RenameChannel("{channel.id}", "chat")`,
+  `SetChannelTopic("{channel.id}", "Welcome {user.name}")`,
+  `SetSlowmode("{channel.id}", 10)`,
+  `SetChannelCategory("{channel.id}", "${OTHER_CHANNEL}")`,
+  `SetChannelCategory("{channel.id}", null)`,
   `SetRole("${ROLE}", "{args.0}")`,
   `Action({"action":"note","userId":"{args.0}","reason":"Note","repeatable":true,"successMessage":"Saved!"})`,
   `Actions([{"action":"note","userId":"{args.0}","reason":"Note"},{"action":"reply","text":"Done"}])`,
@@ -844,6 +1052,21 @@ test.each([
 });
 
 test.each([
+  { action: "setchannelname", channelId: OTHER_CHANNEL, name: "" },
+  { action: "setchannelname", channelId: OTHER_CHANNEL, name: "x".repeat(101) },
+  { action: "setchannelname", channelId: "invalid", name: "chat" },
+  {
+    action: "setchanneltopic",
+    channelId: OTHER_CHANNEL,
+    topic: "x".repeat(1025),
+  },
+  { action: "setchanneltopic", channelId: OTHER_CHANNEL },
+  { action: "setslowmode", channelId: OTHER_CHANNEL, seconds: -1 },
+  { action: "setslowmode", channelId: OTHER_CHANNEL, seconds: 21601 },
+  { action: "setslowmode", channelId: OTHER_CHANNEL, seconds: 1.5 },
+  { action: "setslowmode", channelId: OTHER_CHANNEL, seconds: "5" },
+  { action: "setchannelcategory", channelId: OTHER_CHANNEL },
+  { action: "setchannelcategory", channelId: OTHER_CHANNEL, categoryId: "bad" },
   { action: "warn", userId: TARGET, reason: "" },
   { action: "warn", userId: TARGET, reason: "Reason", durationMs: 0 },
   { action: "timeout", userId: TARGET, reason: "Reason" },

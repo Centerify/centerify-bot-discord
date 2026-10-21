@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   CustomCommandVariableResolver,
   parseArguments,
@@ -10,6 +10,42 @@ import { CHANNEL, context, definition, record, ROLE, USER } from "./fixtures.js"
 const variables = new CustomCommandVariableResolver();
 const validator = new CustomCommandValidator(variables);
 const renderer = new CustomCommandRenderer(variables, validator);
+
+test("one render coalesces repeated async variables across fields and controls without leaking into later runs", async () => {
+  const registry = new CustomCommandVariableResolver();
+  const resolve = vi.fn(async (c) => c.userId);
+  registry.register({ key: "custom.value", resolve });
+  const content = [
+    {
+      type: "EMBED" as const,
+      variables: { VALUE: "{custom.value}" },
+      embed: {
+        title: "{VALUE}",
+        description: "{VALUE} {custom.value}",
+        fields: [{ name: "{VALUE}", value: "{VALUE}" }],
+      },
+      buttons: [{ label: "{VALUE}", action: "reply" as const, text: "{VALUE}" }],
+      selects: [
+        {
+          placeholder: "{VALUE}",
+          options: [{ label: "{VALUE}", action: "reply" as const, text: "{VALUE}" }],
+        },
+      ],
+    },
+  ];
+  const c = context({ command: record({ content, responseType: "EMBED" }) });
+  const optimized = new CustomCommandRenderer(registry);
+  const first = await optimized.render(c);
+  expect(resolve).toHaveBeenCalledOnce();
+  expect(JSON.stringify(first)).toContain(USER);
+  await optimized.render({ ...c, userId: "423456789012345678" });
+  expect(resolve).toHaveBeenCalledTimes(2);
+  const session = registry.createSession(c);
+  await expect(
+    Promise.all([session("{VALUE}"), session("{custom.value}"), session("{VALUE}")]),
+  ).resolves.toEqual([USER, USER, USER]);
+  expect(resolve).toHaveBeenCalledTimes(3);
+});
 
 describe("controlled variable registry", () => {
   test("user, guild, channel, command, date, time and arguments resolve deterministically", async () => {

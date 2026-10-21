@@ -42,3 +42,11 @@ test("disabled and cooldown claims explain why no XP was earned", async () => {
     expect(request.editReply.mock.calls[0][0].content).toContain(expected);
   }
 });
+
+test("daily completes the precondition's private acknowledgement without deferring again", async () => {
+  const request = { ...interaction(), deferred: true };
+  mocks.earn.mockResolvedValue({ status: "awarded", amount: 250 });
+  await command.chatInputRun(request as never);
+  expect(request.deferReply).not.toHaveBeenCalled();
+  expect(request.editReply).toHaveBeenCalledWith({ content: "You earned 250 daily XP!" });
+});

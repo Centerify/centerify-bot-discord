@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import {
   Colors,
@@ -27,7 +28,7 @@ export class WarningsCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
         flags: MessageFlags.Ephemeral,
       });
@@ -35,14 +36,14 @@ export class WarningsCommand extends Command {
     }
 
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: missingPermissionMessage("ModerateMembers"),
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
 
     const user = interaction.options.getUser("user", true);
     try {

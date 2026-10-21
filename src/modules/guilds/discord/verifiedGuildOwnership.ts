@@ -4,7 +4,7 @@ import type {
   ContextMenuCommandInteraction,
   Message,
 } from "discord.js";
-import { MessageFlags } from "discord.js";
+import { commandReplyOptions } from "../../../adapters/discord/interactions.js";
 import { logger } from "../../../adapters/logging/runtime.js";
 import {
   guildOwnershipService,
@@ -21,23 +21,10 @@ export class VerifiedGuildOwnershipPrecondition extends Precondition {
     const commandName = command?.name ?? interaction.commandName;
     if (commandName === "verify" || commandName === "unverify") return this.ok();
     // Ownership checks make REST and database requests before the command runs.
-    if (
-      [
-        "settings",
-        "setup",
-        "custom",
-        "channel",
-        "role",
-        "serverconfig",
-        "ticket",
-        "bticket",
-      ].includes(commandName) &&
-      !interaction.deferred &&
-      !interaction.replied
-    ) {
+    if (!interaction.deferred && !interaction.replied) {
       const acknowledgementStartedAt = Date.now();
       try {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        await interaction.deferReply(commandReplyOptions(interaction));
       } catch (error) {
         const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
         if (code !== 10062 && code !== 40060) throw error;

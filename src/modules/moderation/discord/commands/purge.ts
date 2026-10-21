@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { InteractionContextType, MessageFlags, PermissionFlagsBits } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -28,14 +29,14 @@ export class PurgeCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild() || !interaction.channel?.isTextBased()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used in a server text channel.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ManageMessages)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: missingPermissionMessage("ManageMessages"),
         flags: MessageFlags.Ephemeral,
       });
@@ -45,17 +46,17 @@ export class PurgeCommand extends Command {
       PermissionFlagsBits.ManageMessages,
     ]);
     if (botValidation) {
-      await interaction.reply({ content: botValidation, flags: MessageFlags.Ephemeral });
+      await replyToCommand(interaction, { content: botValidation, flags: MessageFlags.Ephemeral });
       return;
     }
     if (!("bulkDelete" in interaction.channel)) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "I cannot bulk delete messages in this channel.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     const amount = interaction.options.getInteger("amount", true);
     try {
       const deleted = await interaction.channel.bulkDelete(amount, true);

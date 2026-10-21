@@ -9,7 +9,7 @@ export class CustomCommandCache<T> {
   public constructor(
     private readonly ttlMs: number = L.cacheTtlMs,
     private readonly maxEntries: number = L.cacheGuilds,
-    private readonly now: () => number = Date.now,
+    private readonly now: () => number = () => performance.now(),
   ) {}
   public invalidate(guildId: string): void {
     this.entries.delete(guildId);
@@ -24,7 +24,12 @@ export class CustomCommandCache<T> {
     const now = this.now();
     const hit = this.entries.get(guildId);
     if (hit && hit.expiresAt > now) return hit.promise;
-    for (const [id, entry] of this.entries) if (entry.expiresAt <= now) this.entries.delete(id);
+    // A fixed TTL and monotonic clock keep expiry in insertion order. Stop at
+    // the first live entry instead of scanning every guild on each cache miss.
+    for (const [id, entry] of this.entries) {
+      if (entry.expiresAt > now) break;
+      this.entries.delete(id);
+    }
     if (this.entries.size >= this.maxEntries)
       this.entries.delete(this.entries.keys().next().value!);
     const entry: Entry<T> = {

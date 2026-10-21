@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../adapters/discord/interactions.js";
 import type { Command } from "@sapphire/framework";
 import {
   MessageFlags,
@@ -38,7 +39,7 @@ export async function runWarn(
   warnMember: Pick<WarnMember, keyof WarnMember>,
 ) {
   if (!interaction.inCachedGuild()) {
-    await interaction.reply({
+    await replyToCommand(interaction, {
       content: "This command can only be used inside a server.",
       flags: MessageFlags.Ephemeral,
     });
@@ -46,7 +47,7 @@ export async function runWarn(
   }
 
   if (!hasModeratorPermission(interaction.member, PermissionFlagsBits.ModerateMembers)) {
-    await interaction.reply({
+    await replyToCommand(interaction, {
       content: missingPermissionMessage("ModerateMembers"),
       flags: MessageFlags.Ephemeral,
     });
@@ -57,14 +58,14 @@ export async function runWarn(
   const permanent = durationInput?.trim().toLowerCase() === "permanent";
   let durationMs = durationInput && !permanent ? parseDuration(durationInput) : null;
   if (durationInput && !permanent && (!durationMs || durationMs > maxDiscordTimeoutMs)) {
-    await interaction.reply({
+    await replyToCommand(interaction, {
       content: "Use a duration from 1m through 28d, like `10m`, `1h`, or `7d`, or permanent.",
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
   const reason = interaction.options.getString("reason", true).trim();
   if (!reason) {
     await interaction.editReply({ content: "The reason cannot be empty." });

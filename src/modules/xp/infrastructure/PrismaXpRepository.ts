@@ -11,31 +11,29 @@ export class PrismaXpRepository implements XpRepository {
     amount: number,
     cooldownSeconds: number,
   ) {
-    return this.database.transaction(async (tx) => {
-      const rows = await tx.query(
-        this.database.raw.sql`
-        INSERT INTO member_xp ("guildId", "userId", xp, "lastAwardedAt", "lastReactionAwardedAt", "lastDailyAwardedAt")
-        VALUES (${guildId}, ${userId}, ${amount},
-          CASE WHEN ${method} = 'messages' THEN now() ELSE '1970-01-01'::timestamptz END,
-          CASE WHEN ${method} = 'reactions' THEN now() ELSE NULL END,
-          CASE WHEN ${method} = 'daily' THEN now() ELSE NULL END)
-        ON CONFLICT ("guildId", "userId") DO UPDATE
-        SET xp = member_xp.xp + ${amount},
-          "lastAwardedAt" = CASE WHEN ${method} = 'messages' THEN now() ELSE member_xp."lastAwardedAt" END,
-          "lastReactionAwardedAt" = CASE WHEN ${method} = 'reactions' THEN now() ELSE member_xp."lastReactionAwardedAt" END,
-          "lastDailyAwardedAt" = CASE WHEN ${method} = 'daily' THEN now() ELSE member_xp."lastDailyAwardedAt" END
-        WHERE COALESCE(CASE ${method}
-          WHEN 'messages' THEN member_xp."lastAwardedAt"
-          WHEN 'reactions' THEN member_xp."lastReactionAwardedAt"
-          WHEN 'daily' THEN member_xp."lastDailyAwardedAt"
-        END, '1970-01-01'::timestamptz) <= now() - (${cooldownSeconds} * interval '1 second')
-        RETURNING xp
-      `
-          .returnsRow({ xp: "pg/int4@1" })
-          .build(),
-      );
-      return rows.length > 0;
-    });
+    // The conditional upsert is atomic on its own; avoid BEGIN/COMMIT per event.
+    const plan = this.database.raw.sql`
+      INSERT INTO member_xp ("guildId", "userId", xp, "lastAwardedAt", "lastReactionAwardedAt", "lastDailyAwardedAt")
+      VALUES (${guildId}, ${userId}, ${amount},
+        CASE WHEN ${method} = 'messages' THEN now() ELSE '1970-01-01'::timestamptz END,
+        CASE WHEN ${method} = 'reactions' THEN now() ELSE NULL END,
+        CASE WHEN ${method} = 'daily' THEN now() ELSE NULL END)
+      ON CONFLICT ("guildId", "userId") DO UPDATE
+      SET xp = member_xp.xp + ${amount},
+        "lastAwardedAt" = CASE WHEN ${method} = 'messages' THEN now() ELSE member_xp."lastAwardedAt" END,
+        "lastReactionAwardedAt" = CASE WHEN ${method} = 'reactions' THEN now() ELSE member_xp."lastReactionAwardedAt" END,
+        "lastDailyAwardedAt" = CASE WHEN ${method} = 'daily' THEN now() ELSE member_xp."lastDailyAwardedAt" END
+      WHERE COALESCE(CASE ${method}
+        WHEN 'messages' THEN member_xp."lastAwardedAt"
+        WHEN 'reactions' THEN member_xp."lastReactionAwardedAt"
+        WHEN 'daily' THEN member_xp."lastDailyAwardedAt"
+      END, '1970-01-01'::timestamptz) <= now() - (${cooldownSeconds} * interval '1 second')
+      RETURNING xp
+    `
+      .returnsRow({ xp: "pg/int4@1" })
+      .build();
+    const rows = await this.database.runtime().query(plan);
+    return rows.length > 0;
   }
   async sharingConfigurations() {
     return this.database.orm.public.GuildConfig.where({ xpEnabled: true }).all();

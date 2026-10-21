@@ -95,7 +95,13 @@ func checkedPath(root, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return inside(root, real)
+	// Compare canonical paths on both sides. Temp directories may use an alias
+	// (/var on macOS or an 8.3 name on Windows) even for a regular package.
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", err
+	}
+	return inside(realRoot, real)
 }
 func validManifest(m Manifest) error {
 	if !idPattern.MatchString(m.ID) || !portablePath(m.ID) || !versionPattern.MatchString(m.Version) || m.APIVersion != 1 {

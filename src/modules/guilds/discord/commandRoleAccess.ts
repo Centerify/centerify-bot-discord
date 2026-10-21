@@ -7,6 +7,7 @@ import {
 import { commandRoleAccess, commandRoleDenial, PROTECTED_ACCESS_COMMANDS } from "../index.js";
 import { guildConfigService } from "./config.js";
 import { logger } from "../../../adapters/logging/runtime.js";
+import { replyToCommand } from "../../../adapters/discord/interactions.js";
 
 /** Additional role restrictions; the command still checks its Discord permissions. */
 export class CommandRoleAccessPrecondition extends Precondition {
@@ -48,8 +49,7 @@ export class CommandRoleAccessPrecondition extends Precondition {
       flags: MessageFlags.Ephemeral,
       allowedMentions: { parse: [] },
     };
-    if (interaction.deferred || interaction.replied) await interaction.followUp(reply);
-    else await interaction.reply(reply);
+    await replyToCommand(interaction, reply);
     return this.error({ identifier: "CommandRoleAccessDenied", message: denial });
   }
 }

@@ -11,8 +11,18 @@ export interface EmbedTemplate {
   timestamp?: boolean | string;
   footer?: { text: string; icon_url?: string; proxy_icon_url?: string };
   image?: { url: string; proxy_url?: string; height?: number; width?: number };
-  thumbnail?: { url: string; proxy_url?: string; height?: number; width?: number };
-  author?: { name: string; url?: string; icon_url?: string; proxy_icon_url?: string };
+  thumbnail?: {
+    url: string;
+    proxy_url?: string;
+    height?: number;
+    width?: number;
+  };
+  author?: {
+    name: string;
+    url?: string;
+    icon_url?: string;
+    proxy_icon_url?: string;
+  };
   fields?: { name: string; value: string; inline?: boolean }[];
 }
 export interface LinkButtonTemplate {
@@ -32,19 +42,43 @@ export type RoleAction = {
   roleId: string;
   userId?: string;
 } & EffectOptions;
+export type ChannelAction = (
+  | { action: "setchannelname"; channelId: string; name: string }
+  | { action: "setchanneltopic"; channelId: string; topic: string }
+  | { action: "setslowmode"; channelId: string; seconds: number }
+  | {
+      action: "setchannelcategory";
+      channelId: string;
+      categoryId: string | null;
+    }
+) &
+  EffectOptions;
 export type EffectAction = (
   | RoleAction
+  | ChannelAction
   | { action: "warn"; userId: string; reason: string; durationMs?: number }
   | { action: "unwarn"; userId: string; reason: string; caseNumber?: number }
-  | { action: "note" | "kick" | "unban" | "removetimeout"; userId: string; reason: string }
+  | {
+      action: "note" | "kick" | "unban" | "removetimeout";
+      userId: string;
+      reason: string;
+    }
   | { action: "timeout"; userId: string; reason: string; durationMs: number }
-  | { action: "ban"; userId: string; reason: string; deleteMessageSeconds?: number }
+  | {
+      action: "ban";
+      userId: string;
+      reason: string;
+      deleteMessageSeconds?: number;
+    }
   | { action: "setnickname"; userId: string; nickname: string }
   | { action: "reply"; text: string }
   | { action: "sendmessage"; text: string; channelId?: string }
 ) &
   EffectOptions;
-export type SequenceAction = { action: "sequence"; actions: EffectAction[] } & EffectOptions;
+export type SequenceAction = {
+  action: "sequence";
+  actions: EffectAction[];
+} & EffectOptions;
 export type ComponentAction = NavigationAction | EffectAction | SequenceAction;
 export type ActionButtonTemplate = ComponentAction & {
   label: string;

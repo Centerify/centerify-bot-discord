@@ -9,7 +9,10 @@ import {
 import type { EmbedTemplate, ResponseTemplate } from "../domain/types.js";
 import type { CustomCommandExecutionContext } from "../discord/types.js";
 import { CustomCommandValidator } from "../domain/CustomCommandValidator.js";
-import { CustomCommandVariableResolver } from "./CustomCommandVariableResolver.js";
+import {
+  CustomCommandVariableResolver,
+  type TemplateRender,
+} from "./CustomCommandVariableResolver.js";
 import { renderComponentAction } from "./actionTemplates.js";
 
 export interface CustomCommandResponseHandler {
@@ -17,6 +20,7 @@ export interface CustomCommandResponseHandler {
   render(
     template: ResponseTemplate,
     context: CustomCommandExecutionContext,
+    render: TemplateRender,
   ): Promise<MessageCreateOptions>;
 }
 export class CustomCommandRenderer {
@@ -27,30 +31,30 @@ export class CustomCommandRenderer {
   ) {
     this.register({
       type: "TEXT",
-      render: async (template, context) => {
+      render: async (template, context, render) => {
         if (template.type !== "TEXT") throw new Error("Unexpected response strategy.");
-        const content = await this.interpolate(template.text, context);
+        const content = await this.interpolate(template.text, render);
         this.validator.responses([{ type: "TEXT", text: content }], false);
         return { content };
       },
     });
     this.register({
       type: "EMBED",
-      render: async (template, context) => {
+      render: async (template, context, render) => {
         if (template.type !== "EMBED") throw new Error("Unexpected response strategy.");
         const embed: EmbedTemplate = structuredClone(template.embed);
-        if (embed.title) embed.title = await this.interpolate(embed.title, context);
+        if (embed.title) embed.title = await this.interpolate(embed.title, render);
         if (embed.description)
-          embed.description = await this.interpolate(embed.description, context);
-        if (embed.author) embed.author.name = await this.interpolate(embed.author.name, context);
-        if (embed.footer) embed.footer.text = await this.interpolate(embed.footer.text, context);
+          embed.description = await this.interpolate(embed.description, render);
+        if (embed.author) embed.author.name = await this.interpolate(embed.author.name, render);
+        if (embed.footer) embed.footer.text = await this.interpolate(embed.footer.text, render);
         if (embed.fields)
           for (const field of embed.fields) {
-            field.name = await this.interpolate(field.name, context);
-            field.value = await this.interpolate(field.value, context);
+            field.name = await this.interpolate(field.name, render);
+            field.value = await this.interpolate(field.value, render);
           }
         // Resolve approved complete URL placeholders; missing optional images are omitted.
-        const resolveUrl = async (value: string) => this.variables.render(value, context);
+        const resolveUrl = render;
         if (embed.url) {
           embed.url = await resolveUrl(embed.url);
           if (!embed.url) delete embed.url;
@@ -84,14 +88,8 @@ export class CustomCommandRenderer {
     if (this.handlers.has(handler.type)) throw new Error("Duplicate response handler.");
     this.handlers.set(handler.type, handler);
   }
-  private async interpolate(
-    template: string,
-    context: CustomCommandExecutionContext,
-  ): Promise<string> {
-    return (await this.variables.render(template, context)).replace(
-      /@(everyone|here)/gi,
-      "@\u200b$1",
-    );
+  private async interpolate(template: string, render: TemplateRender): Promise<string> {
+    return (await render(template)).replace(/@(everyone|here)/gi, "@\u200b$1");
   }
   public async render(
     context: CustomCommandExecutionContext,
@@ -99,6 +97,7 @@ export class CustomCommandRenderer {
   ): Promise<MessageCreateOptions[]> {
     // Render and check every message before sending the first one.
     const responses: MessageCreateOptions[] = [];
+    const render = this.variables.createSession(context);
     for (const [responseIndex, template] of this.validator
       .responses(context.command.content)
       .entries()) {
@@ -110,9 +109,9 @@ export class CustomCommandRenderer {
           (template.buttons ?? []).map(async (button) => ({
             ...button,
             ...("action" in button
-              ? await renderComponentAction(button, context, this.variables)
+              ? await renderComponentAction(button, context, this.variables, render)
               : {}),
-            label: await this.interpolate(button.label, context),
+            label: await this.interpolate(button.label, render),
           })),
         ),
         false,
@@ -120,16 +119,16 @@ export class CustomCommandRenderer {
       const selects = this.validator.selects(
         await Promise.all(
           (template.selects ?? []).map(async (select) => ({
-            placeholder: await this.interpolate(select.placeholder, context),
+            placeholder: await this.interpolate(select.placeholder, render),
             options: await Promise.all(
               select.options.map(async (option) => ({
                 ...option,
-                ...(await renderComponentAction(option, context, this.variables)),
-                label: await this.interpolate(option.label, context),
+                ...(await renderComponentAction(option, context, this.variables, render)),
+                label: await this.interpolate(option.label, render),
                 ...(option.description === undefined
                   ? {}
                   : {
-                      description: await this.interpolate(option.description, context),
+                      description: await this.interpolate(option.description, render),
                     }),
               })),
             ),
@@ -138,7 +137,7 @@ export class CustomCommandRenderer {
         false,
       );
       responses.push({
-        ...(await handler.render(template, context)),
+        ...(await handler.render(template, context, render)),
         ...(buttons.length || selects.length
           ? {
               components: [

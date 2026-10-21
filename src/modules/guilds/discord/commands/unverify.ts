@@ -1,3 +1,4 @@
+import { deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { InteractionContextType, MessageFlags } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -14,7 +15,7 @@ export class UnverifyCommand extends Command {
   }
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferCommandReply(interaction, { flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
       await interaction.editReply("Ownership verification can only be removed inside a server.");
       return;

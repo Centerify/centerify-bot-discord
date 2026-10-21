@@ -7,6 +7,7 @@ import {
 } from "@sapphire/framework";
 import { parseEnvironment, type EnvironmentConfiguration } from "./config.js";
 import { gatewayOptions } from "../adapters/discord/clientOptions.js";
+import { createInteractionTransport } from "../adapters/discord/interactionTransport.js";
 import { installDiscordModules } from "../adapters/discord/modules.js";
 import { createApplication } from "./application.js";
 import { db } from "../adapters/prisma/client.js";
@@ -25,8 +26,10 @@ export async function startBot(config: EnvironmentConfiguration = parseEnvironme
   );
   const pluginManager = defaultPluginManager(config.pluginStateDirectory);
   const installedPlugins = await loadInstalledPlugins(pluginManager);
+  const transport = createInteractionTransport(logger);
   const client = new SapphireClient({
     ...gatewayOptions,
+    rest: { makeRequest: transport.makeRequest },
     baseUserDirectory: null,
     loadMessageCommandListeners: true,
     logger: { level: LogLevel.Info },
@@ -45,6 +48,7 @@ export async function startBot(config: EnvironmentConfiguration = parseEnvironme
       const errors: unknown[] = [];
       for (const close of [
         () => client.destroy(),
+        () => transport.stop(),
         () => removeAdapters?.(),
         () => withApplication(application, () => application.stop()),
         () => db.close(),
@@ -65,6 +69,7 @@ export async function startBot(config: EnvironmentConfiguration = parseEnvironme
       application,
       config.customization.commands,
     );
+    await transport.start();
     let onReady: (ready: SapphireClient<true>) => void;
     const identityReady = new Promise<void>((resolve, reject) => {
       onReady = (ready) => {

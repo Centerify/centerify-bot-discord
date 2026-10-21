@@ -28,6 +28,7 @@ const message = {
   author: { id: "member-a", bot: false },
   webhookId: null,
   system: false,
+  content: "!hello",
 };
 
 beforeEach(() => {
@@ -61,6 +62,19 @@ test("custom command delivery does not wait for XP storage", async () => {
     await running;
   }
 });
+
+test.each(["hello", "", undefined])(
+  "ordinary messages only check ownership for XP (%s)",
+  async (content) => {
+    await dispatchDiscordEvent(currentApplication(), "messageCreate", {
+      ...message,
+      content,
+    } as unknown as Message);
+    expect(mocks.verified).toHaveBeenCalledOnce();
+    expect(mocks.award).toHaveBeenCalledWith("guild-a", "member-a");
+    expect(mocks.custom).not.toHaveBeenCalled();
+  },
+);
 
 test.each([
   { ...message, guild: null },

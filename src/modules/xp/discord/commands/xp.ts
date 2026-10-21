@@ -1,3 +1,4 @@
+import { replyToCommand, deferCommandReply } from "../../../../adapters/discord/interactions.js";
 import { Command } from "@sapphire/framework";
 import { Colors, EmbedBuilder, InteractionContextType, MessageFlags } from "discord.js";
 import { logger } from "../../../../adapters/logging/runtime.js";
@@ -30,14 +31,14 @@ export class XpCommand extends Command {
 
   public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) {
-      await interaction.reply({
+      await replyToCommand(interaction, {
         content: "This command can only be used inside a server.",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     const daily = interaction.options.getSubcommand() === "daily";
-    await interaction.deferReply(daily ? { flags: MessageFlags.Ephemeral } : {});
+    await deferCommandReply(interaction, daily ? { flags: MessageFlags.Ephemeral } : {});
     try {
       if (daily) {
         const result = await xpService.earn(interaction.guildId, interaction.user.id, "daily");

@@ -28,6 +28,7 @@ function fixture(roles: string[] = []) {
     deferred: false,
     replied: false,
     reply: vi.fn(),
+    editReply: vi.fn(),
     followUp: vi.fn(),
   };
 }
@@ -58,14 +59,15 @@ test("role restrictions use fresh membership and reject missing roles before com
     ).isOk(),
   ).toBe(true);
 });
-test("access check failures fail closed and acknowledged interactions use followUp", async () => {
+test("access check failures fail closed and complete the deferred reply", async () => {
   mocks.load.mockRejectedValue(new Error("offline"));
   const f = { ...fixture(), deferred: true };
   expect(
     (await precondition.chatInputRun(f as unknown as ChatInputCommandInteraction)).isErr(),
   ).toBe(true);
   expect(f.reply).not.toHaveBeenCalled();
-  expect(f.followUp).toHaveBeenCalledOnce();
+  expect(f.editReply).toHaveBeenCalledOnce();
+  expect(f.followUp).not.toHaveBeenCalled();
 });
 
 test("renamed commands and aliases retain role restrictions on their canonical command", async () => {
