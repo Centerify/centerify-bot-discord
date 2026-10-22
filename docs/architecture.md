@@ -1,5 +1,7 @@
 # Centerify architecture
 
+[Documentation](README.md) · [Creating a module](creating-a-module.md) · [Deployment](deployment.md)
+
 Centerify is a Core-first modular monolith. One process hosts independently composed modules. Core supplies lifecycle, typed service registration, module configuration and application events. Features own their policies, storage contracts and Discord adapters.
 
 ## Assessment and migration
@@ -125,3 +127,12 @@ installation check requiring a Discord token. Module composition can be verified
 without logging the bot in or publishing commands.
 
 See [Creating a module](creating-a-module.md) for a complete minimal example.
+
+# Web boundary
+
+The optional [dashboard](dashboard.md) is a separate Next.js process. Its authenticated
+backend calls a private, signed bridge in the existing gateway process, preserving
+the module/service container and current Discord permissions. Shared validation lives
+under `src/dashboard/`; persisted guild settings keep their original source of truth.
+No plugin is registered by default. See [dashboard security](dashboard-security.md)
+and [extension contracts](dashboard-plugins.md).

@@ -2,6 +2,7 @@ import { GlobalModeration } from "./application/GlobalModeration.js";
 import { guildConfigToken } from "../guilds/index.js";
 import { silentLogger, type Logger } from "../../core/index.js";
 import { serviceToken, type CenterifyModule } from "../../core/index.js";
+import { eventsToken } from "../../core/index.js";
 import { WarnMember } from "./application/WarnMember.js";
 import { ModerationCases, type ModerationCaseRepository } from "./application/ModerationCases.js";
 import type { ReportRepository } from "./application/Reports.js";
@@ -36,7 +37,13 @@ export function createModerationModule(options: {
   return {
     metadata: { id: "moderation", name: "Moderation", version: "1.0.0", dependsOn: ["guilds"] },
     register(context) {
-      const cases = new ModerationCases(options.repository);
+      const cases = new ModerationCases(options.repository, undefined, (guildId, actorId) => {
+        const event = { type: "moderation.changed", guildId, actorId };
+        void context
+          .resolve(eventsToken)
+          .publish(event)
+          .catch(() => {});
+      });
       context.provide(moderationCasesToken, cases);
       context.provide(
         globalModerationToken,

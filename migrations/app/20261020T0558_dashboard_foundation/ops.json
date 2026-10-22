@@ -1,0 +1,437 @@
+[
+  {
+    "id": "table.dashboard_account",
+    "label": "Create table \"dashboard_account\"",
+    "summary": "Creates table \"dashboard_account\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dashboard_account"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dashboard_account\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_account\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dashboard_account\"",
+        "sql": "CREATE TABLE \"public\".\"dashboard_account\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"theme\" text DEFAULT 'dark' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dashboard_account\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_account\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.dashboard_event",
+    "label": "Create table \"dashboard_event\"",
+    "summary": "Creates table \"dashboard_event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dashboard_event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dashboard_event\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dashboard_event\"",
+        "sql": "CREATE TABLE \"public\".\"dashboard_event\" (\n  \"actorId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"data\" jsonb,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"summary\" text NOT NULL,\n  \"type\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dashboard_event\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.dashboard_operation",
+    "label": "Create table \"dashboard_operation\"",
+    "summary": "Creates table \"dashboard_operation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dashboard_operation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dashboard_operation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_operation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dashboard_operation\"",
+        "sql": "CREATE TABLE \"public\".\"dashboard_operation\" (\n  \"actorId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"fingerprint\" text NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"key\" text NOT NULL,\n  \"result\" jsonb,\n  \"status\" text DEFAULT 'pending' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"key\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dashboard_operation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_operation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.dashboard_plugin",
+    "label": "Create table \"dashboard_plugin\"",
+    "summary": "Creates table \"dashboard_plugin\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dashboard_plugin"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dashboard_plugin\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_plugin\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dashboard_plugin\"",
+        "sql": "CREATE TABLE \"public\".\"dashboard_plugin\" (\n  \"config\" jsonb NOT NULL,\n  \"enabled\" bool DEFAULT false NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"pluginId\" text NOT NULL,\n  \"revision\" int4 DEFAULT 1 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dashboard_plugin\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_plugin\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.dashboard_workflow",
+    "label": "Create table \"dashboard_workflow\"",
+    "summary": "Creates table \"dashboard_workflow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dashboard_workflow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dashboard_workflow\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_workflow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dashboard_workflow\"",
+        "sql": "CREATE TABLE \"public\".\"dashboard_workflow\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"draft\" jsonb NOT NULL,\n  \"enabled\" bool DEFAULT false NOT NULL,\n  \"guildId\" text NOT NULL,\n  \"history\" jsonb NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  \"published\" jsonb,\n  \"revision\" int4 DEFAULT 1 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"updatedBy\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dashboard_workflow\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_workflow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.dashboard_plugin.dashboard_plugin_guildId_pluginId_key",
+    "label": "Add unique constraint on \"dashboard_plugin\" (guildId, pluginId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "dashboard_plugin_guildId_pluginId_key",
+        "table": "dashboard_plugin"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dashboard_plugin_guildId_pluginId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dashboard_plugin_guildId_pluginId_key",
+          "public",
+          "\"public\".\"dashboard_plugin\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"dashboard_plugin_guildId_pluginId_key\"",
+        "sql": "ALTER TABLE \"public\".\"dashboard_plugin\" ADD CONSTRAINT \"dashboard_plugin_guildId_pluginId_key\" UNIQUE (\"guildId\", \"pluginId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dashboard_plugin_guildId_pluginId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dashboard_plugin_guildId_pluginId_key",
+          "public",
+          "\"public\".\"dashboard_plugin\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.dashboard_workflow.dashboard_workflow_guildId_name_key",
+    "label": "Add unique constraint on \"dashboard_workflow\" (guildId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "dashboard_workflow_guildId_name_key",
+        "table": "dashboard_workflow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dashboard_workflow_guildId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dashboard_workflow_guildId_name_key",
+          "public",
+          "\"public\".\"dashboard_workflow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"dashboard_workflow_guildId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"dashboard_workflow\" ADD CONSTRAINT \"dashboard_workflow_guildId_name_key\" UNIQUE (\"guildId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dashboard_workflow_guildId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dashboard_workflow_guildId_name_key",
+          "public",
+          "\"public\".\"dashboard_workflow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dashboard_event.dashboard_event_createdAt_idx_9575dbd7",
+    "label": "Create index \"dashboard_event_createdAt_idx_9575dbd7\" on \"dashboard_event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dashboard_event_createdAt_idx_9575dbd7",
+        "table": "dashboard_event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dashboard_event_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dashboard_event_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"dashboard_event_createdAt_idx_9575dbd7\" ON \"public\".\"dashboard_event\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dashboard_event_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dashboard_event.dashboard_event_guildId_id_idx_858685e6",
+    "label": "Create index \"dashboard_event_guildId_id_idx_858685e6\" on \"dashboard_event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dashboard_event_guildId_id_idx_858685e6",
+        "table": "dashboard_event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dashboard_event_guildId_id_idx_858685e6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event_guildId_id_idx_858685e6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dashboard_event_guildId_id_idx_858685e6\"",
+        "sql": "CREATE INDEX \"dashboard_event_guildId_id_idx_858685e6\" ON \"public\".\"dashboard_event\" (\"guildId\", \"id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dashboard_event_guildId_id_idx_858685e6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_event_guildId_id_idx_858685e6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dashboard_operation.dashboard_operation_guildId_createdAt_idx_058cef23",
+    "label": "Create index \"dashboard_operation_guildId_createdAt_idx_058cef23\" on \"dashboard_operation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dashboard_operation_guildId_createdAt_idx_058cef23",
+        "table": "dashboard_operation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dashboard_operation_guildId_createdAt_idx_058cef23\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_operation_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dashboard_operation_guildId_createdAt_idx_058cef23\"",
+        "sql": "CREATE INDEX \"dashboard_operation_guildId_createdAt_idx_058cef23\" ON \"public\".\"dashboard_operation\" (\"guildId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dashboard_operation_guildId_createdAt_idx_058cef23\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_operation_guildId_createdAt_idx_058cef23\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dashboard_workflow.dashboard_workflow_guildId_enabled_idx_6243d9dc",
+    "label": "Create index \"dashboard_workflow_guildId_enabled_idx_6243d9dc\" on \"dashboard_workflow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dashboard_workflow_guildId_enabled_idx_6243d9dc",
+        "table": "dashboard_workflow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dashboard_workflow_guildId_enabled_idx_6243d9dc\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_workflow_guildId_enabled_idx_6243d9dc\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dashboard_workflow_guildId_enabled_idx_6243d9dc\"",
+        "sql": "CREATE INDEX \"dashboard_workflow_guildId_enabled_idx_6243d9dc\" ON \"public\".\"dashboard_workflow\" (\"guildId\", \"enabled\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dashboard_workflow_guildId_enabled_idx_6243d9dc\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dashboard_workflow_guildId_enabled_idx_6243d9dc\""
+        ]
+      }
+    ]
+  }
+]

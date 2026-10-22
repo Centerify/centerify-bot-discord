@@ -16,7 +16,7 @@ import { CustomCommandExecutor } from "./CustomCommandExecutor.js";
 import { CustomCommandSharingService } from "./CustomCommandSharingService.js";
 import { createLegacyRunner, legacyRunnerToken, runCustomEvent } from "./legacyRunner.js";
 import { guildOwnershipService } from "../../guilds/discord/index.js";
-import { loggerToken } from "../../../core/index.js";
+import { loggerToken, eventsToken } from "../../../core/index.js";
 import { onCustomCommandMessage } from "./events.js";
 
 export const discordModule: DiscordModule = {
@@ -30,6 +30,19 @@ export const discordModule: DiscordModule = {
         undefined,
         undefined,
         context.resolve(loggerToken),
+        undefined,
+        (execution) => {
+          const event = {
+            type: "command.executed",
+            guildId: execution.guildId,
+            actorId: execution.userId,
+            name: execution.command.name,
+          };
+          void context
+            .resolve(eventsToken)
+            .publish(event)
+            .catch(() => {});
+        },
       ),
     );
     context.provide(

@@ -1,5 +1,7 @@
 # Better Ticket
 
+[Documentation](../../docs/README.md) · [Plugin installation](../../docs/plugins.md) · [Built-in tickets](../../docs/management.md#tickets)
+
 A separately packaged Centerify module, installed through the native terminal
 marketplace. Its Discord commands appear after installation, enabling and a
 bot restart. The existing `/ticket` system remains independent.
@@ -12,6 +14,13 @@ bot restart. The existing `/ticket` system remains independent.
    and a private transcript text channel.
 4. Run `/bticket setup profile:support category:Support support_role:Support transcripts:ticket-logs`.
 5. Run `/bticket panel channel:help` to publish a department menu.
+
+For Docker deployments, install with the optional Compose `plugins` service;
+the [container administration guide](../../docs/plugins.md#docker-compose-administration)
+uses the same persistent volumes as the bot. Image builds do not install the
+plugin. Back up `plugin_state` and `plugin_packages` together before upgrades;
+this module's department, ticket and recovery records use plugin file storage,
+separately from the built-in ticket settings in PostgreSQL.
 
 Add departments such as `billing`, `reports` or `applications` with their own
 categories, support roles, transcript destinations and forms. Panels can show
@@ -88,3 +97,13 @@ This package supplies the Discord workflow. It does not include a hosted web
 dashboard, AI replies, billing integrations or a hosted transcript service.
 Design references included the official [Ticket Tool documentation](https://docs.tickettool.xyz/)
 and the documented [Ticket Tool support workflow](https://ticket-tool.app/docs/discord-commands).
+
+# Optional dashboard adapter (1.1.0)
+
+This plugin is **not installed by default**. After explicit installation/update and a
+bot restart, its dashboard adapter adds ticket claims/transfers, priorities, tags,
+private notes, department settings, transcript archival and close/reopen operations
+to the shared inbox. The adapter calls the same Runtime actions, TicketStore transitions
+and recovery used by Discord. It rechecks current staff roles and channel visibility;
+private notes do not enter conversation exports. Older records receive empty tag lists.
+See [dashboard setup](../../docs/dashboard.md) and [plugin contracts](../../docs/dashboard-plugins.md).

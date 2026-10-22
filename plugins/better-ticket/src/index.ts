@@ -9,7 +9,7 @@ export default function betterTicket(sdk: PluginSdk): PluginExport {
       metadata: {
         id: "better-ticket",
         name: "Better Ticket",
-        version: "1.0.0",
+        version: "1.1.0",
         dependsOn: ["guilds"],
       },
       register(context) {
@@ -47,6 +47,15 @@ export default function betterTicket(sdk: PluginSdk): PluginExport {
           },
         },
       ],
+    },
+    tickets: {
+      id: "better-ticket",
+      supports: (guild, actor) => runtime.webSupports(guild, actor),
+      list: (guild, actor) => runtime.webList(guild, actor),
+      read: (guild, actor, channelId) => runtime.webRead(guild, actor, channelId),
+      mutate: (guild, actor, channelId, input) => runtime.webMutate(guild, actor, channelId, input),
+      profiles: (guild, actor) => runtime.webProfiles(guild, actor),
+      configure: (guild, actor, input) => runtime.webConfigure(guild, actor, input),
     },
   };
 }

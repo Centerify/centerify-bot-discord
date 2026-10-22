@@ -27,9 +27,12 @@ export class ModerationCases {
   constructor(
     private readonly repository: ModerationCaseRepository,
     private readonly now: () => Date = () => new Date(),
+    private readonly onChanged: (guildId: string, actorId: string) => void = () => {},
   ) {}
-  createCase(input: CreateModerationCaseInput) {
-    return this.repository.createCase(input);
+  async createCase(input: CreateModerationCaseInput) {
+    const result = await this.repository.createCase(input);
+    this.onChanged(input.guildId, input.moderatorUserId);
+    return result;
   }
   async findByCaseNumber(guildId: string, caseNumber: number) {
     return this.repository.findByCaseNumber(guildId, caseNumber);

@@ -1,5 +1,7 @@
 # Guild custom commands
 
+[Documentation](README.md) · [Server settings](server-settings.md) · [Security](security.md)
+
 The feature is available to every verified Centerify guild. Definitions, aliases,
 permissions, statistics and caches belong to their source `guildId`. Commands run
 in that server by default; administrators can share an existing definition through
@@ -698,6 +700,9 @@ required for the current single-process deployment.
 
 Deploy the reviewed migration before starting the updated bot:
 
+For containers, use the [Compose release procedure](deployment.md#upgrades-and-rollback).
+For a local Node installation:
+
 ```bash
 npx prisma db migrate
 npm run build
@@ -719,7 +724,7 @@ npm run build
 TEST_DATABASE_URL=postgres://... npm run test:database
 ```
 
-There is no lint script in the repository. `test:database` discovers all integration
+`npm run check` includes formatting, lint, typechecking, tests and build. `test:database` discovers all integration
 suites and uses unique synthetic guild IDs with cleanup. Unit tests cover CRUD,
 isolation, conflicts, import/export, variables, limits, mentions, permissions,
 cooldowns, cache races, editor payloads, registration and management authorization.
@@ -734,98 +739,3 @@ only Discord interactions and delivery are simulated. Each workflow starts with
 verified synthetic servers and cleans up its rows independently. The database
 suite and CI include these workflows automatically. This dedicated command
 requires `TEST_DATABASE_URL`; it does not fall back to the deployment URL in `.env`.
-
-## Implementation file manifest
-
-Files added for this feature:
-
-```text
-src/modules/custom-commands/domain/constants.ts
-src/modules/custom-commands/domain/errors.ts
-src/modules/custom-commands/domain/types.ts
-src/modules/custom-commands/application/CustomCommandCache.ts
-src/modules/custom-commands/application/CustomCommandCooldownService.ts
-src/modules/custom-commands/discord/CustomCommandExecutor.ts
-src/modules/custom-commands/discord/CustomCommandGuildValidator.ts
-src/modules/custom-commands/discord/CustomCommandImport.ts
-src/modules/custom-commands/discord/CustomCommandPermissionService.ts
-src/modules/custom-commands/discord/CustomCommandRenderer.ts
-src/modules/custom-commands/application/CustomCommandService.ts
-src/modules/custom-commands/discord/CustomCommandSharingService.ts
-src/modules/custom-commands/domain/CustomCommandValidator.ts
-src/modules/custom-commands/discord/CustomCommandVariableResolver.ts
-src/modules/custom-commands/infrastructure/PrismaCustomCommandRepository.ts
-src/modules/custom-commands/infrastructure/PrismaCommandSharingRepository.ts
-src/modules/custom-commands/discord/editor.ts
-src/modules/custom-commands/discord/editorResponses.ts
-src/modules/custom-commands/discord/editorView.ts
-src/modules/custom-commands/discord/legacyManagement.ts
-src/modules/custom-commands/discord/management.ts
-src/modules/custom-commands/discord/registration.ts
-src/modules/custom-commands/discord/reservedNames.ts
-src/modules/custom-commands/discord/runtime.ts
-src/modules/custom-commands/discord/settings.ts
-src/modules/custom-commands/discord/settingsView.ts
-migrations/app/20261001T0823_add_global_custom_commands/migration.ts
-migrations/app/20261001T0823_add_global_custom_commands/migration.json
-migrations/app/20261001T0823_add_global_custom_commands/ops.json
-migrations/snapshots/df20bae832736ee95d4cf42a28c5a77caed74127d06a719b1aa6a68c4bb623e0/contract.d.ts
-migrations/snapshots/df20bae832736ee95d4cf42a28c5a77caed74127d06a719b1aa6a68c4bb623e0/contract.json
-migrations/app/20261002T0928_add_custom_command_sharing/migration.ts
-migrations/app/20261002T0928_add_custom_command_sharing/migration.json
-migrations/app/20261002T0928_add_custom_command_sharing/ops.json
-migrations/snapshots/8f45d6d1cc46b2fe3738fc8990f468c978137894031c5a92132729734c689b05/contract.d.ts
-migrations/snapshots/8f45d6d1cc46b2fe3738fc8990f468c978137894031c5a92132729734c689b05/contract.json
-tests/services/customCommands/attachment.test.ts
-tests/services/customCommands/cache.test.ts
-tests/services/customCommands/editor.test.ts
-tests/services/customCommands/editorRuntime.test.ts
-tests/services/customCommands/execution.test.ts
-tests/services/customCommands/fixtures.ts
-tests/services/customCommands/management.test.ts
-tests/services/customCommands/rendering.test.ts
-tests/services/customCommands/runtime.test.ts
-tests/services/customCommands/service.test.ts
-tests/services/customCommands/sharing.test.ts
-tests/services/customCommands/settingsRuntime.test.ts
-tests/services/customCommands/settingsView.test.ts
-tests/integration/customCommands.test.ts
-tests/integration/customCommandSharing.e2e.test.ts
-docs/custom-commands.md
-```
-
-Existing workspace files extended by this feature (including pre-existing,
-uncommitted custom-response work):
-
-```text
-README.md
-scripts/test-database.mjs
-src/modules/custom-commands/discord/commands/custom.ts
-src/modules/settings/discord/commands/settings.ts
-src/modules/settings/discord/renderer.ts
-src/modules/custom-commands/discord/events.ts
-src/prisma/contract.prisma
-src/prisma/contract.json
-src/prisma/contract.d.ts
-src/modules/custom-commands/discord/legacyRunner.ts
-src/modules/custom-commands/application/CustomResponseService.ts
-tests/commands/admin/custom.test.ts
-tests/commands/admin/customRuntime.test.ts
-tests/commands/admin/settingsRuntime.test.ts
-tests/services/customResponseRunner.test.ts
-tests/services/customResponseService.test.ts
-tests/integration/database.test.ts
-```
-
-The prior command-registration assertion now expects a public parent, with runtime
-coverage ensuring management still requires Administrator access and only `run`
-permits ordinary members. Existing ownership, moderation and legacy assertions
-remain in place. Database cleanup uses `deleteAll()` to remove every synthetic row.
-No existing test was disabled. No runtime dependencies were added.
-
-Final verification on the completed implementation: **350 tests passed in 63 test
-files**, including all **19 live PostgreSQL integration and end-to-end tests**, on a disposable
-PostgreSQL container. The complete 12-migration chain applied successfully.
-`npm run typecheck`, `npm run build`, Prettier checks for the added domain/tests and
-`git diff --check` passed. The repository has no lint script. The deployment database
-was not modified; apply the migration there before starting the updated bot.

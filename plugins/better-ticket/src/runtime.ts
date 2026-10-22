@@ -8,7 +8,9 @@ import type {
   ModalSubmitInteraction,
   StringSelectMenuInteraction,
   TextChannel,
+  InteractionEditReplyOptions,
 } from "discord.js";
+import type { TicketSummary, TicketDetails } from "../../../src/dashboard/ticketPort.js";
 import type { PluginSdk } from "../../../src/modules/plugins/discord/sdk.js";
 import { TicketStore, TicketError, type Ticket, type Profile } from "./state.js";
 import { collectTranscript } from "./transcript.js";
@@ -19,7 +21,10 @@ type Input =
   | ModalSubmitInteraction
   | StringSelectMenuInteraction;
 interface Context {
-  input: Input;
+  input: {
+    channelId: string | null;
+    editReply(options: InteractionEditReplyOptions): Promise<unknown>;
+  };
   guild: Guild;
   actor: GuildMember;
   bot: GuildMember;
@@ -42,6 +47,186 @@ export class Runtime {
   private sweeping: Promise<void> | undefined;
   constructor(private readonly sdk: PluginSdk) {
     this.store = new TicketStore(sdk);
+  }
+  async webSupports(guild: Guild, actor: GuildMember) {
+    const state = await this.store.read(guild.id);
+    return (
+      actor.id === guild.ownerId ||
+      actor.permissions.has(this.sdk.discord.PermissionFlagsBits.ManageChannels) ||
+      Object.values(state.profiles).some((p) =>
+        p.supportRoleIds.some((id) => actor.roles.cache.has(id)),
+      )
+    );
+  }
+  private async webContext(guild: Guild, actor: GuildMember, channelId: string | null) {
+    if (this.stopped || actor.guild.id !== guild.id || !(await this.sdk.verified(guild)))
+      throw new TicketError("Verified server membership is required");
+    const fresh = await guild.members.fetch({ user: actor.id, force: true }),
+      bot = await guild.members.fetchMe({ force: true });
+    const messages: string[] = [];
+    const ctx: Context = {
+      guild,
+      actor: fresh,
+      bot,
+      input: {
+        channelId,
+        editReply: async (payload) => {
+          if (typeof payload.content === "string") messages.push(payload.content);
+        },
+      },
+    };
+    return { ctx, messages };
+  }
+  private webSummary(ticket: Ticket, name: string): TicketSummary {
+    return {
+      id: ticket.channelId!,
+      name,
+      ownerId: ticket.ownerId,
+      supportRoleId: ticket.profile.supportRoleIds[0]!,
+      state: ticket.status === "OPEN" ? "open" : "closed",
+      status: ticket.status,
+      createdAt: new Date(ticket.createdAt).toISOString(),
+      source: "better-ticket",
+      number: ticket.number,
+      department: ticket.profile.title,
+      priority: ticket.priority,
+      claimedBy: ticket.claimedBy,
+      tags: ticket.tags,
+    };
+  }
+  async webList(guild: Guild, actor: GuildMember) {
+    const { ctx } = await this.webContext(guild, actor, null),
+      state = await this.store.read(guild.id),
+      items: TicketSummary[] = [];
+    for (const ticket of Object.values(state.tickets)) {
+      if (
+        !ticket.channelId ||
+        !this.staff(ctx, ticket.profile) ||
+        ["DELETED", "FAILED"].includes(ticket.status)
+      )
+        continue;
+      const channel = await guild.channels.fetch(ticket.channelId).catch(() => null);
+      if (
+        !channel ||
+        !channel
+          .permissionsFor(ctx.actor)
+          ?.has([
+            this.sdk.discord.PermissionFlagsBits.ViewChannel,
+            this.sdk.discord.PermissionFlagsBits.ReadMessageHistory,
+          ])
+      )
+        continue;
+      items.push(this.webSummary(ticket, channel.name));
+    }
+    return items;
+  }
+  async webRead(
+    guild: Guild,
+    actor: GuildMember,
+    channelId: string,
+  ): Promise<TicketDetails | null> {
+    const state = await this.store.read(guild.id),
+      ticket = Object.values(state.tickets).find((t) => t.channelId === channelId);
+    if (!ticket) return null;
+    const { ctx } = await this.webContext(guild, actor, channelId);
+    this.requireStaff(ctx, ticket);
+    const channel = await this.textChannel(guild, channelId),
+      P = this.sdk.discord.PermissionFlagsBits;
+    if (!channel.permissionsFor(ctx.actor)?.has([P.ViewChannel, P.ReadMessageHistory]))
+      throw new TicketError("You cannot read this ticket conversation");
+    const messages = await channel.messages.fetch({ limit: 100 });
+    return {
+      ...this.webSummary(ticket, channel.name),
+      notes: ticket.notes,
+      transcript: ticket.transcript,
+      truncated: messages.size === 100,
+      messages: [...messages.values()].reverse().map((m) => ({
+        id: m.id,
+        author: m.author.username,
+        authorId: m.author.id,
+        content: m.content,
+        createdAt: m.createdAt.toISOString(),
+        attachments: m.attachments.map((a) => ({ name: a.name, url: a.url })),
+        embeds: m.embeds.map((e) => ({ title: e.title, description: e.description })),
+      })),
+    };
+  }
+  async webMutate(guild: Guild, actor: GuildMember, channelId: string, input: unknown) {
+    const z = this.sdk.z;
+    const data = z
+      .object({
+        action: z.enum([
+          "claim",
+          "unclaim",
+          "priority",
+          "note",
+          "close",
+          "reopen",
+          "transcript",
+          "add",
+          "remove",
+          "rename",
+          "tags",
+        ]),
+        member: z
+          .string()
+          .regex(/^\d{17,20}$/)
+          .optional(),
+        text: z.string().trim().min(1).max(1000).optional(),
+        priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+        tags: z.array(z.string().trim().min(1).max(32)).max(10).optional(),
+      })
+      .strict()
+      .parse(input);
+    const { ctx, messages } = await this.webContext(guild, actor, channelId),
+      ticket = await this.store.channel(guild.id, channelId);
+    this.requireStaff(ctx, ticket);
+    const channel = await this.textChannel(guild, channelId),
+      P = this.sdk.discord.PermissionFlagsBits;
+    if (!channel.permissionsFor(ctx.actor)?.has([P.ViewChannel, P.ReadMessageHistory]))
+      throw new TicketError("You cannot access this ticket");
+    if (["add", "remove"].includes(data.action) && !data.member)
+      throw new TicketError("Choose a participant");
+    if (["note", "rename"].includes(data.action) && !data.text)
+      throw new TicketError("Enter the required text");
+    if (data.action === "tags")
+      await this.store.mutate(
+        guild.id,
+        ticket.number,
+        ["OPEN", "CLOSED"],
+        ctx.actor.id,
+        "tags",
+        (value) => {
+          value.tags = data.tags ?? [];
+        },
+      );
+    else await this.action(ctx, data);
+    return { message: messages.join("\n") || "Ticket metadata updated" };
+  }
+  async webProfiles(guild: Guild, actor: GuildMember) {
+    const { ctx } = await this.webContext(guild, actor, null);
+    this.requireManager(ctx);
+    return Object.values((await this.store.read(guild.id)).profiles);
+  }
+  async webConfigure(guild: Guild, actor: GuildMember, input: unknown) {
+    const data = this.sdk.z
+        .object({ profile: this.sdk.z.unknown(), revision: this.sdk.z.number().int().min(0) })
+        .strict()
+        .parse(input),
+      { ctx } = await this.webContext(guild, actor, null);
+    this.requireManager(ctx);
+    const profile = this.store.parseProfile(data.profile);
+    await this.validateProfile(ctx, profile);
+    return this.store.change(guild.id, (state) => {
+      const old = state.profiles[profile.key];
+      if ((old?.revision ?? 0) !== data.revision)
+        throw new TicketError("Department changed elsewhere. Reload before saving.");
+      if (!old && Object.keys(state.profiles).length >= 10)
+        throw new TicketError("Use at most 10 departments");
+      profile.revision = (old?.revision ?? 0) + 1;
+      state.profiles[profile.key] = profile;
+      return profile;
+    });
   }
   private manager(ctx: Context) {
     return (

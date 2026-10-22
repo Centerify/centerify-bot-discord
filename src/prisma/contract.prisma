@@ -1,5 +1,69 @@
 // use prisma-next
 
+model DashboardAccount {
+  id String @id
+  name String
+  theme String @default("dark")
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+  @@map("dashboard_account")
+}
+
+model DashboardEvent {
+  id Int @id @default(autoincrement())
+  guildId String
+  actorId String?
+  type String
+  summary String
+  data Jsonb?
+  createdAt TimestamptzString @default(now())
+  @@index([guildId, id])
+  @@index([createdAt])
+  @@map("dashboard_event")
+}
+
+model DashboardOperation {
+  key String @id
+  guildId String
+  actorId String
+  fingerprint String
+  status String @default("pending")
+  result Jsonb?
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+  @@index([guildId, createdAt])
+  @@map("dashboard_operation")
+}
+
+model DashboardWorkflow {
+  id Int @id @default(autoincrement())
+  guildId String
+  name String
+  revision Int @default(1)
+  draft Jsonb
+  published Jsonb?
+  history Jsonb
+  enabled Boolean @default(false)
+  updatedBy String
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+  @@unique([guildId, name])
+  @@index([guildId, enabled])
+  @@map("dashboard_workflow")
+}
+
+model DashboardPlugin {
+  id Int @id @default(autoincrement())
+  guildId String
+  pluginId String
+  enabled Boolean @default(false)
+  revision Int @default(1)
+  config Jsonb
+  updatedAt temporal.updatedAtString()
+  @@unique([guildId, pluginId])
+  @@map("dashboard_plugin")
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique

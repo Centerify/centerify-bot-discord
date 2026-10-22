@@ -1,5 +1,7 @@
 # Native plugin marketplace and installer
 
+[Documentation](README.md) · [Better Ticket](../plugins/better-ticket/README.md) · [Deployment](deployment.md)
+
 The installer is a standalone Go executable using the standard library only.
 It has no third-party packages or runtime installation requirement. The bot
 continues to use Node.js. There are no Discord plugin installation commands.
@@ -79,8 +81,8 @@ plugins folder; `--state` selects the registry and data location.
 
 Changes apply after restarting the bot. A fresh checkout has an empty installed
 registry: listings never install themselves. Only installed, enabled plugins
-load at startup. For this task, Better Ticket is explicitly installed through
-the native CLI after packaging.
+load at startup. Better Ticket must be explicitly installed after packaging;
+neither a checkout nor an image build enables it automatically.
 
 Uninstall removes the registry entry. Data and versioned code are retained so
 running work can finish and reinstalling can recover settings. Stop the bot
@@ -139,8 +141,8 @@ go run build.go
 The build cross-compiles all six targets with cgo disabled and debug symbols
 removed, then emits `SHA256SUMS`. No third-party Go modules are fetched. CI is
 configured to run native tests on Windows, macOS and Linux and upload binaries.
-Locally, Windows execution was checked; the other builds still need native CI
-execution before release.
+Check the Native plugin installer workflow for the results of each target before
+publishing a release; a cross-compiled binary alone does not verify native behavior.
 
 Publish the separate plugin source with:
 
@@ -155,3 +157,41 @@ the native install command next, then restart the bot. Increment the manifest
 and module version together before publishing changed package contents.
 
 See [Better Ticket](../plugins/better-ticket/README.md) for support workflows.
+
+## Docker Compose administration
+
+The optional `plugins` service runs the same native installer without requiring
+Go on the host. It has no network access and shares the bot's `plugin_state` and
+`plugin_packages` volumes. The bot mounts installed code read-only. Host installs
+use different state and are not imported automatically.
+
+```sh
+docker compose --env-file .env.compose build plugins
+docker compose --env-file .env.compose stop bot
+docker compose --env-file .env.compose run --rm --no-deps plugins marketplace
+docker compose --env-file .env.compose run --rm --no-deps plugins install better-ticket
+docker compose --env-file .env.compose run --rm --no-deps plugins verify better-ticket
+docker compose --env-file .env.compose start bot
+```
+
+For a vetted local package on a POSIX host:
+
+```sh
+docker compose --env-file .env.compose run --rm --no-deps --volume "$PWD/my-package:/package:ro" plugins install --path /package
+```
+
+On PowerShell, use an absolute Windows source path for `--volume`. Review package
+identity and permissions before installing. Stop the bot for changes, back up
+both volumes, and restart after a successful installation or enablement change.
+The packaged Better Ticket files are copied into the tools image; rebuild it
+after publishing a new version. See [backup and restoration](deployment.md#backup)
+for the persistent-volume recovery procedure.
+
+# Optional web extensions
+
+Plugins are never installed or activated by default. The available catalog includes
+[Community Kit](../plugins/community-kit/README.md) as a separately installed example.
+See [dashboard plugin development](dashboard-plugins.md) for typed manifests, capability
+validation, guild activation, declarative UI and builder nodes. Better Ticket 1.1.0
+adds an optional dashboard ticket adapter; existing installations require an explicit
+operator update and restart before that adapter is loaded.

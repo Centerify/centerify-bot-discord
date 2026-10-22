@@ -51,6 +51,23 @@ export class PrismaGuildConfigRepository implements GuildConfigStore {
     }
   }
 
+  public async updateIfCurrent(
+    guildId: string,
+    data: GuildConfigUpdate,
+    expectedUpdatedAt: string,
+  ) {
+    data = { ...data };
+    if (data.warningRoleSettings !== undefined)
+      data.warningRoleSettings = warningRoleSettings(data.warningRoleSettings);
+    if (data.commandRoleAccess !== undefined)
+      data.commandRoleAccess = commandRoleAccess(data.commandRoleAccess);
+    const result = await this.database.orm.public.GuildConfig.where({
+      guildId,
+      updatedAt: expectedUpdatedAt,
+    }).update(data);
+    return result;
+  }
+
   public async globalModerationGuildIds(feature: "ban" | "warn" | "note") {
     const configs =
       feature === "ban"

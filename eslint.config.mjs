@@ -6,6 +6,13 @@ export default [
   {
     ignores: [
       "node_modules/**",
+      "dashboard/node_modules/**",
+      "dashboard/.next/**",
+      "dashboard/next-env.d.ts",
+      "deploy/sites/scripts/**",
+      "deploy/sites/vendor/**",
+      ".sites-build/**",
+      "sites/**",
       "dist/**",
       ".cache/**",
       ".centerify/**",
@@ -21,11 +28,11 @@ export default [
       "src/prisma/**",
     ],
   },
-  { files: ["**/*.{ts,mjs}"], ...js.configs.recommended },
+  { files: ["**/*.{ts,tsx,mjs}"], ...js.configs.recommended },
   ...tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,mjs}"],
-    languageOptions: { globals: globals.node },
+    files: ["**/*.{ts,tsx,mjs}"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

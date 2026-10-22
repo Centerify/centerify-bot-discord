@@ -33,6 +33,9 @@ test.each([
   { ...valid, SHUTDOWN_TIMEOUT_MS: "NaN" },
   { ...valid, SHUTDOWN_TIMEOUT_MS: "0" },
   { ...valid, SHUTDOWN_TIMEOUT_MS: "120001" },
+  { ...valid, CENTERIFY_HEALTH_PORT: "0" },
+  { ...valid, CENTERIFY_HEALTH_PORT: "65536" },
+  { ...valid, CENTERIFY_HEALTH_PORT: "NaN" },
 ])("invalid configuration fails before acquiring runtime resources: %j", (input) => {
   expect(() => parseEnvironment(input)).toThrow(EnvironmentConfigurationError);
 });

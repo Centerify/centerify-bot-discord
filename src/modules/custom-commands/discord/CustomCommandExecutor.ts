@@ -25,6 +25,7 @@ export class CustomCommandExecutor {
     cooldowns: CustomCommandCooldownStore = new CustomCommandCooldownService(),
     logger: Logger = silentLogger,
     actions = new ComponentActionExecutor(),
+    private readonly onExecuted: (context: CustomCommandExecutionContext) => void = () => {},
   ) {
     this.useCase = new ExecuteCustomCommand(
       repository,
@@ -57,7 +58,9 @@ export class CustomCommandExecutor {
       logger,
     );
   }
-  execute(context: CustomCommandExecutionContext, transport: CustomCommandTransport) {
-    return this.useCase.execute(context, transport);
+  async execute(context: CustomCommandExecutionContext, transport: CustomCommandTransport) {
+    const result = await this.useCase.execute(context, transport);
+    this.onExecuted(context);
+    return result;
   }
 }

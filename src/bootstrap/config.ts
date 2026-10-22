@@ -20,6 +20,7 @@ const environmentSchema = z.object({
       }
     }, "must include a host and database name"),
   CENTERIFY_MODULES: z.string().optional(),
+  CENTERIFY_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).optional(),
   SHUTDOWN_TIMEOUT_MS: z.preprocess(
     (value) => (value === undefined ? 10_000 : value),
     z.coerce.number().int().min(1_000).max(120_000),
@@ -55,6 +56,7 @@ export function parseEnvironment(
     discordToken: result.data.DISCORD_TOKEN,
     databaseUrl: result.data.DATABASE_URL,
     shutdownTimeoutMs: result.data.SHUTDOWN_TIMEOUT_MS,
+    healthPort: result.data.CENTERIFY_HEALTH_PORT,
     modules,
     logging: parseLoggingConfiguration(env, file.logging),
     customization: file,

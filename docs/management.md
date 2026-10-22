@@ -1,5 +1,7 @@
 # Server management and support tickets
 
+[Documentation](README.md) · [Server settings](server-settings.md) · [Better Ticket](../plugins/better-ticket/README.md)
+
 The current server owner must run `/verify` before these commands work.
 Commands use the server's configured command role restrictions from `/settings`
 in addition to their Discord permissions. Responses are private to the caller.
@@ -52,6 +54,9 @@ targets. Auditable changes include the invoking member's ID in Discord's audit r
 ## Tickets
 
 First apply migrations and restart the built bot so it registers the commands:
+
+Use the [Compose release procedure](deployment.md#upgrades-and-rollback) for
+container deployments. The following commands are for a local Node installation:
 
 ```sh
 npx prisma db migrate

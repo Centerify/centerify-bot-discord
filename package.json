@@ -1,7 +1,7 @@
 {
   "name": "centerify",
   "version": "1.0.0",
-  "description": "A project to manage all your server's with one bot",
+  "description": "A modular Discord bot for server management, moderation, tickets, XP, and custom commands.",
   "keywords": [
     "centerify"
   ],
@@ -22,6 +22,10 @@
   },
   "main": "dist/src/index.js",
   "scripts": {
+    "dashboard:dev": "tsx scripts/dashboard.ts dev",
+    "dashboard:build": "tsx scripts/dashboard.ts build",
+    "dashboard:start": "tsx scripts/dashboard.ts start",
+    "dashboard:typecheck": "npm --prefix dashboard run typecheck",
     "build": "node scripts/build.mjs",
     "start": "node --enable-source-maps dist/src/index.js",
     "dev": "tsc-watch --project tsconfig.build.json --onSuccess \"node scripts/prune-build.mjs && node dist/src/index.js\"",

@@ -3,6 +3,7 @@ import { Command, Precondition, type SapphireClient } from "@sapphire/framework"
 import type { Client, ClientEvents } from "discord.js";
 import {
   loggerToken,
+  eventsToken,
   serviceToken,
   type CenterifyModule,
   type ModuleContext,
@@ -155,7 +156,21 @@ export async function installDiscordModules(
             );
             inFlight.add(pending);
             void pending.then(
-              () => inFlight.delete(pending),
+              () => {
+                inFlight.delete(pending);
+                if (interaction.guildId) {
+                  const event = {
+                    type: "command.executed",
+                    guildId: interaction.guildId,
+                    actorId: interaction.user.id,
+                    name,
+                  };
+                  void application
+                    .resolve(eventsToken)
+                    .publish(event)
+                    .catch(() => {});
+                }
+              },
               () => inFlight.delete(pending),
             );
             return pending;
