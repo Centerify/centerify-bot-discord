@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install dashboard dependencies
+        run: npm ci --prefix dashboard
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -56,6 +59,22 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify dashboard types and production build
+        run: npm run dashboard:typecheck && npm run dashboard:build
+        env:
+          CENTERIFY_DASHBOARD_STANDALONE: "true"
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Dashboard HTTP smoke
+        run: |
+          npm --prefix dashboard run start -- --port 3001 &
+          for attempt in $(seq 1 30); do curl -fsS http://localhost:3001/api/health && break; sleep 1; done
+          node scripts/test-dashboard.mjs
+        env:
+          AUTH_URL: http://localhost:3001
+          AUTH_SECRET: local-ci-only-dashboard-session-secret-not-a-real-credential
+          CENTERIFY_DASHBOARD_DEMO: "true"
 
       - name: Apply migrations to the test database
         run: npx prisma db migrate
@@ -86,5 +105,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build runtime image
-        run: docker build --target runtime --tag centerify:test .
+      - name: Build and smoke-test production Compose services
+        run: sh scripts/test-containers.sh

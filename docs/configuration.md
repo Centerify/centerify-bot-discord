@@ -1,7 +1,15 @@
 # Configuration and development
 
+[Documentation](README.md) · [Deployment](deployment.md) · [Server settings](server-settings.md)
+
 Use Node.js 24 LTS, as specified in `.nvmrc` and `package.json`. Install with
 `npm ci` so the lockfile controls the exact dependency tree.
+
+For production containers, start with [Docker Compose](deployment.md#first-installation).
+`.env.example` is for local Node deployments; `.env.compose.example` contains the
+separate variables used by the bundled PostgreSQL stack. Compose constructs
+`DATABASE_URL` and injects credentials; it does not load the host's `.env` into
+the bot. Include `--env-file .env.compose` in Compose commands.
 
 ## First run
 
@@ -19,15 +27,19 @@ The configuration checker validates locally and prints no credentials. It does
 not connect to Discord or PostgreSQL. Startup performs the same checks before
 loading their adapters. Database migrations still require a reachable database.
 
-| Variable              | Default                                  | Meaning                                                        |
-| --------------------- | ---------------------------------------- | -------------------------------------------------------------- |
-| `DISCORD_TOKEN`       | required                                 | Bot token from the Discord Developer Portal                    |
-| `DATABASE_URL`        | required                                 | `postgresql://user:password@host:5432/database`                |
-| `NODE_ENV`            | `development`                            | `development`, `test` or `production`                          |
-| `LOG_LEVEL`           | `info`                                   | `trace`, `debug`, `info`, `warn`, `error`, `fatal` or `silent` |
-| `LOG_FORMAT`          | `json` in production; `pretty` otherwise | Structured logs or readable development logs                   |
-| `SHUTDOWN_TIMEOUT_MS` | `10000`                                  | Cleanup deadline; integer from 1000 through 120000             |
-| `CENTERIFY_MODULES`   | `{}`                                     | Module enablement and module-owned options as JSON             |
+| Variable                     | Default                                  | Meaning                                                        |
+| ---------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `DISCORD_TOKEN`              | required                                 | Bot token from the Discord Developer Portal                    |
+| `DATABASE_URL`               | required                                 | `postgresql://user:password@host:5432/database`                |
+| `NODE_ENV`                   | `development`                            | `development`, `test` or `production`                          |
+| `LOG_LEVEL`                  | `info`                                   | `trace`, `debug`, `info`, `warn`, `error`, `fatal` or `silent` |
+| `LOG_FORMAT`                 | `json` in production; `pretty` otherwise | Structured logs or readable development logs                   |
+| `SHUTDOWN_TIMEOUT_MS`        | `10000`                                  | Cleanup deadline; integer from 1000 through 120000             |
+| `CENTERIFY_MODULES`          | `{}`                                     | Module enablement and module-owned options as JSON             |
+| `CENTERIFY_HEALTH_PORT`      | disabled                                 | Optional readiness listener on loopback; integer 1–65535       |
+| `CENTERIFY_CONFIG`           | `centerify.config.json`                  | JSON configuration path relative to the working directory      |
+| `CENTERIFY_ENV_FILE`         | `.env` unless selected in JSON           | Explicit dotenv file path; must exist when selected            |
+| `CENTERIFY_PLUGIN_STATE_DIR` | `.centerify`                             | Persistent plugin registry and data directory                  |
 
 `pretty` output requires development dependencies (`pino-pretty`). Use JSON with
 the production container or `npm ci --omit=dev`. Shell-provided values take
@@ -122,6 +134,18 @@ The offline checker validates file structure, environment and logging; active
 module dependencies, module-owned options and command availability are also
 checked during startup before login.
 
+Compose mounts the JSON configuration read-only. Omit `envFile` in that file
+unless the selected file is also mounted inside the container. Prefer JSON for
+module selection in Compose: arbitrary host environment variables are not
+forwarded automatically. The stack fixes JSON logging, a 10-second shutdown
+deadline, the plugin-state path, and health port; use a reviewed Compose override
+when changing those runtime controls. If increasing the shutdown deadline, also
+increase `stop_grace_period` so cleanup can finish.
+
+When enabled, `GET /healthz` checks Discord readiness and access to the migrated
+guild configuration table. It listens on `127.0.0.1` only and returns no diagnostic
+details. See [readiness and monitoring](deployment.md#readiness-and-monitoring).
+
 ## Feature selection and customization
 
 Owners still configure each Discord server with `/verify` and `/settings`.
@@ -198,3 +222,10 @@ Package selection follows suitability, maintenance and compatibility. Use native
 Node APIs for URL parsing, streams, filesystem operations and subprocesses.
 Dependency updates are proposed weekly by Dependabot. Review and test them before
 merging, especially major versions and database-toolchain changes.
+
+# Optional dashboard configuration
+
+The root dashboard launcher reuses the existing environment-file selection and
+precedence. OAuth/session/bridge settings are environment secrets, not browser or
+guild settings. Leave the bridge secret unset to keep the dashboard module disabled.
+See the [dashboard environment table](dashboard.md) and [deployment guide](dashboard-deployment.md).

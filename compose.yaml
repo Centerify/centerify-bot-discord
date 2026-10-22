@@ -1,0 +1,139 @@
+name: centerify
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-database-url: &database-url postgresql://centerify:${CENTERIFY_DB_PASSWORD:?Set CENTERIFY_DB_PASSWORD in .env.compose}@postgres:5432/centerify
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: centerify
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.compose}
+      CENTERIFY_DB_PASSWORD: ${CENTERIFY_DB_PASSWORD:?Set CENTERIFY_DB_PASSWORD in .env.compose}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - type: bind
+        source: ./docker/init-database.sh
+        target: /docker-entrypoint-initdb.d/10-centerify.sh
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d centerify"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    shm_size: 128mb
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 60s
+    logging: *logging
+    networks: [database]
+
+  migrate:
+    image: centerify-migration:${CENTERIFY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: migration
+    restart: "no"
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+    init: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,mode=1777
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 128
+    logging: *logging
+    networks: [database]
+
+  bot:
+    image: centerify:${CENTERIFY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    init: true
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in .env.compose}
+      DATABASE_URL: *database-url
+      NODE_ENV: production
+      LOG_FORMAT: json
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SHUTDOWN_TIMEOUT_MS: "10000"
+      CENTERIFY_HEALTH_PORT: "3000"
+      CENTERIFY_PLUGIN_STATE_DIR: /app/.centerify
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    volumes:
+      - plugin_state:/app/.centerify
+      - plugin_packages:/app/plugins/installed:ro
+      - type: bind
+        source: ./centerify.config.json
+        target: /app/centerify.config.json
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 128
+    stop_grace_period: 30s
+    logging: *logging
+    networks: [database, gateway]
+
+  # Optional offline administration; never runs as part of the default stack.
+  plugins:
+    profiles: [tools]
+    image: centerify-plugin-tools:${CENTERIFY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: plugin-tools
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - plugin_state:/app/.centerify
+      - plugin_packages:/app/plugins/installed
+    mem_limit: 256m
+    pids_limit: 64
+    logging: *logging
+
+volumes:
+  postgres_data:
+  plugin_state:
+  plugin_packages:
+
+networks:
+  database:
+    internal: true
+  gateway:

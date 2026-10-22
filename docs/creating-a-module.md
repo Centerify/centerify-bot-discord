@@ -1,5 +1,7 @@
 # Creating a module
 
+[Documentation](README.md) · [Architecture](architecture.md) · [Contributing](../CONTRIBUTING.md)
+
 Start with `src/modules/example/index.ts`. Add application, domain, infrastructure and Discord directories only when the feature needs them. Core does not need to change.
 
 ## A complete business module
@@ -177,3 +179,11 @@ Use `{ enabled: false }` for the module's registry options, or `CENTERIFY_MODULE
 To remove a module package, remove its composition entry and consumers of its public API. Feature-specific settings integrations belong to their feature/adapter layer; Core remains unchanged. Do not delete database migrations when removing a feature.
 
 Run `npm run typecheck`, `npm test` and `npm run build`. Run the database scripts when storage changes. The architecture tests reject private cross-module imports, dependency cycles and framework or persistence imports in business code.
+
+For a separately distributed module, follow [plugin packaging](plugins.md#build-and-publish).
+Validate a package in the same production runtime you deploy: the bot image has
+no TypeScript loader or development dependencies. Use the Compose `plugins`
+service to install trusted JavaScript packages into persistent container volumes.
+Keep package IDs, versions, manifests and catalog digests consistent, and restart
+the bot after installation. Deployment details belong in the
+[operations guide](deployment.md), including migrations for any new stored data.

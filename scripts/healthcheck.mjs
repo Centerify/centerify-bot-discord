@@ -1,0 +1,9 @@
+try {
+  const port = process.env.CENTERIFY_HEALTH_PORT ?? "3000";
+  const response = await fetch(`http://127.0.0.1:${port}/healthz`, {
+    signal: AbortSignal.timeout(4000),
+  });
+  process.exitCode = response.ok ? 0 : 1;
+} catch {
+  process.exitCode = 1;
+}

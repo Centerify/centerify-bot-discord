@@ -15,6 +15,8 @@ import { logger } from "../adapters/logging/pino.js";
 import { defaultPluginManager, loadInstalledPlugins } from "./plugins.js";
 import { applyBotIdentity, configuredPresence } from "../adapters/discord/configuration.js";
 import { Events } from "discord.js";
+import { startHealthServer } from "./health.js";
+import { createDashboardModule } from "../dashboard/module.js";
 
 export async function startBot(config: EnvironmentConfiguration = parseEnvironment()) {
   if (config.customization.startup.enabled === false)
@@ -39,14 +41,21 @@ export async function startBot(config: EnvironmentConfiguration = parseEnvironme
     modules: config.modules,
     bot: config.customization.bot,
     pluginManager,
-    additionalModules: installedPlugins,
+    additionalModules: [
+      ...installedPlugins,
+      ...(process.env.CENTERIFY_DASHBOARD_BRIDGE_SECRET
+        ? [createDashboardModule(client, () => application, config)]
+        : []),
+    ],
   });
   let removeAdapters: (() => Promise<void>) | undefined;
   let stopping: Promise<void> | undefined;
+  let health: Awaited<ReturnType<typeof startHealthServer>> | undefined;
   const stop = () =>
     (stopping ??= (async () => {
       const errors: unknown[] = [];
       for (const close of [
+        () => health?.close(),
         () => client.destroy(),
         () => transport.stop(),
         () => removeAdapters?.(),
@@ -63,6 +72,13 @@ export async function startBot(config: EnvironmentConfiguration = parseEnvironme
     })());
   client.on("error", (error) => logger.error({ err: error }, "Discord client error"));
   try {
+    if (config.healthPort !== undefined) {
+      health = await startHealthServer(config.healthPort, async () => {
+        if (!client.isReady()) return false;
+        await db.orm.public.GuildConfig.first();
+        return client.isReady();
+      });
+    }
     await application.start();
     removeAdapters = await installDiscordModules(
       client,

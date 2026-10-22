@@ -16,6 +16,8 @@ import {
 } from "../modules/guilds/discord/index.js";
 import { logger } from "../adapters/logging/runtime.js";
 import type { PluginFactory } from "../modules/plugins/discord/sdk.js";
+import { dashboardExtensionSchema, dashboardExtensionToken } from "../dashboard/extensions.js";
+import { ticketDashboardToken } from "../dashboard/ticketPort.js";
 
 export async function loadInstalledPlugins(
   manager: LocalPluginRegistry,
@@ -68,10 +70,35 @@ export async function loadInstalledPlugins(
       throw new Error(`Plugin ${entry.manifest.id} metadata does not match its manifest`);
     if (plugin.module.metadata.dependsOn?.some((id) => !entry.manifest.dependencies.includes(id)))
       throw new Error(`Plugin ${entry.manifest.id} has undeclared dependencies`);
+    if (plugin.dashboard) {
+      const dashboard = dashboardExtensionSchema.parse(plugin.dashboard.manifest);
+      if (
+        dashboard.id !== entry.manifest.id ||
+        dashboard.version !== entry.manifest.version ||
+        dashboard.capabilities.some(
+          (capability) => !entry.manifest.permissions.includes(capability),
+        ) ||
+        dashboard.dependencies.some((id) => !entry.manifest.dependencies.includes(id))
+      )
+        throw new Error(
+          `Plugin ${entry.manifest.id} has undeclared dashboard capabilities or mismatched identity`,
+        );
+    }
+    if (
+      plugin.tickets &&
+      (plugin.tickets.id !== entry.manifest.id ||
+        !entry.manifest.permissions.includes("dashboard.tickets"))
+    )
+      throw new Error(`Plugin ${entry.manifest.id} has undeclared dashboard ticket access`);
     result.push(
       withDiscord(
         {
           ...plugin.module,
+          async register(context) {
+            await plugin.module.register(context);
+            if (plugin.dashboard) context.contribute(dashboardExtensionToken, plugin.dashboard);
+            if (plugin.tickets) context.contribute(ticketDashboardToken, plugin.tickets);
+          },
           metadata: {
             ...plugin.module.metadata,
             dependsOn: [...new Set(["plugins", ...entry.manifest.dependencies])],

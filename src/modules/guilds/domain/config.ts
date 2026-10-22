@@ -67,5 +67,10 @@ export type GuildConfigUpdate = Partial<{
 export interface GuildConfigStore {
   getOrCreate(guildId: string): Promise<GuildConfig>;
   update(guildId: string, data: GuildConfigUpdate): Promise<GuildConfig>;
+  updateIfCurrent?(
+    guildId: string,
+    data: GuildConfigUpdate,
+    expectedUpdatedAt: string,
+  ): Promise<GuildConfig | null>;
   globalModerationGuildIds(feature: "ban" | "warn" | "note"): Promise<string[]>;
 }

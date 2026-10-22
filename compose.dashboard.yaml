@@ -1,0 +1,60 @@
+# Explicit opt-in: docker compose --env-file .env.compose -f compose.yaml -f compose.dashboard.yaml up --build -d --wait
+# No plugins are installed by this stack. Use the separate tools profile explicitly.
+services:
+  bot:
+    environment:
+      CENTERIFY_DASHBOARD_BRIDGE_SECRET: ${CENTERIFY_DASHBOARD_BRIDGE_SECRET:?Set a random bridge secret}
+      CENTERIFY_DASHBOARD_BRIDGE_HOST: 0.0.0.0
+      CENTERIFY_DASHBOARD_BRIDGE_PORT: "3010"
+      CENTERIFY_DASHBOARD_OPERATORS: ${CENTERIFY_DASHBOARD_OPERATORS:-}
+    networks: [database, gateway, dashboard]
+
+  dashboard:
+    image: centerify-dashboard:${CENTERIFY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: dashboard-runtime
+    restart: unless-stopped
+    init: true
+    environment:
+      AUTH_URL: ${AUTH_URL:?Set the canonical HTTPS dashboard URL}
+      AUTH_SECRET: ${AUTH_SECRET:?Set an independent random session secret}
+      AUTH_DISCORD_ID: ${AUTH_DISCORD_ID:?Set the Discord application ID}
+      AUTH_DISCORD_SECRET: ${AUTH_DISCORD_SECRET:?Set the Discord OAuth client secret}
+      CENTERIFY_DASHBOARD_BRIDGE_URL: http://bot:3010
+      CENTERIFY_DASHBOARD_BRIDGE_SECRET: ${CENTERIFY_DASHBOARD_BRIDGE_SECRET:?Set a random bridge secret}
+      CENTERIFY_DASHBOARD_DEMO: "false"
+    depends_on:
+      bot:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 128
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 25s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    networks: [dashboard, gateway]
+
+networks:
+  dashboard:
+    internal: true

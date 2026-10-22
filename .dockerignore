@@ -8,12 +8,15 @@
 .env
 .env.*
 node_modules
+dashboard/node_modules
+dashboard/.next
+dashboard/*.tsbuildinfo
 dist
 .cache
 .centerify
 plugins/installed
 artifacts
+backups
 tests
-migrations
 docs
 *.log

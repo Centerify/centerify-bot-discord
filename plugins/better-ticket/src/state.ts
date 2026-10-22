@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import type { PluginSdk } from "../../../src/modules/plugins/discord/sdk.js";
 
-export class TicketError extends Error {}
+export class TicketError extends Error {
+  override readonly name = "TicketError";
+}
 export function schemas(z: PluginSdk["z"]) {
   const snowflake = z.string().regex(/^\d{17,20}$/);
   const key = z
@@ -49,6 +51,7 @@ export function schemas(z: PluginSdk["z"]) {
     closedAt: z.number().int().nullable(),
     claimedBy: snowflake.nullable(),
     priority: z.enum(["low", "normal", "high", "urgent"]),
+    tags: z.array(z.string().trim().min(1).max(32)).max(10).default([]),
     participants: z.array(snowflake).max(25),
     firstResponseAt: z.number().int().nullable().default(null),
     answers: z.record(z.string().max(45), z.string().max(1000)),
@@ -217,6 +220,7 @@ export class TicketStore {
         closedAt: null,
         claimedBy: null,
         priority: "normal",
+        tags: [],
         participants: [],
         firstResponseAt: null,
         answers,

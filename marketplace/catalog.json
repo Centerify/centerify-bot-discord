@@ -5,11 +5,12 @@
       "manifest": {
         "id": "better-ticket",
         "name": "Better Ticket",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "description": "Support departments, intake forms, ticket claims, priorities, private notes, transcripts, reopen, ratings, saved replies, limits and inactivity closing.",
         "apiVersion": 1,
         "entrypoint": "index.js",
         "permissions": [
+          "dashboard.tickets",
           "ManageChannels",
           "ManageRoles",
           "ViewChannel",
@@ -25,7 +26,27 @@
         "dependencies": ["guilds"]
       },
       "packagePath": "plugins/better-ticket/package",
-      "sha256": "470c3c1efa7dd10df5df15959b5e42eb4dd45dbe9350448e92d739b3230bc28d"
+      "sha256": "7a6af9d0c1ff73062ac857fa591ae9ef0625d5a64f0df5aba77d2380b3a4b7cc"
+    },
+    {
+      "manifest": {
+        "id": "community-kit",
+        "name": "Community Kit",
+        "version": "1.0.0",
+        "description": "Optional example dashboard widget, route, theme and greeting workflow node. Install globally, then explicitly activate per guild.",
+        "apiVersion": 1,
+        "entrypoint": "index.js",
+        "permissions": [
+          "dashboard.widget",
+          "dashboard.route",
+          "dashboard.theme",
+          "builder.node",
+          "bot.respond"
+        ],
+        "dependencies": ["guilds"]
+      },
+      "packagePath": "plugins/community-kit/package",
+      "sha256": "596250a63bb7c942d1c9786dec87a6effe4018310dea76073e0f2ef64fc94006"
     }
   ]
 }

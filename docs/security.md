@@ -1,5 +1,7 @@
 # Security boundaries and validation
 
+[Documentation](README.md) · [Security policy](../SECURITY.md) · [Deployment](deployment.md)
+
 The security hardening keeps Discord-specific authorization in the owning
 module's `discord` adapter. Domain and application code still depend on ports;
 no security check requires a database connection in unit tests.
@@ -60,28 +62,45 @@ responses. Existing architecture tests enforce import boundaries on Windows and
 Unix. Tests do not contact Discord. PostgreSQL integration tests require an
 explicit test database and run separately with `npm run test:database`.
 
-## Dependency audit, 2026-10-19
+## Dependency review
 
-The lockfile pins compatible patches for `brace-expansion` (5.0.12), `sharp`
-(0.35.5) and `source-map-js` (1.2.2). The production dependency audit reports zero
-known vulnerabilities at this snapshot. CI rejects high or critical production
-advisories. This is an advisory snapshot, not a guarantee about unknown flaws.
+Run `npm run audit:production` for every release. CI rejects high or critical
+runtime advisories. Run `npm audit` as well when reviewing the development and
+migration toolchain; those packages ship in the migration image, even though
+they are excluded from the bot image. Audit results depend on the current
+advisory database and are not a permanent security guarantee.
 
-The full development dependency audit still reports seven high-severity package
-entries from one unfixed `braces` issue, inherited through
-`prisma -> @prisma/composer-cli -> @prisma/composer/alchemy -> fast-glob -> micromatch -> braces`.
-The [upstream advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
-has no published patch. These are development/migration dependencies, not the
-bot's production dependency tree. npm's suggested Prisma 7 downgrade is
-incompatible with this project's Prisma Next data layer and was not applied.
-Recheck the full audit when upgrading Prisma; do not run its development tools
-against untrusted glob patterns.
+The lockfile carries explicit overrides for patched transitive dependencies.
+The existing Prisma development tree has previously reported a `braces`
+advisory through the Composer CLI and glob tooling. Review current audit output
+and upstream fixes when upgrading. Do not downgrade to Prisma 7 as an automatic
+audit repair: it uses a different data layer. Keep development/migration tools
+restricted to trusted operators and reviewed inputs.
+
+## Container boundaries
+
+The Compose bot runs as a non-root user with a read-only root filesystem,
+dropped capabilities, and no privilege escalation. Installed plugin code is
+mounted read-only; plugin registry/data are writable persistent storage. The
+optional offline tools service can change both plugin volumes. Plugins execute
+trusted JavaScript in the bot process, so these controls do not sandbox a
+malicious package or protect secrets from it.
+
+PostgreSQL is on an internal network with no published port. The bot and
+migration job use a database-owning login without PostgreSQL superuser powers;
+the administrator password stays in the database service. For stricter separation,
+provision separate DDL and runtime roles with reviewed grants. Protect environment
+files, Docker access, and backups. Secrets are passed in container environments
+and are visible to privileged Docker operators.
+
+Readiness is loopback-only and reports a generic status. It checks connectivity,
+not Discord permission correctness or every authorization path. Resource limits
+and rotating logs reduce accidental exhaustion; external monitoring and tested
+recovery remain operator responsibilities. See [deployment](deployment.md).
 
 ## Operational limits
 
-This change does not establish that the deployed bot, hosting account, database,
-Discord application or historical Git commits are uncompromised. Use a dedicated
-database account and grant the bot only the permissions its configured features
+Use a dedicated database account and grant the bot only the permissions its configured features
 need. After building and applying migrations in a trusted deployment pipeline,
 deploy runtime dependencies with `npm ci --omit=dev`. Keep development tools out
 of the running bot's environment. Rotate any credentials known to have leaked.
@@ -89,4 +108,13 @@ of the running bot's environment. Rotate any credentials known to have leaked.
 Discord and database changes cannot be one atomic operation. Role changes made
 concurrently by a server administrator can race a permission check, and unknown
 vulnerabilities, malicious privileged administrators and infrastructure failures
-remain outside the protection a code change can guarantee.
+remain operational risks. Report suspected vulnerabilities through
+[SECURITY.md](../SECURITY.md).
+
+# Dashboard boundary
+
+See [dashboard security](dashboard-security.md) for Discord OAuth, guild capabilities,
+same-origin mutations, signed internal requests, operation deduplication, audit and
+authenticated event recovery. Do not expose the internal bridge or install plugin
+code by default. Package changes require trusted operators; guild ownership alone
+does not grant host-level code installation rights.
