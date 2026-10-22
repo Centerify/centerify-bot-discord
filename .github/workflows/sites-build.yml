@@ -24,7 +24,7 @@ jobs:
       AUTH_URL: http://127.0.0.1:5173
       WRANGLER_SEND_METRICS: "false"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
