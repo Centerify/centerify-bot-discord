@@ -152,11 +152,11 @@ export class DashboardStore {
     if (current.revision !== revision)
       throw new DashboardError(409, "Workflow changed elsewhere. Reload before saving.");
     const history = Array.isArray(current.history) ? current.history : [];
-    const result = await this.database.orm.public.DashboardWorkflow.where({
+    const [result] = await this.database.orm.public.DashboardWorkflow.where({
       guildId,
       name,
       revision,
-    }).update({
+    }).updateAll({
       draft: json(draft),
       updatedBy: actorId,
       revision: revision + 1,
@@ -202,11 +202,11 @@ export class DashboardStore {
         config: json(config),
       });
     }
-    const changed = await this.database.orm.public.DashboardPlugin.where({
+    const [changed] = await this.database.orm.public.DashboardPlugin.where({
       guildId,
       pluginId,
       revision,
-    }).update({ enabled, config: json(config), revision: revision + 1 });
+    }).updateAll({ enabled, config: json(config), revision: revision + 1 });
     if (!changed) throw new DashboardError(409, "Plugin activation changed elsewhere");
     return changed;
   }

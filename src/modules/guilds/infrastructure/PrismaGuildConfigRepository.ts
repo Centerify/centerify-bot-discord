@@ -61,11 +61,16 @@ export class PrismaGuildConfigRepository implements GuildConfigStore {
       data.warningRoleSettings = warningRoleSettings(data.warningRoleSettings);
     if (data.commandRoleAccess !== undefined)
       data.commandRoleAccess = commandRoleAccess(data.commandRoleAccess);
-    const result = await this.database.orm.public.GuildConfig.where({
+    // update() first finds a row and then writes by identity. Keep the revision
+    // predicate in the UPDATE itself so a concurrent writer cannot bypass it.
+    const [result] = await this.database.orm.public.GuildConfig.where({
       guildId,
       updatedAt: expectedUpdatedAt,
-    }).update(data);
-    return result;
+    }).updateAll({
+      ...data,
+      updatedAt: new Date(Math.max(Date.now(), Date.parse(expectedUpdatedAt) + 1)).toISOString(),
+    });
+    return result ?? null;
   }
 
   public async globalModerationGuildIds(feature: "ban" | "warn" | "note") {

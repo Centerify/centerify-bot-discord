@@ -58,6 +58,33 @@ describe.skipIf(!url)("dashboard PostgreSQL guarantees", () => {
       repo.updateIfCurrent(guild, { loggingEnabled: true }, initial.updatedAt),
     ]);
     expect([a, b].filter(Boolean)).toHaveLength(1);
+    const saved = a ?? b;
+    expect(Date.parse(saved!.updatedAt)).toBeGreaterThan(Date.parse(initial.updatedAt));
+    await expect(
+      repo.updateIfCurrent(guild, { welcomeEnabled: false }, initial.updatedAt),
+    ).resolves.toBeNull();
+  });
+  test("simultaneous workflow revisions permit only one writer", async () => {
+    const first = await store.saveWorkflow(guild, "actor", "concurrent", { version: 1 }, 0);
+    const results = await Promise.allSettled([
+      store.saveWorkflow(guild, "actor", "concurrent", { writer: "a" }, first.revision),
+      store.saveWorkflow(guild, "actor", "concurrent", { writer: "b" }, first.revision),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({
+      reason: { status: 409 },
+    });
+  });
+  test("simultaneous plugin revisions permit only one writer", async () => {
+    const first = await store.setPlugin(guild, "example", false, {}, 0);
+    const results = await Promise.allSettled([
+      store.setPlugin(guild, "example", true, { writer: "a" }, first.revision),
+      store.setPlugin(guild, "example", true, { writer: "b" }, first.revision),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({
+      reason: { status: 409 },
+    });
   });
   test("events and workflows stay within their guild and use atomic revisions", async () => {
     await store.emit(guild, "test.created", "Local event");

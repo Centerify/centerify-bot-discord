@@ -37,7 +37,9 @@ import { defaultPluginManager, loadInstalledPlugins } from './dist/src/bootstrap
 
 assert.notEqual(process.getuid(), 0, 'runtime must be non-root');
 await assert.rejects(access('node_modules/prisma'));
-await assert.rejects(access('node_modules/typescript'));
+await assert.rejects(access('node_modules/eslint'));
+await assert.rejects(access('node_modules/vitest'));
+// Prisma's production packages have an optional TypeScript peer; npm may retain it.
 await assert.rejects(writeFile('/app/should-be-read-only', 'no'));
 await assert.rejects(writeFile('/app/plugins/installed/should-be-read-only', 'no'));
 await writeFile('/app/.centerify/container-smoke', 'persistent');
