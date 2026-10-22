@@ -61,7 +61,7 @@ jobs:
           fi
           DASHBOARD_TEST_URL=http://127.0.0.1:5173 node scripts/test-centerify-demo.mjs
       - name: Upload Worker build and dependency lock
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: centerify-sites-worker-${{ github.sha }}
           path: |
